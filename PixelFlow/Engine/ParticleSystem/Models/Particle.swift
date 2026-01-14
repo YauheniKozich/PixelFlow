@@ -25,18 +25,28 @@ struct Particle: Codable {
 
     // Общий размер ожидается: ~80 байт с правильным выравниванием
 
-    init() {
-        self.position = .zero
-        self.velocity = .zero
-        self.targetPosition = .zero
-        self.color = SIMD4<Float>(1, 1, 1, 1)
-        self.size = 2.0
-        self.baseSize = 2.0
-        self.life = 0.0
-        self.idleChaoticMotion = 0
-        self.originalColor = SIMD4<Float>(1, 1, 1, 1)
-    }
-
+    init(
+            position: SIMD3<Float> = .zero,
+            velocity: SIMD3<Float> = .zero,
+            targetPosition: SIMD3<Float> = .zero,
+            color: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1),  // ← ,белый по умолчанию
+            originalColor: SIMD4<Float>? = nil,  // ← опциональный, по умолчанию = color
+            size: Float = 2.0,
+            baseSize: Float = 2.0,
+            life: Float = 0.0,
+            idleChaoticMotion: UInt32 = 0
+        ) {
+            self.position = position
+            self.velocity = velocity
+            self.targetPosition = targetPosition
+            self.color = color
+            self.originalColor = originalColor ?? color  // ← если не указан, используем тот же цвет
+            self.size = size
+            self.baseSize = baseSize
+            self.life = life
+            self.idleChaoticMotion = idleChaoticMotion
+        }
+    
     // MARK: - Codable Implementation
 
     enum CodingKeys: String, CodingKey {

@@ -83,7 +83,7 @@ final class DefaultCacheManager: CacheManager {
 
     func retrieve<T: Codable>(_ type: T.Type, for key: String) throws -> T? {
         // Используем barrier для записи, чтобы избежать race condition при обновлении индекса
-        return try queue.sync(flags: .barrier) {
+        return queue.sync(flags: .barrier) {
             guard let entry = cacheIndex[key] else { return nil }
             
             let fileURL = cacheDirectory.appendingPathComponent(entry.fileName)

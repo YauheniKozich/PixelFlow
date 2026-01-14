@@ -9,6 +9,14 @@ import Foundation
 
 // MARK: - Configuration
 
+/// Параметры производительности
+struct PerformanceParams {
+    let maxConcurrentOperations: Int
+    let useSIMD: Bool
+    let enableCaching: Bool
+    let cacheSizeLimit: Int
+}
+
 /// Конфигурация генерации частиц
 struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
     let samplingStrategy: SamplingStrategy
@@ -123,20 +131,4 @@ extension ParticleGenerationConfig {
             cacheSizeLimit: cacheSizeLimit
         )
     }
-}
-
-/// Параметры сэмплинга
-struct SamplingParams {
-    let importanceThreshold: Float
-    let contrastWeight: Float
-    let saturationWeight: Float
-    let edgeRadius: Int
-}
-
-/// Параметры производительности
-struct PerformanceParams {
-    let maxConcurrentOperations: Int
-    let useSIMD: Bool
-    let enableCaching: Bool
-    let cacheSizeLimit: Int
 }

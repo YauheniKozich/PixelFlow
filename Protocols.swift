@@ -9,6 +9,56 @@ import CoreGraphics
 import Foundation
 import simd
 
+// MARK: - Data Structures
+
+/// Структура для хранения сэмпла пикселя
+struct Sample { // но возможно его стоит сделать Codable
+    let x: Int
+    let y: Int
+    let color: SIMD4<Float>
+    
+//    // MARK: - Coding Keys
+//    private enum CodingKeys: String, CodingKey {
+//        case x
+//        case y
+//        case color   // будет сохраняться как массив [r,g,b,a]
+//    }
+//    
+//    // MARK: - Encoder
+//    func encode(to encoder: Encoder) throws {
+//        var container = encoder.container(keyedBy: CodingKeys.self)
+//        
+//        try container.encode(x, forKey: .x)
+//        try container.encode(y, forKey: .y)
+//        
+//        // SIMD4<Float> → массив из 4 Float
+//        let rgbaArray: [Float] = [color.x, color.y, color.z, color.w]
+//        try container.encode(rgbaArray, forKey: .color)
+//    }
+//    
+//    // MARK: - Decoder
+//    init(from decoder: Decoder) throws {
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        
+//        x = try container.decode(Int.self, forKey: .x)
+//        y = try container.decode(Int.self, forKey: .y)
+//        
+//        // Декодируем массив из 4 Float и конструируем SIMD‑вектор
+//        let rgbaArray = try container.decode([Float].self, forKey: .color)
+//        
+//        // Защищаемся от некорректных файлов (меньше‑четырёх элементов)
+//        guard rgbaArray.count == 4 else {
+//            throw DecodingError.dataCorruptedError(
+//                forKey: .color,
+//                in: container,
+//                debugDescription: "Expected 4 Float values for color, got \(rgbaArray.count)."
+//            )
+//        }
+//        
+//        color = SIMD4<Float>(rgbaArray[0], rgbaArray[1], rgbaArray[2], rgbaArray[3])
+//    }
+}
+
 // MARK: - Core Protocols
 
 /// Протокол для анализа изображений
@@ -23,11 +73,7 @@ protocol PixelSampler {
 
 /// Протокол для сборки частиц
 protocol ParticleAssembler {
-    func assembleParticles(from samples: [Sample],
-                           config: ParticleGeneratorConfiguration,
-                           screenSize: CGSize,
-                           imageSize: CGSize,
-                           originalImageSize: CGSize) -> [Particle]
+    func assembleParticles(from samples: [Sample], config: ParticleGeneratorConfiguration, screenSize: CGSize, imageSize: CGSize) -> [Particle]
 }
 
 /// Протокол для кэширования результатов

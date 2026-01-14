@@ -11,6 +11,9 @@
 
 import CoreGraphics
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 /// Основной класс генератора частиц с модульной архитектурой
 final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGeneratorDelegate {
@@ -43,6 +46,15 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
 
     private var analysis: ImageAnalysis?
     private var generatedParticles: [Particle] = []
+    
+    // Новые свойства для ресурсов, которые нужно очищать
+    private var pixelCache: PixelCache?
+    private var graphicsContext: CGContext?
+    private var metalTexture: MTLTexture?
+    private var vertexBuffer: MTLBuffer?
+    private var pixelData: [UInt8]?
+    private var samplesCache: [Sample] = []
+    private var dominantColors: [SIMD4<Float>] = []
 
     private var isGenerating = false
     private var currentOperation: Operation?
@@ -51,6 +63,12 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
 
     private let stateQueue = DispatchQueue(label: "com.particlegen.state", attributes: .concurrent)
     private let generationQueue = OperationQueue()
+    private let cleanupQueue = DispatchQueue(label: "com.particlegen.cleanup", qos: .background)
+
+    // MARK: - Memory Tracking
+    
+    private var memoryUsage: Int64 = 0
+    private var memoryWarningObserver: NSObjectProtocol?
 
     // MARK: - Initialization
 
@@ -99,21 +117,32 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
         self.assembler = DefaultParticleAssembler(config: config)
         self.cacheManager = DefaultCacheManager(cacheSizeLimit: performanceParams.cacheSizeLimit * 1024 * 1024)
 
-        // Очищаем кэш при новой конфигурации для применения оптимизаций
-        clearCache()
-
         // Настройка очереди операций
         generationQueue.maxConcurrentOperationCount = 1
         generationQueue.qualityOfService = .userInitiated
         generationQueue.name = "com.particlegen.generation"
+
+        // Подписка на уведомления о низкой памяти
+        #if os(iOS)
+        self.memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
+        #endif
+
+        // Очищаем кэш при новой конфигурации для применения оптимизаций
+        clearCache()
 
         Logger.shared.info("ImageParticleGenerator инициализирован изображением: \(image.width) x \(image.height)")
         Logger.shared.info("Target particles: \(particleCount), quality: \(config.qualityPreset)")
     }
 
     deinit {
-        cancelGeneration()
         Logger.shared.debug("ImageParticleGenerator deinitialized")
+        performCompleteCleanup()
     }
 
     // MARK: - Public API
@@ -155,6 +184,7 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
                 config: config,
                 image: image
             )
+            Logger.shared.info("ImageParticleGenerator: получено \(samples.count) сэмплов")
 
             // Этап 3: Сборка частиц
             updateProgress(0.8, stage: "Сборка частиц")
@@ -163,13 +193,16 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
                 from: samples,
                 config: config,
                 screenSize: screenSize,
-                imageSize: imageSize
+                imageSize: imageSize,
+                originalImageSize: imageSize
             )
 
             // Сохраняем состояние
             stateQueue.async(flags: .barrier) {
                 self.analysis = currentAnalysis
                 self.generatedParticles = particles
+                self.samplesCache = samples
+                self.dominantColors = currentAnalysis.dominantColors.map { SIMD4<Float>($0.x, $0.y, $0.z, 1.0) }
             }
 
             // Кэшируем результат
@@ -188,65 +221,18 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
         }
     }
 
-    /// Генерирует частицы асинхронно
-    func generateParticlesAsync(completion: @escaping (Result<[Particle], Error>) -> Void) {
-        guard !isGenerating else {
-            completion(.failure(GeneratorError.analysisFailed(reason: "Generation already in progress")))
-            return
-        }
-
-        isGenerating = true
-
-        let operation = AsyncGenerationOperation(
-            image: image,
-            targetCount: targetParticleCount,
-            config: config,
-            screenSize: screenSize,
-            analyzer: analyzer,
-            sampler: sampler,
-            assembler: assembler,
-            cacheManager: cacheManager,
-            cacheKey: cacheKey()
-        )
-
-        operation.completionBlock = { [weak self] in
-            guard let self = self else { return }
-
-            self.isGenerating = false
-
-            DispatchQueue.main.async {
-                if let error = operation.error {
-                    self.updateProgress(0.0, stage: "Ошибка")
-                    completion(.failure(error))
-                } else if let particles = operation.result {
-                    self.stateQueue.async(flags: .barrier) {
-                        self.generatedParticles = particles
-                    }
-                    self.updateProgress(1.0, stage: "Готово")
-                    completion(.success(particles))
-                } else {
-                    completion(.failure(GeneratorError.analysisFailed(reason: "Unknown error")))
-                }
-            }
-        }
-
-        operation.progressCallback = { [weak self] progress, stage in
-            DispatchQueue.main.async {
-                self?.updateProgress(progress, stage: stage)
-            }
-        }
-
-        currentOperation = operation
-
-        // Запускаем в очереди генерации
-        generationQueue.addOperation(operation)
-    }
-
     /// Отменяет текущую генерацию
     func cancelGeneration() {
+        Logger.shared.debug("[ImageParticleGenerator] Отмена генерации")
+        
         generationQueue.cancelAllOperations()
         currentOperation?.cancel()
+        currentOperation = nil
         isGenerating = false
+        
+        // Очищаем промежуточные данные
+        cleanupIntermediateData()
+        
         updateProgress(0.0, stage: "Отменено")
     }
 
@@ -267,8 +253,72 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
 
     /// Очищает кэш
     func clearCache() {
+        Logger.shared.debug("[ImageParticleGenerator] Начало очистки кэша")
+        
+        // 1. Отмена текущих операций
+        cancelGeneration()
+        
+        // 2. Очистка кэш-менеджера
         cacheManager.clear()
-        Logger.shared.debug("Cache cleared")
+        
+        // 3. Очистка анализа изображения
+        analysis = nil
+        
+        // 4. Очистка сгенерированных частиц
+        stateQueue.async(flags: .barrier) {
+            self.generatedParticles.removeAll()
+            self.samplesCache.removeAll()
+            self.dominantColors.removeAll()
+        }
+        
+        // 5. Очистка PixelCache
+        pixelCache = nil
+        
+        // 6. Очистка графических ресурсов
+        graphicsContext = nil
+        
+        // 7. Очистка Metal ресурсов
+        metalTexture = nil
+        vertexBuffer = nil
+        
+        // 8. Очистка пиксельных данных
+        pixelData = nil
+        
+        // 9. Очистка компонентов
+        cleanupComponents()
+        
+        // 10. Сброс состояния генерации
+        isGenerating = false
+        
+        // 11. Освобождение больших буферов
+        freeLargeBuffers()
+        
+        // 12. Обнуление счетчика использования памяти
+        memoryUsage = 0
+        
+        Logger.shared.debug("[ImageParticleGenerator] Кэш полностью очищен")
+    }
+    
+    /// Полная очистка всех ресурсов
+    func cleanup() {
+        Logger.shared.debug("[ImageParticleGenerator] Полная очистка ресурсов")
+        
+        // 1. Отмена генерации
+        cancelGeneration()
+        
+        // 2. Очистка кэша
+        clearCache()
+        
+        // 3. Очистка компонентов
+        cleanupComponents()
+        
+        // 4. Очистка очередей
+        cleanupQueues()
+        
+        // 5. Уведомление системы об освобождении памяти
+        notifyMemoryRelease()
+        
+        Logger.shared.debug("[ImageParticleGenerator] Ресурсы очищены")
     }
 
     // MARK: - ParticleGeneratorDelegate
@@ -304,6 +354,124 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
         ]
         return "particles_" + components.joined(separator: "_")
     }
+    
+    private func performCompleteCleanup() {
+        Logger.shared.debug("[ImageParticleGenerator] Выполнение полной очистки в deinit")
+        
+        // Отписаться от уведомлений
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        
+        // Выполнить очистку
+        cleanup()
+    }
+    
+    private func cleanupIntermediateData() {
+        stateQueue.async(flags: .barrier) {
+            // Очищаем только промежуточные данные, не финальные частицы
+            self.samplesCache.removeAll()
+            self.dominantColors.removeAll()
+            self.pixelData = nil
+        }
+    }
+    
+    private func cleanupComponents() {
+        // Если компоненты имеют методы очистки
+        if let cleanableAnalyzer = analyzer as? Cleanable {
+            cleanableAnalyzer.cleanup()
+        }
+        if let cleanableSampler = sampler as? Cleanable {
+            cleanableSampler.cleanup()
+        }
+        if let cleanableAssembler = assembler as? Cleanable {
+            cleanableAssembler.cleanup()
+        }
+        if let cleanableCacheManager = cacheManager as? Cleanable {
+            cleanableCacheManager.cleanup()
+        }
+    }
+    
+    private func cleanupQueues() {
+        // Очистка очередей операций
+        generationQueue.cancelAllOperations()
+        generationQueue.waitUntilAllOperationsAreFinished()
+        
+        // Очистка очереди состояния
+        cleanupQueue.async { [weak self] in
+            self?.stateQueue.sync {
+                // Дополнительная очистка
+            }
+        }
+    }
+    
+    private func freeLargeBuffers() {
+        // Освобождение больших буферов
+        cleanupQueue.async {
+            #if DEBUG
+            // В отладочном режиме принудительно освобождаем память
+            autoreleasepool {
+                // Создаем временные маленькие массивы для вытеснения больших
+                let smallArray = [UInt8](repeating: 0, count: 1024)
+                _ = smallArray.count
+            }
+            #endif
+        }
+    }
+    
+    private func notifyMemoryRelease() {
+        // Уведомление системы об освобождении памяти
+        cleanupQueue.async {
+            if #available(iOS 13.0, *) {
+                Task.detached {
+                    // Дать время на освобождение
+                    try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                }
+            }
+        }
+    }
+    
+    private func handleMemoryWarning() {
+        Logger.shared.warning("[ImageParticleGenerator] Получено уведомление о низкой памяти")
+        
+        // Немедленная очистка кэша
+        cleanupQueue.async { [weak self] in
+            self?.clearCache()
+        }
+        
+        // Принудительный вызов сборщика мусора
+        cleanupQueue.async {
+            autoreleasepool {
+                // Создаем и сразу освобождаем объекты
+                let temporaryObjects = [AnyObject]()
+                _ = temporaryObjects.count
+            }
+        }
+    }
+    
+    // MARK: - Memory Tracking
+    
+    private func updateMemoryUsage() {
+        // Оценка использования памяти
+        var estimatedUsage: Int64 = 0
+        
+        // Пиксельные данные
+        if let pixelData = pixelData {
+            estimatedUsage += Int64(pixelData.count)
+        }
+        
+        // Частицы
+        estimatedUsage += Int64(generatedParticles.count * MemoryLayout<Particle>.size)
+        
+        // Сэмплы
+        estimatedUsage += Int64(samplesCache.count * MemoryLayout<Sample>.size)
+        
+        memoryUsage = estimatedUsage
+        
+        if memoryUsage > 100 * 1024 * 1024 { // 100MB
+            Logger.shared.warning("[ImageParticleGenerator] Высокое использование памяти: \(memoryUsage / (1024 * 1024))MB")
+        }
+    }
 }
 
 // MARK: - Async Operation
@@ -316,7 +484,7 @@ private class AsyncGenerationOperation: Operation, @unchecked Sendable {
     private let analyzer: ImageAnalyzer
     private let sampler: PixelSampler
     private let assembler: ParticleAssembler
-    private let cacheManager: CacheManager? // weak теперь не нужен, т.к. CacheManager уже AnyObject
+    private let cacheManager: CacheManager
     private let cacheKey: String
 
     private(set) var result: [Particle]?
@@ -334,7 +502,7 @@ private class AsyncGenerationOperation: Operation, @unchecked Sendable {
         self.analyzer = analyzer
         self.sampler = sampler
         self.assembler = assembler
-        self.cacheManager = cacheManager // Store reference normally
+        self.cacheManager = cacheManager
         self.cacheKey = cacheKey
     }
 
@@ -342,7 +510,7 @@ private class AsyncGenerationOperation: Operation, @unchecked Sendable {
         do {
             // Проверяем кэш
             if config.enableCaching,
-               let cached = try cacheManager?.retrieve([Particle].self, for: cacheKey) {
+               let cached = try cacheManager.retrieve([Particle].self, for: cacheKey) {
                 progressCallback?(1.0, "Загружено из кэша")
                 result = cached
                 return
@@ -374,14 +542,15 @@ private class AsyncGenerationOperation: Operation, @unchecked Sendable {
                 from: samples,
                 config: config,
                 screenSize: screenSize,
-                imageSize: imageSize
+                imageSize: imageSize,
+                originalImageSize: imageSize
             )
 
             if isCancelled { return }
 
             // Кэшируем
             if config.enableCaching {
-                try cacheManager?.cache(particles, for: cacheKey)
+                try cacheManager.cache(particles, for: cacheKey)
             }
 
             result = particles

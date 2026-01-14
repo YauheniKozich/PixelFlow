@@ -8,32 +8,22 @@
 import Foundation
 import MetalKit
 
-
-// MARK: - Файл ParticleSystem.swift (основной координатор)
-
-
-// MARK: - Particle System
-
 final class ParticleSystem: NSObject {
     
-    // MARK: Idle Chaotic Motion
-    /// Enables chaotic motion in idle state
-    var enableIdleChaotic: Bool = false
+    // MARK: - Свойства
     
-    // MARK: MTKView Reference (for screen scale)
+    var enableIdleChaotic: Bool = false
     private weak var mtkView: MTKView?
     
-    // MARK: Dependencies
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let imageController: ImageParticleGeneratorProtocol
     
-    // MARK: Configuration
     let particleCount: Int
     var screenSize: CGSize = .zero
     var isConfigured = false
+    private(set) var isUsingFastPreview: Bool = false
     
-    // MARK: Metal
     var renderPipeline: MTLRenderPipelineState!
     var computePipeline: MTLComputePipelineState!
     
@@ -41,44 +31,36 @@ final class ParticleSystem: NSObject {
     var paramsBuffer: MTLBuffer!
     var collectedCounterBuffer: MTLBuffer!
     
-    // MARK: Subsystems
     let stateMachine = SimulationStateMachine()
     let clock = SimulationClock()
     let paramsUpdater = SimulationParamsUpdater()
     let particleGenerator: ParticleGenerator
     
-    var lastProgressLogTime: CFTimeInterval = 0
-    var lastLoggedCollectedCount: Int = -1
+    // MARK: - Публичный интерфейс
     
-    // MARK: Public API
     var hasActiveSimulation: Bool {
         stateMachine.isActive
     }
     
+    var isHighQuality: Bool {
+        !isUsingFastPreview
+    }
+    
     func startSimulation() {
-        Logger.shared.info("startSimulation() called")
         stateMachine.start()
     }
     
     func toggleState() {
-        let currentState = stateMachine.state
-        Logger.shared.info("toggleState() called, current state: \(currentState)")
-        
         switch stateMachine.state {
         case .chaotic:
-            Logger.shared.info("→ Transitioning to .collecting")
             stateMachine.startCollecting()
         case .collecting:
-            Logger.shared.info("→ Back to chaotic (not stopping)")
-            stateMachine.start()  // Вернуться к хаосу, не останавливать
+            stateMachine.start()
         case .collected:
-            Logger.shared.info("→ Restarting from collected")
-            stateMachine.start()  // Перезапуск из собранного состояния
+            stateMachine.start()
         case .idle:
-            Logger.shared.info("→ Starting from idle")
             stateMachine.start()
         case .lightningStorm:
-            Logger.shared.info("→ Exiting storm to chaotic")
             stateMachine.start()
         }
     }
@@ -88,26 +70,32 @@ final class ParticleSystem: NSObject {
     }
     
     func configure(screenSize: CGSize) {
-        precondition(!isConfigured, "ParticleSystem already configured")
+        precondition(!isConfigured, "ParticleSystem уже сконфигурирован")
         self.screenSize = screenSize
         imageController.updateScreenSize(screenSize)
         particleGenerator.updateScreenSize(screenSize)
         isConfigured = true
     }
     
+    /// Основная инициализация с качественными частицами
     func initialize() {
-        precondition(isConfigured, "Call configure(screenSize:) before initialize()")
+        precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
+        isUsingFastPreview = false
         particleGenerator.recreateParticles(in: particleBuffer)
     }
-
-    /// Быстрая инициализация с простыми частицами (не блокирует UI)
-    func initializeWithSimpleParticles() {
-        precondition(isConfigured, "Call configure(screenSize:) before initialize()")
-        particleGenerator.createAndCopySimpleParticles(in: particleBuffer)
+    
+    /// Быстрая инициализация с low-quality превью
+    func initializeWithFastPreview() {
+        precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
+        isUsingFastPreview = true
+        particleGenerator.createAndCopyFastPreviewParticles(in: particleBuffer)
+        startSimulation()
     }
-
-    /// Асинхронная замена частиц на сгенерированные из изображения
-    func replaceParticlesAsync(completion: @escaping (Bool) -> Void) {
+    
+    /// Асинхронная замена частиц на качественные
+    func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void) {
+        precondition(isConfigured, "Система не сконфигурирована")
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else {
                 DispatchQueue.main.async { completion(false) }
@@ -115,70 +103,49 @@ final class ParticleSystem: NSObject {
             }
 
             do {
-                Logger.shared.info("Starting async particle generation...")
-                try self.particleGenerator.recreateParticles(in: self.particleBuffer)
-                Logger.shared.info("Particles replaced successfully")
+                self.particleGenerator.recreateParticles(in: self.particleBuffer)
+                self.isUsingFastPreview = false
                 DispatchQueue.main.async { completion(true) }
-            } catch {
-                Logger.shared.error("Failed to replace particles: \(error)")
-                DispatchQueue.main.async { completion(false) }
-            }
+            } 
         }
     }
     
-    // MARK: Init
+    // MARK: - Инициализация
+    
     init?(mtkView: MTKView, image: CGImage, particleCount: Int, config: ParticleGenerationConfig? = nil) {
-        Logger.shared.info("ParticleSystem init started")
-        // Сначала инициализируем все свойства
         guard
             let device = MTLCreateSystemDefaultDevice(),
-            let queue = device.makeCommandQueue()
+            let queue = device.makeCommandQueue(),
+            particleCount > 0
         else {
-            Logger.shared.error("Failed to create Metal device/queue")
             return nil
         }
 
-        guard particleCount > 0 else {
-            Logger.shared.error("Invalid particle count: \(particleCount)")
-            return nil
-        }
-        
         self.device = device
         self.commandQueue = queue
         self.particleCount = particleCount
         
-        // Инициализируем imageController до вызова super.init()
-        Logger.shared.info("Creating ImageParticleGeneratorProtocol...")
         let imageController: ImageParticleGeneratorProtocol
-
+        
         do {
             if let config = config {
                 imageController = try ImageParticleGenerator(image: image, particleCount: particleCount, config: config)
             } else {
                 imageController = try ImageParticleGenerator(image: image, particleCount: particleCount)
             }
-            Logger.shared.info("ImageParticleGenerator created successfully")
         } catch {
-            Logger.shared.error("Failed to create ImageParticleGenerator: \(error)")
             return nil
         }
+        
         self.imageController = imageController
-
-        // Инициализируем particleGenerator до super.init()
         self.particleGenerator = ParticleGenerator(
-                    particleSystem: nil,  // Пока nil, установим после super.init()
-                    imageController: imageController,
-                    particleCount: particleCount
-                )
+            particleSystem: nil,
+            imageController: imageController,
+            particleCount: particleCount
+        )
 
-        // Теперь вызываем super.init()
         super.init()
-
-        // После super.init() можем использовать self
         particleGenerator.weakParticleSystem = self
-        
-        
-        // После super.init() можем использовать self
         self.mtkView = mtkView
         self.stateMachine.resetCounterCallback = { [weak self] in
             self?.resetCollectedCounterIfNeeded()
@@ -196,7 +163,26 @@ final class ParticleSystem: NSObject {
     }
     
     var mtkViewForGenerator: MTKView? {
-            return mtkView
-        }
+        return mtkView
+    }
+    
+    func getSourceImage() -> CGImage? {
+        return imageController.image
+    }
+    
+    func cleanup() {
+        stateMachine.stop()
+        particleBuffer = nil
+        paramsBuffer = nil
+        collectedCounterBuffer = nil
+        renderPipeline = nil
+        computePipeline = nil
+        particleGenerator.cleanup()
+        imageController.clearCache()
+        isUsingFastPreview = false
+    }
+    
+    func stop() {
+        stateMachine.stop()
+    }
 }
-

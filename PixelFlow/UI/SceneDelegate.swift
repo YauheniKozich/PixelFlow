@@ -7,48 +7,87 @@
 
 import UIKit
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+import UIKit
 
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
+    // MARK: - Properties
     var window: UIWindow?
+    private var viewModel: ParticleViewModel?
 
-    
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = (scene as? UIWindowScene) else { return }
+    // MARK: - UISceneDelegate
+
+    func scene(_ scene: UIScene,
+               willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+
+        guard let windowScene = scene as? UIWindowScene else { return }
+
+        Logger.shared.info("SceneDelegate: сцена подключается")
         
+        viewModel = ParticleViewModel()
+        viewModel?.setHighQualityConfiguration()          // ← один‑единственный метод конфигурации
+
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = ParticleAssembly.assemble() 
-        self.window = window
+
+        guard viewModel != nil else {
+            assertionFailure("ViewModel не создаётся")
+            return
+        }
+
+        let rootVC = ParticleAssembly.assemble()
+
+        window.rootViewController = rootVC
         window.makeKeyAndVisible()
+        self.window = window
+
+        Logger.shared.info("SceneDelegate настроен, окно создано")
     }
-    
+
+    // MARK: - Life‑cycle callbacks
+
     func sceneDidDisconnect(_ scene: UIScene) {
-        // Вызывается, когда сцена освобождается системой.
-        // Это происходит вскоре после того, как сцена переходит в фоновый режим, или когда ее сессия закрывается.
-        // Освободите любые ресурсы, связанные с этой сценой, которые могут быть воссозданы при следующем подключении сцены.
-        // Сцена может переподключиться позже, поскольку ее сессия не обязательно была закрыта (см. `application:didDiscardSceneSessions` вместо этого).
+        Logger.shared.info("SceneDelegate: сцена отключена")
+        // Важно освободить ресурсы, когда пользователь закрывает окно.
+        viewModel?.cleanupAllResources()
+        viewModel = nil
+        window = nil
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Вызывается, когда сцена перешла из неактивного состояния в активное.
-        // Используйте этот метод для перезапуска задач, которые были приостановлены (или еще не начаты), когда сцена была неактивной.
+        Logger.shared.info("SceneDelegate: сцена стала активной")
+        resumeParticleSimulation()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        // Вызывается, когда сцена перейдет из активного состояния в неактивное.
-        // Это может произойти из-за временных прерываний (например, входящий телефонный звонок).
+        Logger.shared.info("SceneDelegate: сцена будет неактивна")
+        pauseParticleSimulation()
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
-        // Вызывается при переходе сцены из фона на передний план.
-        // Используйте этот метод для отмены изменений, сделанных при переходе в фон.
+        Logger.shared.info("SceneDelegate: сцена переходит на передний план")
+        // Можно обновить UI/данные, если это требуется.
     }
 
     func sceneDidEnterBackground(_ scene: UIScene) {
-        // Вызывается при переходе сцены с переднего плана в фон.
-        // Используйте этот метод для сохранения данных, освобождения общих ресурсов и хранения достаточной информации о состоянии сцены
-        // для восстановления сцены в ее текущее состояние.
+        Logger.shared.info("SceneDelegate: сцена перешла в фон")
+        viewModel?.cleanupAllResources()
     }
 
+    // MARK: - URL handling
 
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        Logger.shared.info("SceneDelegate: открытие URL контекстов")
+        // Обработка deeplink‑ов, если приложение их поддерживает.
+    }
+
+    // MARK: - Private helpers
+
+    private func pauseParticleSimulation() {
+        viewModel?.particleSystem?.stop()
+    }
+
+    private func resumeParticleSimulation() {
+        viewModel?.particleSystem?.startSimulation()
+    }
 }
-

@@ -8,12 +8,11 @@
 //  - Настройка цветов и размеров
 //
 
-import CoreGraphics
 import Foundation
+import UIKit
 import simd
+import CoreGraphics
 
-
-/// Реализация сборщика частиц по умолчанию
 final class DefaultParticleAssembler: ParticleAssembler {
     
     private let config: ParticleGeneratorConfiguration
@@ -21,13 +20,34 @@ final class DefaultParticleAssembler: ParticleAssembler {
     
     init(config: ParticleGeneratorConfiguration) {
         self.config = config
+        print("DefaultParticleAssembler инициализирован")
     }
     
     func assembleParticles(
         from samples: [Sample],
         config: ParticleGeneratorConfiguration,
         screenSize: CGSize,
-        imageSize: CGSize
+        imageSize: CGSize,
+        originalImageSize: CGSize
+    ) -> [Particle] {
+        
+        return assembleParticlesOriginal(
+            from: samples,
+            config: config,
+            screenSize: screenSize,
+            imageSize: imageSize,
+            originalImageSize: originalImageSize
+        )
+    }
+    
+    // MARK: - Оригинальная функция
+    
+    private func assembleParticlesOriginal(
+        from samples: [Sample],
+        config: ParticleGeneratorConfiguration,
+        screenSize: CGSize,
+        imageSize: CGSize,
+        originalImageSize: CGSize
     ) -> [Particle] {
         
         // Валидация входных данных
@@ -46,14 +66,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
             return []
         }
         
-        Logger.shared.debug("""
-            Сборка \(samples.count) частиц для:
-            - Экран: \(screenSize)
-            - Изображение: \(imageSize)
-            - Качество: \(config.qualityPreset)
-        """)
-        
-        // Получаем режим отображения (используем по умолчанию .fit если не задан)
+        // Получаем режим отображения
         let displayMode = getDisplayMode(from: config)
         
         // Предварительный расчет параметров трансформации
@@ -66,7 +79,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
         // Подготовка диапазона размеров
         let sizeRange = getSizeRange(for: config.qualityPreset)
         let sizeVariation = sizeRange.upperBound - sizeRange.lowerBound
-
+        
         // Генерация частиц
         let particles = samples.enumerated().map { index, sample -> Particle in
             createParticle(
@@ -78,7 +91,8 @@ final class DefaultParticleAssembler: ParticleAssembler {
                 config: config,
                 displayMode: displayMode,
                 totalSamples: samples.count,
-                imageSize: imageSize,
+                originalImageSize: originalImageSize,
+                scaledImageSize: imageSize,
                 screenSize: screenSize
             )
         }
@@ -96,7 +110,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
             return configWithDisplayMode.imageDisplayMode
         }
         
-        // Проверяем наличие свойства через KVC (опционально)
+        // Проверяем наличие свойства через Mirror
         if let displayModeValue = Mirror(reflecting: config).children.first(where: { $0.label == "imageDisplayMode" })?.value as? ImageDisplayMode {
             return displayModeValue
         }
@@ -106,23 +120,21 @@ final class DefaultParticleAssembler: ParticleAssembler {
     }
     
     /// Расчет параметров трансформации координат
-    // MARK: - Transformation calculation
     private func calculateTransformation(
         screenSize: CGSize,
         imageSize: CGSize,
         displayMode: ImageDisplayMode
     ) -> TransformationParams {
-
+        
         let aspectImage  = imageSize.width / imageSize.height
         let aspectScreen = screenSize.width / screenSize.height
-
+        
         switch displayMode {
         case .fit:
-            // --- Уже работает правильно (см. ниже) ---
             let scale: CGFloat = (aspectImage > aspectScreen)
-                ? screenSize.width / imageSize.width
-                : screenSize.height / imageSize.height
-
+            ? screenSize.width / imageSize.width
+            : screenSize.height / imageSize.height
+            
             let scaledWidth  = imageSize.width  * scale
             let scaledHeight = imageSize.height * scale
             let offset = CGPoint(
@@ -133,42 +145,33 @@ final class DefaultParticleAssembler: ParticleAssembler {
                                         scaleY: scale,
                                         offset: offset,
                                         mode: .fit)
-
+            
         case .fill:
-            // ----- ОТЛИЧНАЯ РЕАЛИЗАЦИЯ ДЛЯ .fill -----
-            // Выбираем коэффициент, который заставит изображение покрыть **обе** оси
-            //    (одна из сторон будет «выдавлен» за границы).
             let scale: CGFloat = (aspectImage > aspectScreen)
-                ? screenSize.height / imageSize.height      // ограничиваем по высоте
-                : screenSize.width  / imageSize.width       // ограничиваем по ширине
-
-            // Масштабируем исходный размер
+            ? screenSize.height / imageSize.height
+            : screenSize.width  / imageSize.width
+            
             let scaledWidth  = imageSize.width  * scale
             let scaledHeight = imageSize.height * scale
-
-            // Смещение (может быть отрицательным)
             let offset = CGPoint(
                 x: (screenSize.width  - scaledWidth)  / 2,
                 y: (screenSize.height - scaledHeight) / 2
             )
-
-            // Возвращаем **коэффициенты** (не размеры!)
+            
             return TransformationParams(scaleX: scale,
                                         scaleY: scale,
                                         offset: offset,
                                         mode: .fill)
-
+            
         case .stretch:
-            // --- Каждый размер масштабируется независимо ---
             let scaleX = screenSize.width  / imageSize.width
             let scaleY = screenSize.height / imageSize.height
             return TransformationParams(scaleX: scaleX,
                                         scaleY: scaleY,
                                         offset: .zero,
                                         mode: .stretch)
-
+            
         case .center:
-            // --- Без масштабирования, только центрирование ---
             let offset = CGPoint(
                 x: (screenSize.width  - imageSize.width)  / 2,
                 y: (screenSize.height - imageSize.height) / 2
@@ -179,7 +182,6 @@ final class DefaultParticleAssembler: ParticleAssembler {
                                         mode: .center)
         }
     }
-
     
     /// Создание отдельной частицы
     private func createParticle(
@@ -191,47 +193,36 @@ final class DefaultParticleAssembler: ParticleAssembler {
         config: ParticleGeneratorConfiguration,
         displayMode: ImageDisplayMode,
         totalSamples: Int,
-        imageSize: CGSize,
+        originalImageSize: CGSize,
+        scaledImageSize: CGSize,
         screenSize: CGSize
     ) -> Particle {
-
+        
         var particle = Particle()
-
-        // -------------------------------------------------
+        
         // Нормализуем координаты внутри оригинального изображения
-        // -------------------------------------------------
-        let normalizedX = CGFloat(sample.x) / imageSize.width
-        let normalizedY = CGFloat(sample.y) / imageSize.height
-
-        // -------------------------------------------------
-        // Применяем единый формулы:
-        //    screen = offset + (normalized * imageSize * scale)
-        // -------------------------------------------------
+        let normalizedX = CGFloat(sample.x) / originalImageSize.width
+        let normalizedY = CGFloat(sample.y) / originalImageSize.height
+        
+        // Применяем формулу трансформации
         let screenX = transformation.offset.x +
-                      normalizedX * imageSize.width  * transformation.scaleX
+        normalizedX * scaledImageSize.width * transformation.scaleX
         let screenY = transformation.offset.y +
-                      normalizedY * imageSize.height * transformation.scaleY
-
-        // -------------------------------------------------
-        // Граничная валидация (остается неизменной)
-        // -------------------------------------------------
+        normalizedY * scaledImageSize.height * transformation.scaleY
+        
+        // Граничная валидация
         guard screenX >= -50 && screenX <= screenSize.width + 50,
               screenY >= -50 && screenY <= screenSize.height + 50 else {
-            // Частица будет отфильтрована дальше
             return Particle()
         }
-
-        // -------------------------------------------------
-        // Заполняем остальные параметры частицы
-        // -------------------------------------------------
+        
+        // Заполняем параметры частицы
         particle.position = SIMD3<Float>(Float(screenX), Float(screenY), 0)
         particle.targetPosition = particle.position
         particle.color = sample.color
         particle.originalColor = sample.color
-
-        // Размер: используем комбинацию позиции и индекса для разнообразия
-        // Улучшенная формула для более равномерного распределения размеров
-        // Используем хэш позиции для детерминированного, но разнообразного результата
+        
+        // Размер
         let xHash = UInt32(sample.x) &* 73856093
         let yHash = UInt32(sample.y) &* 19349663
         let combinedHash = Int32(bitPattern: xHash ^ yHash)
@@ -240,24 +231,21 @@ final class DefaultParticleAssembler: ParticleAssembler {
         let sizeFactor = (positionFactor + indexFactor) / 2.0
         particle.size = sizeRange.lowerBound + sizeFactor * sizeVariation
         particle.baseSize = particle.size
-
-        // Жизненный цикл и движение – без изменений
+        
+        // Жизненный цикл и движение
         particle.life = 0.0
-
+        
         let chaosFactor = Float.random(in: 0.8...1.2)
-        // idleChaoticMotion должен быть 0 или 1 (флаг), не случайное значение
         particle.idleChaoticMotion = 0
         particle.velocity = SIMD3<Float>(
             Float.random(in: -0.5...0.5),
             Float.random(in: -0.5...0.5),
             0
         ) * getParticleSpeed(from: config) * chaosFactor
-
+        
         return particle
     }
-
     
-    /// Получение диапазона размеров для пресета качества
     private func getSizeRange(for preset: QualityPreset) -> ClosedRange<Float> {
         // Стандартные диапазоны по умолчанию
         let defaultRanges: [QualityPreset: ClosedRange<Float>] = [
@@ -301,60 +289,5 @@ final class DefaultParticleAssembler: ParticleAssembler {
             }
         }
         return nil
-    }
-    
-}
-
-// MARK: - Supporting Structures
-
-private struct TransformationParams {
-    let scaleX: CGFloat
-    let scaleY: CGFloat
-    let offset: CGPoint
-    let mode: ImageDisplayMode
-}
-
-enum ImageDisplayMode: String, CaseIterable {
-    case fit      // Сохранять пропорции, вписывать в экран
-    case fill     // Сохранять пропорции, заполнять экран (обрезать)
-    case stretch  // Растягивать без сохранения пропорций
-    case center   // Центрировать без масштабирования
-    
-    var description: String {
-        switch self {
-        case .fit: return "Fit (сохранить пропорции)"
-        case .fill: return "Fill (заполнить экран)"
-        case .stretch: return "Stretch (растянуть)"
-        case .center: return "Center (центрировать)"
-        }
-    }
-}
-
-
-
-// MARK: - Протокол для конфигурации с режимом отображения
-
-protocol ParticleGeneratorConfigurationWithDisplayMode: ParticleGeneratorConfiguration {
-    var imageDisplayMode: ImageDisplayMode { get }
-    var particleLifetime: Float { get }
-    var particleSpeed: Float { get }
-    var particleSizeUltra: ClosedRange<Float>? { get }
-    var particleSizeHigh: ClosedRange<Float>? { get }
-    var particleSizeStandard: ClosedRange<Float>? { get }
-    var particleSizeLow: ClosedRange<Float>? { get }
-}
-
-// MARK: - Расширение для Sample
-
-extension Sample {
-    /// Размеры исходного изображения из сэмпла
-    var imageWidth: Int {
-        // Если в Sample нет информации о размере, используем значения по умолчанию
-        // или добавьте эти свойства в структуру Sample
-        return 1000 // Значение по умолчанию
-    }
-    
-    var imageHeight: Int {
-        return 1000 // Значение по умолчанию
     }
 }

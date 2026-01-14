@@ -24,17 +24,21 @@ extension ParticleSystem: MTKViewDelegate {
         guard
             stateMachine.isActive,
             let drawable = view.currentDrawable,
-            let pass = view.currentRenderPassDescriptor,
             let commandBuffer = commandQueue.makeCommandBuffer()
         else { return }
 
         clock.update()
         updateSimulationParams()
-
+        
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = drawable.texture
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].storeAction = .store
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        
         encodeCompute(into: commandBuffer)
         encodeRender(into: commandBuffer, pass: pass)
 
-        // Проверяем завершение сбора после того, как GPU обновил счетчик
         checkCollectionCompletion()
 
         if case .collected = stateMachine.state {

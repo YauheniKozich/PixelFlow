@@ -8,147 +8,241 @@
 import UIKit
 import MetalKit
 
-// MARK: - Logger
-private let logger = Logger.shared
-
 class ViewController: UIViewController {
-    // MARK: - Properties
+    
+    // MARK: - Свойства
+    
     private var mtkView: MTKView!
     private var displayLink: CADisplayLink?
     private let viewModel: ParticleViewModel
-
-    // MARK: - Initialization
+    private var qualityUpgradeLabel: UILabel?
+    private var isFirstLayout = true
+    
+    // MARK: - Инициализация
+    
     init(viewModel: ParticleViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
-
+    
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
-    // MARK: - Lifecycle
+    
+    // MARK: - Жизненный цикл
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
         view.backgroundColor = .black
-
         setupMetalView()
         setupGestures()
+        setupQualityUpgradeNotification()
     }
-
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         mtkView.frame = view.bounds
-
-        // Инициализировать систему частиц только один раз после layout
+        
+        // Инициализируем систему частиц только один раз после layout
         guard !viewModel.isConfigured else { return }
-
-        if viewModel.setupParticleSystem(with: mtkView, screenSize: view.bounds.size) {
-            setupDisplayLink()
-            activateGestures()
+        
+        if isFirstLayout {
+            isFirstLayout = false
+            
+            if viewModel.setupParticleSystem(with: mtkView, screenSize: view.bounds.size) {
+                setupDisplayLink()
+                activateGestures()
+            }
         }
     }
-
+    
     override var prefersStatusBarHidden: Bool {
         return true
     }
-
-    // MARK: - Private Methods
+    
+    // MARK: - Настройка MetalView
+    
     private func setupMetalView() {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Metal is not supported on this device")
+            fatalError("Metal не поддерживается на этом устройстве")
         }
-
+        
         mtkView = MTKView(frame: view.bounds, device: device)
         mtkView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         mtkView.colorPixelFormat = .bgra8Unorm_srgb
         mtkView.framebufferOnly = false
         mtkView.preferredFramesPerSecond = 60
+        mtkView.isPaused = true
+        mtkView.enableSetNeedsDisplay = true
+        
+        // Мультисемплинг отключен
         view.addSubview(mtkView)
     }
-
+    
     private func activateGestures() {
         mtkView.isUserInteractionEnabled = true
     }
-
-
+    
+    // MARK: - Настройка жестов
+    
     private func setupGestures() {
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
         mtkView.addGestureRecognizer(tapGesture)
-
-        // Double tap for reset
-        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
+        
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
         doubleTap.numberOfTapsRequired = 2
         mtkView.addGestureRecognizer(doubleTap)
-
-        // Triple tap for lightning storm
-        let tripleTap = UITapGestureRecognizer(target: self, action: #selector(handleTripleTap(_:)))
+        
+        let tripleTap = UITapGestureRecognizer(target: self, action: #selector(handleTripleTap))
         tripleTap.numberOfTapsRequired = 3
         mtkView.addGestureRecognizer(tripleTap)
-
-        // Single tap waits for double and triple taps to fail
+        
         tapGesture.require(toFail: doubleTap)
         tapGesture.require(toFail: tripleTap)
         doubleTap.require(toFail: tripleTap)
     }
-
-
+    
     private func setupDisplayLink() {
+        guard displayLink == nil else { return }
+        
         displayLink = CADisplayLink(target: self, selector: #selector(renderLoop))
         displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         displayLink?.add(to: .main, forMode: .common)
-        logger.info("CADisplayLink запущен")
     }
-
+    
     @objc private func renderLoop() {
-        // Render only if simulation is active
-        if viewModel.particleSystem?.hasActiveSimulation ?? false {
-            mtkView.draw()
-        } else {
-            // Stop displayLink if simulation is finished
+        guard viewModel.isConfigured else {
             displayLink?.isPaused = true
-            logger.info("Симуляция завершена, displayLink остановлен")
-        }
-    }
-
-    // MARK: - Gesture Handlers
-    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        // Only handle completed taps
-        guard gesture.state == .ended else {
-            logger.debug("handleTap игнорируется, состояние: \(gesture.state.rawValue)")
             return
         }
-
-        logger.debug("handleTap выполнен")
-        viewModel.handleSingleTap()
-        displayLink?.isPaused = false
+        
+        mtkView.draw()
     }
-
+    
+    // MARK: - Обработчики жестов
+    
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        
+        viewModel.handleSingleTap()
+        startDisplayLinkIfNeeded()
+    }
+    
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-        // Stop current simulation
-        displayLink?.isPaused = true
+        guard gesture.state == .ended else { return }
+        
         displayLink?.invalidate()
         displayLink = nil
-
-        // Reset system
+        
         viewModel.handleDoubleTap()
-
-        // Reinitialize in next layout cycle
+        showRestartMessage()
+        
+        isFirstLayout = true
         view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
-
+    
     @objc private func handleTripleTap(_ gesture: UITapGestureRecognizer) {
+        guard gesture.state == .ended else { return }
+        
         viewModel.handleTripleTap()
-        logger.info("⚡ Тройное нажатие: Гроза активирована!")
+        startDisplayLinkIfNeeded()
     }
-
-
-    // MARK: - Deinitialization
+    
+    private func startDisplayLinkIfNeeded() {
+        if displayLink?.isPaused ?? true {
+            displayLink?.isPaused = false
+            mtkView.isPaused = false
+        }
+    }
+    
+    // MARK: - Визуальная обратная связь
+    
+    private func showRestartMessage() {
+        let label = UILabel()
+        label.text = "Перезапуск системы..."
+        label.textAlignment = .center
+        label.textColor = .white
+        label.font = .systemFont(ofSize: 18, weight: .semibold)
+        label.alpha = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
+        
+        UIView.animate(withDuration: 0.3) {
+            label.alpha = 1
+        } completion: { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.0) {
+                label.alpha = 0
+            } completion: { _ in
+                label.removeFromSuperview()
+            }
+        }
+    }
+    
+    private func setupQualityUpgradeNotification() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleQualityUpgraded),
+            name: NSNotification.Name("ParticleQualityUpgraded"),
+            object: nil
+        )
+    }
+    
+    @objc private func handleQualityUpgraded() {
+        showQualityUpgradeAnimation()
+    }
+    
+    private func showQualityUpgradeAnimation() {
+        qualityUpgradeLabel?.removeFromSuperview()
+        
+        let label = UILabel()
+        label.text = "Качество улучшено!"
+        label.textAlignment = .center
+        label.textColor = .white
+        label.font = .systemFont(ofSize: 20, weight: .bold)
+        label.alpha = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(label)
+        qualityUpgradeLabel = label
+        
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50)
+        ])
+        
+        UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
+            label.alpha = 1
+            label.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+        } completion: { _ in
+            UIView.animate(withDuration: 0.3) {
+                label.transform = .identity
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            UIView.animate(withDuration: 0.5) {
+                label.alpha = 0
+            } completion: { _ in
+                if self.qualityUpgradeLabel === label {
+                    self.qualityUpgradeLabel = nil
+                }
+                label.removeFromSuperview()
+            }
+        }
+    }
+    
+    // MARK: - Деинициализация
+    
     deinit {
         displayLink?.invalidate()
-        displayLink = nil
-        logger.debug("Деинициализация завершена")
+        NotificationCenter.default.removeObserver(self)
     }
 }

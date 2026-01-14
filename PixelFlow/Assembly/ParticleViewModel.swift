@@ -12,9 +12,10 @@ class ParticleViewModel {
     // MARK: - Public Properties
     private(set) var particleSystem: ParticleSystem?
     private(set) var isConfigured = false
+    private(set) var isGeneratingHighQuality: Bool = false
 
     // MARK: - Configuration Properties
-    private(set) var currentSamplingAlgorithm: SamplingAlgorithm = .uniform
+    private(set) var currentSamplingAlgorithm: SamplingAlgorithm = .adaptive
     private(set) var currentQualityPreset: QualityPreset = .standard
     private(set) var currentEnableCaching: Bool = true
     private(set) var currentMaxConcurrentOperations: Int = ProcessInfo.processInfo.activeProcessorCount
@@ -26,14 +27,26 @@ class ParticleViewModel {
     private(set) var currentMaxParticleSize: Float = 7.0
     private(set) var currentUseSIMD: Bool = true
     private(set) var currentCacheSizeLimit: Int = 100
-    private(set) var currentParticleCount: Int = 35000
+    private(set) var currentParticleCount: Int = 75000
 
     // MARK: - Private Properties
     private let logger = Logger.shared
+    private var memoryWarningObserver: NSObjectProtocol?
+    private var qualityGenerationTask: Task<Void, Never>?
 
     // MARK: - Initialization
     init() {
         logger.info("ParticleViewModel initialized")
+        
+        // Подписаться на уведомления о низкой памяти
+        setupMemoryWarningObserver()
+    }
+    
+    deinit {
+        cleanupAllResources()
+        removeMemoryWarningObserver()
+        cancelQualityGeneration()
+        logger.info("ParticleViewModel deinit")
     }
 
     // MARK: - Public Methods
@@ -72,31 +85,26 @@ class ParticleViewModel {
             return false
         }
 
-        // Настроить и инициализировать простыми частицами (быстро)
+        // Настроить и инициализировать БЫСТРЫМ ПРЕВЬЮ (мгновенно)
         particleSystem?.configure(screenSize: screenSize)
-        particleSystem?.initializeWithSimpleParticles()
+        particleSystem?.initializeWithFastPreview()
         particleSystem?.startSimulation()
 
         isConfigured = true
-        logger.info("Система частиц инициализирована простыми частицами и запущена")
-        logGestureInstructions()
+        logger.info("Система частиц инициализирована с быстрым превью и запущена")
 
-        // Заменить на реальные частицы асинхронно
-        particleSystem?.replaceParticlesAsync { success in
-            if success {
-                self.logger.info("Успешно заменены простые частицы на сгенерированные")
-            } else {
-                self.logger.warning("Не удалось заменить частицы, оставлены простые")
-            }
-        }
+        // ЗАПУСТИТЬ ФОНОВУЮ ГЕНЕРАЦИЮ КАЧЕСТВЕННЫХ ЧАСТИЦ
+        startBackgroundQualityGeneration()
 
         return true
     }
 
     func resetParticleSystem() {
         logger.info("Сброс системы частиц")
+        cancelQualityGeneration()
         particleSystem = nil
         isConfigured = false
+        isGeneratingHighQuality = false
     }
 
     func handleSingleTap() {
@@ -117,6 +125,94 @@ class ParticleViewModel {
     func handleTripleTap() {
         logger.info("Тройное нажатие: запуск грозы")
         particleSystem?.startLightningStorm()
+    }
+
+    // MARK: - Quality Generation Management
+
+    /// Запустить фоновую генерацию качественных частиц
+    private func startBackgroundQualityGeneration() {
+        guard let system = particleSystem else {
+            logger.error("Нет системы для генерации качественных частиц")
+            return
+        }
+        
+        // Отменяем предыдущую задачу если есть
+        cancelQualityGeneration()
+        
+        isGeneratingHighQuality = true
+        logger.info("Запуск фоновой генерации качественных частиц...")
+        
+        qualityGenerationTask = Task { [weak self] in
+            do {
+                // Даем время быстрому превью показаться
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                
+                guard !Task.isCancelled else { return }
+                
+                await MainActor.run {
+                    self?.logger.info("Начало генерации качественных частиц...")
+                }
+                
+                let startTime = CFAbsoluteTimeGetCurrent()
+                
+                // Генерируем качественные частицы
+                let success = await withCheckedContinuation { continuation in
+                    system.replaceWithHighQualityParticles { success in
+                        continuation.resume(returning: success)
+                    }
+                }
+                
+                let duration = CFAbsoluteTimeGetCurrent() - startTime
+                
+                await MainActor.run {
+                    if success {
+                        self?.logger.info("Качественные частицы созданы за \(String(format: "%.2f", duration)) сек")
+                        self?.isGeneratingHighQuality = false
+                        
+                        // Показываем уведомление пользователю (опционально)
+                        self?.showQualityUpgradeNotification()
+                    } else {
+                        self?.logger.warning("Не удалось создать качественные частицы")
+                        self?.isGeneratingHighQuality = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self?.logger.error("Ошибка при генерации качественных частиц: \(error)")
+                    self?.isGeneratingHighQuality = false
+                }
+            }
+        }
+    }
+    
+    /// Отменить генерацию качественных частиц
+    private func cancelQualityGeneration() {
+        qualityGenerationTask?.cancel()
+        qualityGenerationTask = nil
+        isGeneratingHighQuality = false
+    }
+    
+    /// Принудительно перегенерировать качественные частицы
+    func regenerateHighQualityParticles() {
+        guard let _ = particleSystem, isConfigured else {
+            logger.warning("Не могу перегенерировать: система не настроена")
+            return
+        }
+        
+        logger.info("Принудительная перегенерация качественных частиц")
+        startBackgroundQualityGeneration()
+    }
+    
+    /// Показать уведомление об улучшении качества
+    private func showQualityUpgradeNotification() {
+        // Можно показать всплывающее уведомление или анимацию
+        logger.info("Качество изображения улучшено!")
+        
+        // Пример: анимация на ViewController
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ParticleQualityUpgraded"),
+            object: nil
+        )
     }
 
     // MARK: - Configuration Methods
@@ -236,31 +332,32 @@ class ParticleViewModel {
     /// Применить изменения конфигурации (пересоздать систему частиц)
     private func applyConfigurationChanges() {
         guard isConfigured else {
-            logger.debug("Configuration changed but system not initialized yet")
             return
         }
 
-        logger.info("Applying configuration changes...")
-
+        // Отменяем текущую генерацию качественных частиц
+        cancelQualityGeneration()
+        
         // Остановить текущую систему
         particleSystem = nil
         isConfigured = false
 
-        // Переинициализировать с новыми настройками
-        // Это будет вызвано автоматически через viewDidLayoutSubviews
         DispatchQueue.main.async {
-            if let window = UIApplication.shared.windows.first,
-               let rootVC = window.rootViewController as? ViewController {
-                rootVC.view.setNeedsLayout()
+            if let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+                
+                if let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController as? ViewController {
+                    rootVC.view.setNeedsLayout()
+                }
             }
         }
     }
-
     // MARK: - Preset Configurations
 
     /// Установить конфигурацию для быстрой разработки (draft)
     func setDraftConfiguration() {
-        currentSamplingAlgorithm = .hashBased
+        currentSamplingAlgorithm = .adaptive
         currentQualityPreset = .draft
         currentEnableCaching = false
         currentMaxConcurrentOperations = 2
@@ -278,9 +375,9 @@ class ParticleViewModel {
         applyConfigurationChanges()
     }
 
-    /// Установить стандартную конфигурацию
+    /// Установить стандартную конфигурация
     func setStandardConfiguration() {
-        currentSamplingAlgorithm = .blueNoise
+        currentSamplingAlgorithm = .adaptive
         currentQualityPreset = .standard
         currentEnableCaching = true
         currentMaxConcurrentOperations = ProcessInfo.processInfo.activeProcessorCount
@@ -300,7 +397,7 @@ class ParticleViewModel {
 
     /// Установить высококачественную конфигурацию
     func setHighQualityConfiguration() {
-        currentSamplingAlgorithm = .blueNoise
+        currentSamplingAlgorithm = .adaptive
         currentQualityPreset = .ultra
         currentEnableCaching = true
         currentMaxConcurrentOperations = ProcessInfo.processInfo.activeProcessorCount * 2
@@ -327,11 +424,14 @@ class ParticleViewModel {
 
     /// Получить информацию о текущих настройках
     func getConfigurationInfo() -> String {
+        let qualityStatus = isGeneratingHighQuality ? "Генерация..." : (particleSystem?.isHighQuality ?? false ? "Высокое" : "Быстрое превью")
+        
         return """
         Current Configuration:
         - Algorithm: \(currentSamplingAlgorithm)
         - Quality: \(currentQualityPreset)
         - Particles: \(currentParticleCount)
+        - Status: \(qualityStatus)
         - Caching: \(currentEnableCaching ? "ON" : "OFF")
         - SIMD: \(currentUseSIMD ? "ON" : "OFF")
         - Concurrent Ops: \(currentMaxConcurrentOperations)
@@ -346,17 +446,23 @@ class ParticleViewModel {
 
     /// Логировать текущие настройки
     func logCurrentConfiguration() {
+        let qualityStatus = particleSystem?.isHighQuality ?? false ? "Высокое качество" : "Быстрое превью"
+        
         logger.info("=== Current Configuration ===")
         logger.info("Algorithm: \(currentSamplingAlgorithm)")
         logger.info("Quality: \(currentQualityPreset)")
         logger.info("Particles: \(currentParticleCount)")
-        logger.info("Caching: \(currentEnableCaching)")
-        logger.info("SIMD: \(currentUseSIMD)")
-        logger.info("Size range: \(currentMinParticleSize)-\(currentMaxParticleSize)")
+        logger.info("Quality Status: \(qualityStatus)")
+        logger.info("Generating HQ: \(isGeneratingHighQuality)")
         logger.info("=============================")
     }
 
     // MARK: - Quick Algorithm Switching
+
+    /// Переключиться на Adaptive (учитывает цвета)
+    func switchToAdaptive() {
+        setSamplingAlgorithm(.adaptive)
+    }
 
     /// Переключиться на Blue Noise (оптимальное качество)
     func switchToBlueNoise() {
@@ -376,11 +482,6 @@ class ParticleViewModel {
     /// Переключиться на Van der Corput (математическая точность)
     func switchToVanDerCorput() {
         setSamplingAlgorithm(.vanDerCorput)
-    }
-
-    /// Переключиться на Adaptive (учитывает цвета)
-    func switchToAdaptive() {
-        setSamplingAlgorithm(.adaptive)
     }
 
     // MARK: - Quality Presets
@@ -405,9 +506,144 @@ class ParticleViewModel {
         setQualityPreset(.ultra)
     }
 
+    // MARK: - Memory Management
+
     private func clearParticleCache() {
-        // Кэш очищается автоматически в ImageParticleGenerator при новой конфигурации
         logger.debug("Particle cache cleared via ImageParticleGenerator")
+        
+        // 1. Отменить генерацию качественных частиц
+        cancelQualityGeneration()
+        
+        // 2. Остановить и очистить текущую систему частиц
+        particleSystem?.cleanup()
+        particleSystem = nil
+        
+        // 3. Сбросить флаги конфигурации
+        isConfigured = false
+        isGeneratingHighQuality = false
+        
+        // 4. Очистить кэш изображений
+        clearImageCache()
+        
+        // 5. Очистить локальные кэши
+        clearLocalCaches()
+        
+        // 6. Уведомить систему об освобождении памяти
+        notifyMemoryRelease()
+        
+        logger.debug("Particle cache fully cleared")
+    }
+    
+    private func clearImageCache() {
+        logger.debug("Clearing image cache")
+        
+        // Очистить кэш UIImage
+        URLCache.shared.removeAllCachedResponses()
+        
+        // Очистить системный кэш изображений
+        if #available(iOS 14.0, *) {
+            let imageCache = URLCache(
+                memoryCapacity: 0,
+                diskCapacity: 0,
+                diskPath: nil
+            )
+            URLCache.shared = imageCache
+        }
+    }
+    
+    private func clearLocalCaches() {
+        logger.debug("Clearing local caches")
+        
+        // Очистить временные файлы
+        let tempDir = FileManager.default.temporaryDirectory
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+            for url in contents {
+                try? FileManager.default.removeItem(at: url)
+            }
+        } catch {
+            logger.debug("Failed to clear temp directory: \(error)")
+        }
+        
+        // Принудительный сбор мусора в отладочном режиме
+        #if DEBUG
+        autoreleasepool {
+            // Освобождаем временные объекты
+            let temporaryArray = [Int]()
+            _ = temporaryArray
+        }
+        #endif
+    }
+    
+    private func notifyMemoryRelease() {
+        logger.debug("Notifying system of memory release")
+        
+        if #available(iOS 13.0, *) {
+            Task.detached {
+                // Дать время на освобождение ресурсов
+                try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                
+                #if DEBUG
+                // В отладочном режиме принудительно освобождаем память
+                autoreleasepool {
+                    let cleanupArray = [UInt8](repeating: 0, count: 1024)
+                    _ = cleanupArray
+                }
+                #endif
+            }
+        }
+    }
+    
+    /// Полная очистка всех ресурсов
+    func cleanupAllResources() {
+        logger.info("Полная очистка всех ресурсов")
+        
+        // 1. Отменить генерацию качественных частиц
+        cancelQualityGeneration()
+        
+        // 2. Остановить и очистить систему частиц
+        particleSystem?.cleanup()
+        particleSystem = nil
+        
+        // 3. Очистить кэши
+        clearParticleCache()
+        clearImageCache()
+        
+        // 4. Сбросить конфигурацию
+        resetToDefaults()
+        isConfigured = false
+        isGeneratingHighQuality = false
+        
+        // 5. Уведомление системы о низкой памяти
+        NotificationCenter.default.post(name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+        
+        logger.info("Все ресурсы очищены")
+    }
+    
+    @objc func handleMemoryWarning() {
+        logger.warning("Получено уведомление о низкой памяти - очистка ресурсов")
+        
+        // Асинхронная очистка, чтобы не блокировать основной поток
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            self?.cleanupAllResources()
+        }
+    }
+    
+    private func setupMemoryWarningObserver() {
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleMemoryWarning()
+        }
+    }
+    
+    private func removeMemoryWarningObserver() {
+        if let observer = memoryWarningObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        memoryWarningObserver = nil
     }
 
     // MARK: - Private Methods
@@ -465,11 +701,5 @@ class ParticleViewModel {
 
     private func createOptimalConfig() -> ParticleGenerationConfig {
         return getCurrentConfig()
-    }
-
-    private func logGestureInstructions() {
-        logger.info("👆 1 finger: control states")
-        logger.info("👆👆 2 fingers: reset system")
-        logger.info("👆👆👆 3 fingers: lightning storm")
     }
 }

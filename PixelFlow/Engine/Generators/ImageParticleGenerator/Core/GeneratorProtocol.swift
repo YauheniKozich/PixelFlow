@@ -23,4 +23,11 @@ protocol ImageParticleGeneratorProtocol {
 
     /// Обновляет размер экрана
     func updateScreenSize(_ size: CGSize)
+    
+    /// Очистка кэша
+    func clearCache()
+}
+
+protocol Cleanable: AnyObject {
+    func cleanup()
 }

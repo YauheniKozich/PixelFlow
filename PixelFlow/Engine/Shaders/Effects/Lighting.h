@@ -243,9 +243,6 @@ static inline float3 applyLightScattering(
     float2 toLight = lightSource - position;
     float distance = length(toLight);
 
-    // Нормализуем направление (защита от нуля)
-    float2 direction = distance > 0.0001 ? toLight / distance : float2(0.0);
-
     // Рассеивание экспоненциально падает с расстоянием
     float scattering = exp(-distance * 0.001) * intensity;
 
@@ -255,7 +252,6 @@ static inline float3 applyLightScattering(
     // Добавляем немного рассеянного света
     return baseColor + scatteredLight * 0.2;
 }
-
 /*
     РИМ-ОСВЕЩЕНИЕ - "СВЕЧЕНИЕ ПО КРАЯМ"
 
