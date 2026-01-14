@@ -35,6 +35,9 @@ final class ParticleSystem: NSObject {
     let clock = SimulationClock()
     let paramsUpdater = SimulationParamsUpdater()
     let particleGenerator: ParticleGenerator
+
+    /// Текущая конфигурация системы частиц
+    private(set) var currentConfig: ParticleGenerationConfig
     
     // MARK: - Публичный интерфейс
     
@@ -112,7 +115,7 @@ final class ParticleSystem: NSObject {
     
     // MARK: - Инициализация
     
-    init?(mtkView: MTKView, image: CGImage, particleCount: Int, config: ParticleGenerationConfig? = nil) {
+    init?(mtkView: MTKView, image: CGImage, particleCount: Int, config: ParticleGenerationConfig) {
         guard
             let device = MTLCreateSystemDefaultDevice(),
             let queue = device.makeCommandQueue(),
@@ -124,15 +127,12 @@ final class ParticleSystem: NSObject {
         self.device = device
         self.commandQueue = queue
         self.particleCount = particleCount
-        
+        self.currentConfig = config
+
         let imageController: ImageParticleGeneratorProtocol
-        
+
         do {
-            if let config = config {
-                imageController = try ImageParticleGenerator(image: image, particleCount: particleCount, config: config)
-            } else {
-                imageController = try ImageParticleGenerator(image: image, particleCount: particleCount)
-            }
+            imageController = try ImageParticleGenerator(image: image, particleCount: particleCount, config: config)
         } catch {
             return nil
         }

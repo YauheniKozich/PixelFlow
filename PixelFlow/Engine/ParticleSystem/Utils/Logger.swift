@@ -52,3 +52,23 @@ final class Logger {
         log(message, level: .error, file: file, function: function, line: line)
     }
 }
+
+// MARK: - LoggerProtocol Conformance
+
+extension Logger: LoggerProtocol {
+    func info(_ message: String) {
+        log(message, level: .info, file: #file, function: #function, line: #line)
+    }
+
+    func warning(_ message: String) {
+        log(message, level: .warning, file: #file, function: #function, line: #line)
+    }
+
+    func error(_ message: String) {
+        log(message, level: .error, file: #file, function: #function, line: #line)
+    }
+
+    func debug(_ message: String) {
+        log(message, level: .debug, file: #file, function: #function, line: #line)
+    }
+}

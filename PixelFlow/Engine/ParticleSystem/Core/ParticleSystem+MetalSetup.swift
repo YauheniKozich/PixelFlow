@@ -83,7 +83,8 @@ extension ParticleSystem {
             state: stateMachine.state,
             clock: clock,
             screenSize: screenSize,
-            particleCount: particleCount
+            particleCount: particleCount,
+            config: currentConfig
         )
     }
     

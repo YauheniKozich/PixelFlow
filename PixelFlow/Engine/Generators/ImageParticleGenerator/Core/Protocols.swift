@@ -18,13 +18,13 @@ protocol ImageAnalyzer {
 
 /// Протокол для сэмплинга пикселей
 protocol PixelSampler {
-    func samplePixels(from analysis: ImageAnalysis, targetCount: Int, config: ParticleGeneratorConfiguration, image: CGImage) throws -> [Sample]
+    func samplePixels(from analysis: ImageAnalysis, targetCount: Int, config: ParticleGenerationConfig, image: CGImage) throws -> [Sample]
 }
 
 /// Протокол для сборки частиц
 protocol ParticleAssembler {
     func assembleParticles(from samples: [Sample],
-                           config: ParticleGeneratorConfiguration,
+                           config: ParticleGenerationConfig,
                            screenSize: CGSize,
                            imageSize: CGSize,
                            originalImageSize: CGSize) -> [Particle]
@@ -50,50 +50,4 @@ protocol ParticleGeneratorConfiguration: Codable {
     var qualityPreset: QualityPreset { get }
     var enableCaching: Bool { get }
     var maxConcurrentOperations: Int { get }
-}
-
-// MARK: - Supporting Types
-
-enum SamplingStrategy: Codable {
-    case uniform         // Равномерный сэмплинг
-    case importance      // По важности пикселей
-    case adaptive        // Адаптивная плотность
-    case hybrid          // Комбинированный подход
-    case advanced(SamplingAlgorithm)  // Продвинутые алгоритмы
-}
-
-enum QualityPreset: Codable {
-    case draft     // Быстрый черновик
-    case standard  // Стандартное качество
-    case high      // Высокое качество
-    case ultra     // Максимальное качество
-}
-
-enum GeneratorError: LocalizedError {
-    case invalidImage
-    case invalidParticleCount
-    case analysisFailed(reason: String)
-    case samplingFailed(reason: String)
-    case assemblyFailed(reason: String)
-    case cacheError(reason: String)
-    case cancelled
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidImage:
-            return "Некорректное изображение"
-        case .invalidParticleCount:
-            return "Некорректное количество частиц"
-        case .analysisFailed(let reason):
-            return "Ошибка анализа: \(reason)"
-        case .samplingFailed(let reason):
-            return "Ошибка сэмплинга: \(reason)"
-        case .assemblyFailed(let reason):
-            return "Ошибка сборки частиц: \(reason)"
-        case .cacheError(let reason):
-            return "Ошибка кэша: \(reason)"
-        case .cancelled:
-            return "Операция отменена"
-        }
-    }
 }

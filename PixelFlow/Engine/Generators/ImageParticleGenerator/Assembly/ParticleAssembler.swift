@@ -13,19 +13,23 @@ import UIKit
 import simd
 import CoreGraphics
 
-final class DefaultParticleAssembler: ParticleAssembler {
-    
-    private let config: ParticleGeneratorConfiguration
+final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtocol {
+
+    private let config: ParticleGenerationConfig
     private let randomGenerator = SystemRandomNumberGenerator()
-    
-    init(config: ParticleGeneratorConfiguration) {
+
+    // MARK: - ParticleAssemblerProtocol
+
+    var defaultParticleSize: Float { 5.0 }
+
+    init(config: ParticleGenerationConfig) {
         self.config = config
         print("DefaultParticleAssembler инициализирован")
     }
     
     func assembleParticles(
         from samples: [Sample],
-        config: ParticleGeneratorConfiguration,
+        config: ParticleGenerationConfig,
         screenSize: CGSize,
         imageSize: CGSize,
         originalImageSize: CGSize
@@ -44,7 +48,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
     
     private func assembleParticlesOriginal(
         from samples: [Sample],
-        config: ParticleGeneratorConfiguration,
+        config: ParticleGenerationConfig,
         screenSize: CGSize,
         imageSize: CGSize,
         originalImageSize: CGSize
@@ -104,7 +108,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
     // MARK: - Private Methods
     
     /// Получаем режим отображения из конфигурации
-    private func getDisplayMode(from config: ParticleGeneratorConfiguration) -> ImageDisplayMode {
+    private func getDisplayMode(from config: ParticleGenerationConfig) -> ImageDisplayMode {
         // Если протокол поддерживает свойство imageDisplayMode
         if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
             return configWithDisplayMode.imageDisplayMode
@@ -190,7 +194,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
         transformation: TransformationParams,
         sizeRange: ClosedRange<Float>,
         sizeVariation: Float,
-        config: ParticleGeneratorConfiguration,
+        config: ParticleGenerationConfig,
         displayMode: ImageDisplayMode,
         totalSamples: Int,
         originalImageSize: CGSize,
@@ -265,7 +269,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
     }
     
     /// Получение времени жизни частицы
-    private func getParticleLifetime(from config: ParticleGeneratorConfiguration) -> Float {
+    private func getParticleLifetime(from config: ParticleGenerationConfig) -> Float {
         if let lifetime: Float = getCustomProperty(named: "particleLifetime", from: config) {
             return lifetime
         }
@@ -273,7 +277,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
     }
     
     /// Получение скорости частицы
-    private func getParticleSpeed(from config: ParticleGeneratorConfiguration) -> Float {
+    private func getParticleSpeed(from config: ParticleGenerationConfig) -> Float {
         if let speed: Float = getCustomProperty(named: "particleSpeed", from: config) {
             return speed
         }
@@ -281,7 +285,7 @@ final class DefaultParticleAssembler: ParticleAssembler {
     }
     
     /// Получение кастомного свойства через reflection
-    private func getCustomProperty<T>(named name: String, from config: ParticleGeneratorConfiguration) -> T? {
+    private func getCustomProperty<T>(named name: String, from config: ParticleGenerationConfig) -> T? {
         let mirror = Mirror(reflecting: config)
         for child in mirror.children {
             if child.label == name {
@@ -289,5 +293,15 @@ final class DefaultParticleAssembler: ParticleAssembler {
             }
         }
         return nil
+    }
+
+    // MARK: - ParticleAssemblerProtocol
+
+    func validateParticles(_ particles: [Particle]) -> Bool {
+        // Простая валидация: все частицы должны иметь валидные позиции и размеры
+        return particles.allSatisfy { particle in
+            particle.size > 0 &&
+            particle.position.x.isFinite && particle.position.y.isFinite && particle.position.z.isFinite
+        }
     }
 }

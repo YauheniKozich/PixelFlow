@@ -17,7 +17,8 @@ final class SimulationParamsUpdater {
         state: SimulationStateMachine.State,
         clock: SimulationClock,
         screenSize: CGSize,
-        particleCount: Int
+        particleCount: Int,
+        config: ParticleGenerationConfig
     ) {
         var p = SimulationParams()
         
@@ -32,10 +33,13 @@ final class SimulationParamsUpdater {
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
+         p.minParticleSize = config.minParticleSize
+         p.maxParticleSize = config.maxParticleSize
+
         
         // === Параметры анимации и эффектов ===
         p.collectionSpeed = 1.0  // Множитель скорости сбора по умолчанию
-        p.brightnessBoost = 1.0  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
+        p.brightnessBoost = 0.8  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
         p.pixelSizeMode = 0      // 0 = плавный, 1 = пиксельно-точный (используется вершинным шейдером)
         p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
         

@@ -58,11 +58,16 @@ private struct AnalysisResult {
 
 // MARK: Основной класс‑анализатор
 
-final class DefaultImageAnalyzer: ImageAnalyzer {
-    
+final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
+
     // Параметры производительности (для будущего расширения)
     private let config: PerformanceParams
-    
+
+    // MARK: - ImageAnalyzerProtocol
+
+    var supportsSIMD: Bool { true }
+    var supportsConcurrency: Bool { true }
+
     init(config: PerformanceParams) {
         self.config = config
     }

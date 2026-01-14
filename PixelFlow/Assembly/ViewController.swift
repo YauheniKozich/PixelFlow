@@ -44,16 +44,30 @@ class ViewController: UIViewController {
         mtkView.frame = view.bounds
         
         // Инициализируем систему частиц только один раз после layout
-        guard !viewModel.isConfigured else { return }
+        guard isFirstLayout else { return }
         
         if isFirstLayout {
             isFirstLayout = false
             
-            if viewModel.setupParticleSystem(with: mtkView, screenSize: view.bounds.size) {
-                setupDisplayLink()
-                activateGestures()
+            Task { @MainActor in
+                if await viewModel.isConfigured { return }
+                
+                if await viewModel.createSystem(in: mtkView, screenSize: view.bounds.size) {
+                    setupDisplayLink()
+                    activateGestures()
+                }
             }
         }
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        startDisplayLinkIfNeeded()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        displayLink?.isPaused = true
     }
     
     override var prefersStatusBarHidden: Bool {
@@ -71,12 +85,11 @@ class ViewController: UIViewController {
         mtkView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         mtkView.colorPixelFormat = .bgra8Unorm_srgb
-        mtkView.framebufferOnly = false
+        mtkView.framebufferOnly = true
         mtkView.preferredFramesPerSecond = 60
         mtkView.isPaused = true
-        mtkView.enableSetNeedsDisplay = true
+        mtkView.enableSetNeedsDisplay = false
         
-        // Мультисемплинг отключен
         view.addSubview(mtkView)
     }
     
@@ -88,15 +101,15 @@ class ViewController: UIViewController {
     
     private func setupGestures() {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-        mtkView.addGestureRecognizer(tapGesture)
+        view.addGestureRecognizer(tapGesture)
         
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
         doubleTap.numberOfTapsRequired = 2
-        mtkView.addGestureRecognizer(doubleTap)
+        view.addGestureRecognizer(doubleTap)
         
         let tripleTap = UITapGestureRecognizer(target: self, action: #selector(handleTripleTap))
         tripleTap.numberOfTapsRequired = 3
-        mtkView.addGestureRecognizer(tripleTap)
+        view.addGestureRecognizer(tripleTap)
         
         tapGesture.require(toFail: doubleTap)
         tapGesture.require(toFail: tripleTap)
@@ -109,15 +122,12 @@ class ViewController: UIViewController {
         displayLink = CADisplayLink(target: self, selector: #selector(renderLoop))
         displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         displayLink?.add(to: .main, forMode: .common)
+        displayLink?.isPaused = true // Начинаем приостановленным
     }
     
     @objc private func renderLoop() {
-        guard viewModel.isConfigured else {
-            displayLink?.isPaused = true
-            return
-        }
-        
-        mtkView.draw()
+        // Просто запрашиваем перерисовку
+        mtkView.setNeedsDisplay()
     }
     
     // MARK: - Обработчики жестов
@@ -125,29 +135,34 @@ class ViewController: UIViewController {
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
         
-        viewModel.handleSingleTap()
-        startDisplayLinkIfNeeded()
+        Task { @MainActor in
+            viewModel.toggleSimulation()
+            startDisplayLinkIfNeeded()
+        }
     }
     
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
         
-        displayLink?.invalidate()
-        displayLink = nil
+        displayLink?.isPaused = true
         
-        viewModel.handleDoubleTap()
-        showRestartMessage()
-        
-        isFirstLayout = true
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
+        Task { @MainActor in
+            viewModel.resetParticleSystem()
+            showRestartMessage()
+            
+            isFirstLayout = true
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+        }
     }
     
     @objc private func handleTripleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
         
-        viewModel.handleTripleTap()
-        startDisplayLinkIfNeeded()
+        Task { @MainActor in
+            viewModel.startLightningStorm()
+            startDisplayLinkIfNeeded()
+        }
     }
     
     private func startDisplayLinkIfNeeded() {
@@ -190,7 +205,7 @@ class ViewController: UIViewController {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleQualityUpgraded),
-            name: NSNotification.Name("ParticleQualityUpgraded"),
+            name: .particleQualityUpgraded,
             object: nil
         )
     }
@@ -200,41 +215,43 @@ class ViewController: UIViewController {
     }
     
     private func showQualityUpgradeAnimation() {
-        qualityUpgradeLabel?.removeFromSuperview()
-        
-        let label = UILabel()
-        label.text = "Качество улучшено!"
-        label.textAlignment = .center
-        label.textColor = .white
-        label.font = .systemFont(ofSize: 20, weight: .bold)
-        label.alpha = 0
-        label.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.addSubview(label)
-        qualityUpgradeLabel = label
-        
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 50)
-        ])
-        
-        UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
-            label.alpha = 1
-            label.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
-        } completion: { _ in
-            UIView.animate(withDuration: 0.3) {
-                label.transform = .identity
-            }
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            UIView.animate(withDuration: 0.5) {
-                label.alpha = 0
+        DispatchQueue.main.async {
+            self.qualityUpgradeLabel?.removeFromSuperview()
+            
+            let label = UILabel()
+            label.text = "Качество улучшено!"
+            label.textAlignment = .center
+            label.textColor = .systemGreen
+            label.font = .systemFont(ofSize: 20, weight: .bold)
+            label.alpha = 0
+            label.translatesAutoresizingMaskIntoConstraints = false
+            
+            self.view.addSubview(label)
+            self.qualityUpgradeLabel = label
+            
+            NSLayoutConstraint.activate([
+                label.centerXAnchor.constraint(equalTo: self.view.centerXAnchor),
+                label.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor, constant: 50)
+            ])
+            
+            UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
+                label.alpha = 1
+                label.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
             } completion: { _ in
-                if self.qualityUpgradeLabel === label {
-                    self.qualityUpgradeLabel = nil
+                UIView.animate(withDuration: 0.3) {
+                    label.transform = .identity
                 }
-                label.removeFromSuperview()
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                UIView.animate(withDuration: 0.5) {
+                    label.alpha = 0
+                } completion: { _ in
+                    if self.qualityUpgradeLabel === label {
+                        self.qualityUpgradeLabel = nil
+                    }
+                    label.removeFromSuperview()
+                }
             }
         }
     }
@@ -243,6 +260,12 @@ class ViewController: UIViewController {
     
     deinit {
         displayLink?.invalidate()
+        displayLink = nil
         NotificationCenter.default.removeObserver(self)
+        
+        // Очищаем ресурсы при деините ViewController
+        Task { @MainActor in
+            viewModel.cleanupAllResources()
+        }
     }
 }

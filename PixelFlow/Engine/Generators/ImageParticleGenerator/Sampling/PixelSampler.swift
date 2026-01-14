@@ -9,15 +9,23 @@ import CoreGraphics
 import Foundation
 import simd
 
-final class DefaultPixelSampler: PixelSampler {
-    
+final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
+
     // MARK: - Свойства
-    
-    private let config: ParticleGeneratorConfiguration
+
+    private let config: ParticleGenerationConfig
+
+    // MARK: - PixelSamplerProtocol
+
+    var samplingStrategy: SamplingStrategy {
+        config.samplingStrategy
+    }
+
+    var supportsAdaptiveSampling: Bool { true }
     
     // MARK: - Инициализация
     
-    init(config: ParticleGeneratorConfiguration) {
+    init(config: ParticleGenerationConfig) {
         self.config = config
     }
     
@@ -25,7 +33,7 @@ final class DefaultPixelSampler: PixelSampler {
     
     func samplePixels(from analysis: ImageAnalysis,
                       targetCount: Int,
-                      config: ParticleGeneratorConfiguration,
+                      config: ParticleGenerationConfig,
                       image: CGImage) throws -> [Sample] {
         
         // Создаем кэш пикселей из изображения
@@ -60,7 +68,7 @@ final class DefaultPixelSampler: PixelSampler {
     private func selectSamplingStrategy(
         analysis: ImageAnalysis,
         targetCount: Int,
-        config: ParticleGeneratorConfiguration,
+        config: ParticleGenerationConfig,
         cache: PixelCache,
         dominantColors4: [SIMD4<Float>]
     ) throws -> [Sample] {

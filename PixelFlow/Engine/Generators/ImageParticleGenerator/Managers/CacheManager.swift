@@ -9,10 +9,10 @@ import Foundation
 import CryptoKit
 
 /// Менеджер кэширования результатов генерации частиц
-final class DefaultCacheManager: CacheManager {
+final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
 
     private let cacheDirectory: URL
-    private let maxCacheSize: Int // в байтах
+    private var maxCacheSize: Int // в байтах
     private let queue = DispatchQueue(label: "com.particlegen.cachemanager", attributes: .concurrent)
 
     private var cacheIndex: [String: CacheEntry] = [:]
@@ -137,6 +137,25 @@ final class DefaultCacheManager: CacheManager {
             // Сохраняем пустой индекс
             try? saveCacheIndex()
         }
+    }
+
+    // MARK: - CacheManagerProtocol
+
+    var size: Int64 {
+        queue.sync { Int64(currentCacheSize) }
+    }
+
+    var sizeLimit: Int64 {
+        get { queue.sync { Int64(maxCacheSize) } }
+        set { queue.sync(flags: .barrier) { maxCacheSize = Int(newValue) } }
+    }
+
+    var count: Int {
+        queue.sync { cacheIndex.count }
+    }
+
+    func contains(key: String) -> Bool {
+        queue.sync { cacheIndex[key] != nil }
     }
 
     // MARK: - Private Methods

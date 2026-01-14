@@ -35,7 +35,7 @@ using namespace metal;
 
 // ОСНОВНЫЕ ПАРАМЕТРЫ ПРОЗРАЧНОСТИ
 #define PARTICLE_ALPHA_THRESHOLD 0.01   // Минимальная прозрачность для отрисовки
-#define PARTICLE_EDGE_SOFTNESS 0.95     // ✅ Увеличиваем размытость краев для сглаживания
+#define PARTICLE_EDGE_SOFTNESS 0.95     // Увеличиваем размытость краев для сглаживания
 
 // КОНСТАНТЫ ЭЛЕКТРИЧЕСКОЙ БУРИ - спецэффекты молний
 #define STORM_BRIGHTNESS_MULTIPLIER 4.0    // Усиление яркости в буре
@@ -125,7 +125,7 @@ static inline float2 getSubpixelOffset(uint vid, float2 screenSize, uint pixelSi
 */
 vertex VertexOut vertexParticle(
     device const Particle* particles [[buffer(0)]],    // Буфер частиц
-    constant SimulationParams& params [[buffer(1)]],   // Параметры симуляции
+    constant SimulationParams * params [[buffer(1)]],   // Параметры симуляции
     uint vid [[vertex_id]]                             // ID вершины (номер частицы)
 ) {
     // Читаем частицу из буфера
@@ -137,8 +137,8 @@ vertex VertexOut vertexParticle(
     // ============================================================================
 
     // Защита от деления на ноль (экран не может быть нулевым)
-    float invWidth = params.screenSize.x > MIN_SCREEN_SIZE ? 1.0 / params.screenSize.x : 0.0;
-    float invHeight = params.screenSize.y > MIN_SCREEN_SIZE ? 1.0 / params.screenSize.y : 0.0;
+    float invWidth = params[0].screenSize.x > MIN_SCREEN_SIZE ? 1.0 / params[0].screenSize.x : 0.0;
+    float invHeight = params[0].screenSize.y > MIN_SCREEN_SIZE ? 1.0 / params[0].screenSize.y : 0.0;
 
     // Преобразование в Normalized Device Coordinates (NDC)
     // Экран: (0,0) в левом верхнем углу → (width,height) в правом нижнем
@@ -155,7 +155,7 @@ vertex VertexOut vertexParticle(
     VertexOut out;
 
     // Добавляем субпиксельное смещение для плавности
-    float2 subpixelOffset = getSubpixelOffset(vid, params.screenSize, params.pixelSizeMode);
+    float2 subpixelOffset = getSubpixelOffset(vid, params[0].screenSize, params[0].pixelSizeMode);
     out.position = float4(ndc + subpixelOffset, 0.0, 1.0);
 
     // ============================================================================
@@ -163,11 +163,11 @@ vertex VertexOut vertexParticle(
     // ============================================================================
 
     // Безопасные границы размера
-    float safeMinSize = max(params.minParticleSize, MIN_PARTICLE_SIZE);
-    float safeMaxSize = max(params.maxParticleSize, safeMinSize);
+    float safeMinSize = max(params[0].minParticleSize, MIN_PARTICLE_SIZE);
+    float safeMaxSize = max(params[0].maxParticleSize, safeMinSize);
 
     // В режиме бури частицы становятся больше и заметнее
-    if (params.state == SIMULATION_STATE_LIGHTNING_STORM) {
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
         safeMinSize *= STORM_SIZE_MULTIPLIER_MIN;
         safeMaxSize *= STORM_SIZE_MULTIPLIER_MAX;
     }
@@ -188,8 +188,8 @@ vertex VertexOut vertexParticle(
     );
 
     // Передаем параметры для fragment шейдера
-    out.brightnessBoost = params.brightnessBoost;
-    out.collectionSpeed = params.collectionSpeed;
+    out.brightnessBoost = params[0].brightnessBoost;
+    out.collectionSpeed = params[0].collectionSpeed;
     out.screenPos = screenPos;  // Для расчетов освещения
 
     return out;
@@ -217,7 +217,7 @@ vertex VertexOut vertexParticle(
 fragment float4 fragmentParticle(
     VertexOut in [[stage_in]],                    // Данные от vertex шейдера
     float2 pointCoord [[point_coord]],            // Координаты внутри частицы (0-1)
-    constant SimulationParams& params [[buffer(1)]] // Параметры симуляции
+    constant SimulationParams * params [[buffer(1)]] // Параметры симуляции
 ) {
     // ============================================================================
     // ПОДГОТОВКА КООРДИНАТ И ФОРМЫ
@@ -245,22 +245,22 @@ fragment float4 fragmentParticle(
     float3 col;  // Финальный цвет частицы
 
     // СПЕЦИАЛЬНАЯ ОБРАБОТКА ЭЛЕКТРИЧЕСКОЙ БУРИ ⚡
-    if (params.state == SIMULATION_STATE_LIGHTNING_STORM) {
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
         // ========================================================================
         // ЭЛЕКТРИЧЕСКАЯ БУРЯ - САМЫЙ ДРАМАТИЧНЫЙ РЕЖИМ
         // ========================================================================
 
         // Создаем "электрические" UV координаты с движением
         float2 electricUV = uv * STORM_ELECTRIC_UV_SCALE +
-                           float2(params.time * STORM_TIME_SCALE_1,
-                                 params.time * STORM_TIME_SCALE_2);
+                           float2(params[0].time * STORM_TIME_SCALE_1,
+                                 params[0].time * STORM_TIME_SCALE_2);
 
         // Генерируем сид для псевдо-случайности
         float electricSeed = dot(electricUV, float2(12.9898, 78.233));
 
         // ДИНАМИЧЕСКИЕ ЭЛЕКТРИЧЕСКИЕ ЦВЕТА - постоянно меняются
-        float hue1 = hash(electricSeed) * TWO_PI + params.time * STORM_HUE_SPEED_1;
-        float hue2 = hash(electricSeed + 100.0) * TWO_PI + params.time * STORM_HUE_SPEED_2;
+        float hue1 = hash(electricSeed) * TWO_PI + params[0].time * STORM_HUE_SPEED_1;
+        float hue2 = hash(electricSeed + 100.0) * TWO_PI + params[0].time * STORM_HUE_SPEED_2;
 
         // Базовый цвет: электрический голубой/фиолетовый/бирюзовый
         col = float3(
@@ -270,18 +270,18 @@ fragment float4 fragmentParticle(
         );
 
         // ДОБАВЛЯЕМ ТУРБУЛЕНТНОСТЬ - как плазма
-        float turbulence = hash(electricSeed + params.time * 2.0) * 0.3;
+        float turbulence = hash(electricSeed + params[0].time * 2.0) * 0.3;
         col += float3(0.1, 0.2, 0.4) * turbulence;
 
         // РЕДКИЕ ЯРКИЕ ИСКРЫ - впечатляющие вспышки
-        float sparkSeed = dot(uv * 100.0, float2(1.0, 1.0)) + params.time * 10.0;
+        float sparkSeed = dot(uv * 100.0, float2(1.0, 1.0)) + params[0].time * 10.0;
         if (hash(sparkSeed) > STORM_SPARK_THRESHOLD) {
             col = float3(3.0, 3.0, 3.0);  // Белые вспышки
         }
 
         // ЭНЕРГЕТИЧЕСКИЕ ВОЛНЫ - модуляция яркости
         float waveFreq = 8.0 + hash(electricSeed) * 4.0;
-        float wave = sin(params.time * waveFreq + length(uv) * STORM_WAVE_SPATIAL_FREQ) * 0.4 + 0.6;
+        float wave = sin(params[0].time * waveFreq + length(uv) * STORM_WAVE_SPATIAL_FREQ) * 0.4 + 0.6;
         col *= wave;
 
         // МАКСИМАЛЬНОЕ УСИЛЕНИЕ ЯРКОСТИ для видимости бури
@@ -291,15 +291,15 @@ fragment float4 fragmentParticle(
         // МОЛНИИ - ZIGZAG ЭФФЕКТЫ ⚡
         // ========================================================================
 
-        float boltTime = fmod(params.time * 0.3, LIGHTNING_BOLT_PERIOD);
+        float boltTime = fmod(params[0].time * 0.3, LIGHTNING_BOLT_PERIOD);
 
         // Молния появляется каждые 4 секунды и длится 0.5 секунды
         if (boltTime < LIGHTNING_BOLT_DURATION) {
             float boltProgress = boltTime * 2.0;  // Нормализуем время
 
             // Создаем молнию от верха до низа экрана
-            float2 boltStart = float2(hash(params.time * 7.389) * 2.0 - 1.0, 0.8);  // Случайная X вверху
-            float2 boltEnd = float2(hash(params.time * 13.23) * 2.0 - 1.0, -0.8);    // Случайная X внизу
+            float2 boltStart = float2(hash(params[0].time * 7.389) * 2.0 - 1.0, 0.8);  // Случайная X вверху
+            float2 boltEnd = float2(hash(params[0].time * 13.23) * 2.0 - 1.0, -0.8);    // Случайная X внизу
             float2 boltDir = normalize(boltEnd - boltStart);  // Направление молнии
 
             // Вычисляем расстояние вдоль и поперек молнии
@@ -312,7 +312,7 @@ fragment float4 fragmentParticle(
             boltShape *= smoothstep(0.0, 0.2, boltProgress - alongBolt / length(boltEnd - boltStart));
 
             // ZIGZAG ЭФФЕКТ - реалистичность молний
-            float zigzag = sin(alongBolt * LIGHTNING_ZIGZAG_FREQ + params.time * 20.0) * LIGHTNING_ZIGZAG_AMOUNT;
+            float zigzag = sin(alongBolt * LIGHTNING_ZIGZAG_FREQ + params[0].time * 20.0) * LIGHTNING_ZIGZAG_AMOUNT;
             boltShape *= exp(-abs(zigzag) * 20.0);
 
             // ДОБАВЛЯЕМ ЯРКУЮ БЕЛУЮ ВСПЫШКУ
@@ -325,16 +325,16 @@ fragment float4 fragmentParticle(
         // ========================================================================
 
         // Адаптируем время под текущее состояние
-        float localTime = params.time * getStateTimeScale(params.state);
+        float localTime = params[0].time * getStateTimeScale(params[0].state);
 
         // ПОЛНОЕ ОСВЕЩЕНИЕ (рекомендуется для < 10k частиц)
         col = calculateParticle2DLighting(
             in.color.rgb,           // Базовый цвет частицы
             in.screenPos,           // Позиция на экране (для градиентов)
-            params.screenSize,      // Размеры экрана
+            params[0].screenSize,      // Размеры экрана
             dist,                   // Расстояние от центра частицы
             localTime,              // Адаптированное время
-            params.state,           // Текущее состояние
+            params[0].state,           // Текущее состояние
             in.brightnessBoost      // Усиление яркости
         );
 
@@ -346,20 +346,20 @@ fragment float4 fragmentParticle(
         float rimStrength = 0.0;    // Сила rim-свечения
 
         // Настраиваем параметры для каждого состояния
-        if (params.state == SIMULATION_STATE_IDLE) {
+        if (params[0].state == SIMULATION_STATE_IDLE) {
             stateEnergy = 0.6;     // Спокойный режим - приглушено
         }
 
-        if (params.state == SIMULATION_STATE_CHAOTIC) {
+        if (params[0].state == SIMULATION_STATE_CHAOTIC) {
             stateEnergy = 1.2;     // Хаотичный - ярче
         }
 
-        if (params.state == SIMULATION_STATE_COLLECTING) {
+        if (params[0].state == SIMULATION_STATE_COLLECTING) {
             rimStrength = 0.25;    // Сбор - легкое свечение краев
         }
 
-        if (params.state == SIMULATION_STATE_COLLECTED) {
-            stateEnergy = 1.3;     // Собрано - ярко и с rim
+        if (params[0].state == SIMULATION_STATE_COLLECTED) {
+            stateEnergy = 1.0;     // Собрано - ярко и с rim
             rimStrength = 0.45;
         }
 
@@ -379,7 +379,7 @@ fragment float4 fragmentParticle(
 
     float finalAlpha;
 
-    switch (params.state) {
+    switch (params[0].state) {
         case SIMULATION_STATE_LIGHTNING_STORM: {
             // Буря: полная непрозрачность с контролем яркости
             finalAlpha = alpha;
@@ -424,7 +424,7 @@ fragment float4 fragmentParticle(
 fragment float4 fragmentParticlePerformance(
     VertexOut in [[stage_in]],
     float2 pointCoord [[point_coord]],
-    constant SimulationParams& params [[buffer(1)]]
+    constant SimulationParams * params [[buffer(1)]]
 ) {
     // Простая подготовка координат
     float2 uv = pointCoord * 2.0 - 1.0;
@@ -439,9 +439,9 @@ fragment float4 fragmentParticlePerformance(
     // МИНИМАЛЬНОЕ ОСВЕЩЕНИЕ
     float3 col;
 
-    if (params.state == SIMULATION_STATE_LIGHTNING_STORM) {
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
         // Упрощенные цвета бури
-        float electricSeed = dot(uv, float2(12.9898, 78.233)) + params.time;
+        float electricSeed = dot(uv, float2(12.9898, 78.233)) + params[0].time;
         float hue = hash(electricSeed) * TWO_PI;
         col = float3(
             0.3 + 0.7 * sin(hue),

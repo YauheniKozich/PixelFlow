@@ -83,7 +83,7 @@ static inline bool isFloat2Safe(float2 value) {
 
 static inline float2 calculateCollectionMovement(
     thread Particle& p,
-    constant SimulationParams& params,
+    constant SimulationParams * params,
     float safeDt,
     device atomic_uint* collectedCounter
 ) {
@@ -92,8 +92,8 @@ static inline float2 calculateCollectionMovement(
     float2 toTarget = target - pos;
     float distToTarget = length(toTarget);
 
-    float baseSpeed = (params.collectionSpeed > 0.0)
-        ? params.collectionSpeed * COLLECTION_BASE_SPEED
+    float baseSpeed = (params[0].collectionSpeed > 0.0)
+        ? params[0].collectionSpeed * COLLECTION_BASE_SPEED
         : COLLECTION_BASE_SPEED;
     
     float maxSpeed = baseSpeed;
@@ -123,15 +123,15 @@ static inline float2 calculateCollectionMovement(
 static inline float2 calculateChaoticMovement(
     thread Particle& p,
     uint id,
-    constant SimulationParams& params,
+    constant SimulationParams * params,
     float safeDt
 ) {
     // Используем мои функции вместо старой логики
-  //  float2 chaoticMovement = randomChaoticMotion(p.position.xy, params.time, id);
+  //  float2 chaoticMovement = randomChaoticMotion(p.position.xy, params[0].time, id);
     
     // Или выберите другой вариант:
-    float2 chaoticMovement = turbulentMotion(p.position.xy, params.time, id);
-    // float2 chaoticMovement = fractalChaos(p.position.xy, params.time, id);
+    float2 chaoticMovement = turbulentMotion(p.position.xy, params[0].time, id);
+    // float2 chaoticMovement = fractalChaos(p.position.xy, params[0].time, id);
     
     // Применяем движение с коэффициентом скорости
     p.velocity.xy += chaoticMovement * 3.0;  // Настройте множитель по вкусу
@@ -151,26 +151,26 @@ static inline float2 calculateChaoticMovement(
 static inline void calculateStormMovement(
     thread Particle& p,
     uint id,
-    constant SimulationParams& params
+    constant SimulationParams * params
 ) {
     float seed = float(id) * 13.7;
     
-    float fieldX = hash(seed + params.time * 1.5) - 0.5;
-    float fieldY = hash(seed + params.time * 2.1 + 100.0) - 0.5;
+    float fieldX = hash(seed + params[0].time * 1.5) - 0.5;
+    float fieldY = hash(seed + params[0].time * 2.1 + 100.0) - 0.5;
     float2 electricForce = float2(fieldX, fieldY) * STORM_ELECTRIC_FORCE;
     p.velocity.xy += electricForce * STORM_ELECTRIC_DAMPING;
 
-    float baseTurbulence = sin(params.time * 3.0 + seed) * STORM_BASE_TURBULENCE;
+    float baseTurbulence = sin(params[0].time * 3.0 + seed) * STORM_BASE_TURBULENCE;
     p.velocity.xy += float2(baseTurbulence, baseTurbulence * 0.7);
 
     p.velocity.xy *= STORM_VELOCITY_DAMPING;
 
-    float electricHue = hash(seed) * TWO_PI + params.time * 2.0;
+    float electricHue = hash(seed) * TWO_PI + params[0].time * 2.0;
     p.color = float4(
         0.3 + 0.7 * sin(electricHue),
         0.4 + 0.6 * sin(electricHue + 2.1),
         0.8 + 0.2 * sin(electricHue + 4.2),
-        0.7 + 0.3 * sin(params.time * 3.0 + seed)
+        0.7 + 0.3 * sin(params[0].time * 3.0 + seed)
     );
 }
 
@@ -180,13 +180,13 @@ static inline void calculateStormMovement(
 
 static inline float calculateParticleSize(
     thread Particle& p,
-    constant SimulationParams& params,
+    constant SimulationParams * params,
     uint id
 ) {
     float size;
     
-    if (params.state == SIMULATION_STATE_COLLECTING ||
-        params.state == SIMULATION_STATE_COLLECTED) {
+    if (params[0].state == SIMULATION_STATE_COLLECTING ||
+        params[0].state == SIMULATION_STATE_COLLECTED) {
         size = p.baseSize;
     } else {
         // Pulsating size in other modes
@@ -195,10 +195,10 @@ static inline float calculateParticleSize(
     }
 
     if (!isFloatSafe(size) || size < 0.0) {
-        size = params.minParticleSize;
+        size = params[0].minParticleSize;
     }
     
-    return clamp(size, params.minParticleSize, params.maxParticleSize);
+    return clamp(size, params[0].minParticleSize, params[0].maxParticleSize);
 }
 
 // ============================================================================
@@ -263,23 +263,23 @@ static inline void applyPixelPerfectMode(thread Particle& p, uint pixelSizeMode)
 
 kernel void updateParticles(
     device Particle* particles [[buffer(0)]],
-    constant SimulationParams& params [[buffer(1)]],
+    constant SimulationParams * params [[buffer(1)]],
     device atomic_uint* collectedCounter [[buffer(2)]],
     uint id [[thread_position_in_grid]]
 ) {
-    if (id >= params.particleCount) return;
+    if (id >= params[0].particleCount) return;
 
     Particle p = particles[id];
-    float safeDt = safeDeltaTimeForPhysics(params.deltaTime);
+    float safeDt = safeDeltaTimeForPhysics(params[0].deltaTime);
 
-    if (p.life == PARTICLE_COLLECTED && params.state == SIMULATION_STATE_COLLECTED) {
+    if (p.life == PARTICLE_COLLECTED && params[0].state == SIMULATION_STATE_COLLECTED) {
         particles[id] = p;
         return;
     }
 
     bool skipIntegration = false;
     
-    switch (params.state) {
+    switch (params[0].state) {
         case SIMULATION_STATE_COLLECTING: {
             calculateCollectionMovement(p, params, safeDt, collectedCounter);
             skipIntegration = true;
@@ -301,15 +301,15 @@ kernel void updateParticles(
         case SIMULATION_STATE_CHAOTIC:
         default: {
             // Для IDLE с включенным хаотичным движением используем новые функции
-            if (params.state == SIMULATION_STATE_IDLE && params.idleChaoticMotion == 1) {
+            if (params[0].state == SIMULATION_STATE_IDLE && params[0].idleChaoticMotion == 1) {
                 // Более плавное и контролируемое хаотичное движение
-                float2 chaoticMovement = randomChaoticMotion(p.position.xy, params.time, id);
+                float2 chaoticMovement = randomChaoticMotion(p.position.xy, params[0].time, id);
                 p.velocity.xy += chaoticMovement * 8.0;
                 p.velocity.xy *= 0.93;
                 
                 // Дополнительно применяем стандартную интеграцию
                 integrateParticleForPhysics(p, safeDt, float2(0.0, 0.0));
-                applyBoundaryConditionsForPhysics(p, params.screenSize);
+                applyBoundaryConditionsForPhysics(p, params[0].screenSize);
                 skipIntegration = true; // Уже применили интеграцию
             } else {
                 // Стандартное хаотичное движение для CHAOTIC и других состояний
@@ -325,9 +325,9 @@ kernel void updateParticles(
         integrateParticleForPhysics(p, safeDt, float2(0.0, 0.0));
     }
 
-    applyBoundaryConditionsForPhysics(p, params.screenSize);
+    applyBoundaryConditionsForPhysics(p, params[0].screenSize);
 
-    applyPixelPerfectMode(p, params.pixelSizeMode);
+    applyPixelPerfectMode(p, params[0].pixelSizeMode);
 
     p.size = calculateParticleSize(p, params, id);
 
