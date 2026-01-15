@@ -13,15 +13,8 @@ extension ParticleSystem {
     // MARK: - Настройка Metal
     
     func configureView(_ view: MTKView) {
-        view.device = device
-        view.delegate = self
-        view.colorPixelFormat = .bgra8Unorm_srgb
-        view.framebufferOnly = false
-        view.preferredFramesPerSecond = 60
-        
-        // Отключаем автоматический рендеринг - используем CADisplayLink
-        view.isPaused = true
-        view.enableSetNeedsDisplay = false
+        // Используем MetalRenderer как delegate для MTKView
+        renderer.configureView(view)
     }
     
     func setupPipelines(view: MTKView) throws {
@@ -81,8 +74,8 @@ extension ParticleSystem {
         paramsUpdater.fill(
             buffer: paramsBuffer,
             state: stateMachine.state,
-            clock: clock,
-            screenSize: screenSize,
+            clock: simulationClock,
+            screenSize: renderer.screenSize,
             particleCount: particleCount,
             config: currentConfig
         )

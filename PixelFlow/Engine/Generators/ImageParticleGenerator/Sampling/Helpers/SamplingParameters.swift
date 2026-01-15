@@ -12,11 +12,16 @@ enum SamplingParameters {
         if let p = (cfg as? ParticleGenerationConfig)?.samplingParams {
             return p
         }
-        return SamplingParams(
-            importanceThreshold: 0.15, 
+        var params = SamplingParams(
+            importanceThreshold: 0.15,
             contrastWeight: 0.6,
             saturationWeight: 0.4,
-            edgeRadius: 2
+            edgeRadius: 2,
+            importantSamplingRatio: 1, // дефолт 0,7
+            topBottomRatio: 0.5
+
         )
+        params.applyAntiClustering = false // Отключаем для теста распределения
+        return params
     }
 }

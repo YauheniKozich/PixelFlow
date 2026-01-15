@@ -85,9 +85,9 @@ final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
         // Используем barrier для записи, чтобы избежать race condition при обновлении индекса
         return queue.sync(flags: .barrier) {
             guard let entry = cacheIndex[key] else { return nil }
-            
+
             let fileURL = cacheDirectory.appendingPathComponent(entry.fileName)
-            
+
             // Проверяем существование файла
             guard FileManager.default.fileExists(atPath: fileURL.path) else {
                 // Удаляем поврежденную запись из индекса
@@ -96,19 +96,19 @@ final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
                 try? saveCacheIndex()
                 return nil
             }
-            
+
             do {
                 // Читаем данные
                 let data = try Data(contentsOf: fileURL)
-                
+
                 // Обновляем время последнего доступа (защищено barrier)
                 var updatedEntry = entry
                 updatedEntry.lastAccessed = Date()
                 cacheIndex[key] = updatedEntry
-                
+
                 // Пытаемся сохранить индекс, но не прерываем выполнение при ошибке
                 try? saveCacheIndex()
-                
+
                 // Десериализуем
                 return try JSONDecoder().decode(type, from: data)
             } catch {

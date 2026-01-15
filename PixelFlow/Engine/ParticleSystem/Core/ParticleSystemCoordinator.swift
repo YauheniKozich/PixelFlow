@@ -12,7 +12,7 @@ import CoreGraphics
 /// Главный координатор системы частиц
 /// Управляет взаимодействием между всеми компонентами
 final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtocol {
-
+   
     // MARK: - Dependencies
 
     private(set) var renderer: MetalRendererProtocol
@@ -53,6 +53,10 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
 
         setupCallbacks()
         logger.info("ParticleSystemCoordinator initialized")
+
+        // Очищаем кэш генератора при запуске для применения обновлений
+        generator.clearCache()
+        logger.info("Cache cleared on startup")
     }
 
     // MARK: - ParticleSystemCoordinatorProtocol
@@ -68,9 +72,12 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
     }
 
     func toggleSimulation() {
-        if simulationEngine.isActive {
-            simulationEngine.stop()
-        } else {
+        switch simulationEngine.state {
+        case .chaotic:
+            simulationEngine.startCollecting()
+        case .collecting, .collected, .lightningStorm:
+            simulationEngine.start()
+        case .idle:
             simulationEngine.start()
         }
     }
@@ -80,24 +87,17 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
         simulationEngine.startLightningStorm()
     }
 
-    func updateConfiguration(_ config: ParticleGenerationConfig) {
+    func updateConfiguration(_ config: ParticleGenerationConfig) async {
         logger.info("Updating configuration: \(config.qualityPreset)")
         configManager.apply(config)
 
         // Перегенерировать частицы с новой конфигурацией
-        regenerateParticlesIfNeeded()
+        await regenerateParticlesIfNeeded()
     }
 
     func configure(screenSize: CGSize) {
         logger.info("Configuring screen size: \(screenSize)")
-        generator.updateScreenSize(screenSize)
-
-        do {
-            try renderer.setupPipelines()
-            try renderer.setupBuffers(particleCount: particleCount)
-        } catch {
-            logger.error("Failed to setup renderer: \(error)")
-        }
+        // screenSize is now managed only in MetalRenderer
     }
 
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void) {
@@ -109,26 +109,22 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
 
         logger.info("Replacing with high-quality particles")
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task { [weak self] in
             guard let self = self else {
-                DispatchQueue.main.async { completion(false) }
+                await MainActor.run { completion(false) }
                 return
             }
-
             do {
                 let config = self.configManager.currentConfig
-                let particles = try self.generator.generateParticles(from: image, config: config)
-
-                // Обновить хранилище
-                self.storage.recreateHighQualityParticles()
+                let particles = try await self.generator.generateParticles(from: image, config: config, screenSize: renderer.screenSize)
+                self.storage.updateParticles(particles)
                 self._isHighQuality = true
-
                 self.logger.info("High-quality particles generated: \(particles.count) particles")
-                DispatchQueue.main.async { completion(true) }
-
+                self.logger.info("High-quality particles updated in storage, isHighQuality: \(self._isHighQuality)")
+                await MainActor.run { completion(true) }
             } catch {
                 self.logger.error("Failed to generate high-quality particles: \(error)")
-                DispatchQueue.main.async { completion(false) }
+                await MainActor.run { completion(false) }
             }
         }
     }
@@ -199,13 +195,13 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
         }
     }
 
-    private func regenerateParticlesIfNeeded() {
+    private func regenerateParticlesIfNeeded() async {
         // Логика для определения необходимости перегенерации
         // Пока что перегенерируем всегда при изменении конфигурации
         if let image = _sourceImage {
             do {
                 let config = configManager.currentConfig
-                _ = try generator.generateParticles(from: image, config: config)
+                _ = try await generator.generateParticles(from: image, config: config, screenSize: renderer.screenSize)
                 logger.debug("Particles regenerated with new configuration")
             } catch {
                 logger.error("Failed to regenerate particles: \(error)")
@@ -219,6 +215,7 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
     func updateSimulation() {
         renderer.updateSimulationParams()
         simulationEngine.updateProgress(0.0) // Обновить прогресс если нужно
+        logger.debug("Coordinator.updateSimulation() called on thread: \(Thread.isMainThread ? "MAIN" : "BACKGROUND") at \(Date().timeIntervalSince1970)")
     }
 
     /// Вызывается в render loop для проверки завершения сбора

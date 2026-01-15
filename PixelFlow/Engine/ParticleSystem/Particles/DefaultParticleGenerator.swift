@@ -25,7 +25,7 @@ final class DefaultParticleGenerator: ParticleGeneratorProtocol {
 
     // MARK: - ParticleGeneratorProtocol
 
-    func generateParticles(from image: CGImage, config: ParticleGenerationConfig) throws -> [Particle] {
+    func generateParticles(from image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) throws -> [Particle] {
         logger.warning("DefaultParticleGenerator.generateParticles called - stub implementation")
 
         // Создаем заглушки частиц для тестирования
@@ -51,10 +51,6 @@ final class DefaultParticleGenerator: ParticleGeneratorProtocol {
 
         logger.info("Generated \(particles.count) stub particles")
         return particles
-    }
-
-    func updateScreenSize(_ size: CGSize) {
-        logger.debug("DefaultParticleGenerator.updateScreenSize: \(size)")
     }
 
     func clearCache() {

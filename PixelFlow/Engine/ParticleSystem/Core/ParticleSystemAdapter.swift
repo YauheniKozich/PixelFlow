@@ -26,8 +26,6 @@ final class ParticleSystemAdapter: NSObject {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let particleCount: Int
-    var screenSize: CGSize = .zero
-    var isConfigured = false
     var hasActiveSimulation: Bool { coordinator.hasActiveSimulation }
     var isHighQuality: Bool { coordinator.isHighQuality }
     var currentConfig: ParticleGenerationConfig { coordinator.configManager.currentConfig }
@@ -84,26 +82,18 @@ final class ParticleSystemAdapter: NSObject {
         coordinator.startLightningStorm()
     }
 
-    func configure(screenSize: CGSize) {
-        precondition(!isConfigured, "ParticleSystem уже сконфигурирован")
-        self.screenSize = screenSize
-        coordinator.configure(screenSize: screenSize)
-        isConfigured = true
-    }
+
 
     func initialize() {
-        precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
         // Для совместимости - просто инициализируем
         coordinator.initializeFastPreview()
     }
 
     func initializeWithFastPreview() {
-        precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
         coordinator.initializeFastPreview()
     }
 
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void) {
-        precondition(isConfigured, "Система не сконфигурирована")
         coordinator.replaceWithHighQualityParticles(completion: completion)
     }
 
@@ -125,6 +115,8 @@ final class ParticleSystemAdapter: NSObject {
 
     private func configureView(_ view: MTKView) {
         renderer.configureView(view)
+        // После установки delegate, вызвать drawableSizeWillChange с текущим size
+        view.delegate?.mtkView(view, drawableSizeWillChange: view.drawableSize)
     }
 
     private func setupDisplayLink() {

@@ -26,8 +26,7 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     /// Целевое количество частиц
     let targetParticleCount: Int
 
-    /// Размер экрана для позиционирования
-    var screenSize: CGSize = .zero
+
 
     /// Конфигурация генерации
     let config: ParticleGenerationConfig
@@ -58,6 +57,9 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
 
     private var isGenerating = false
     private var currentOperation: Operation?
+
+    // Прогресс троттлинг
+    private var lastProgressUpdate: Float = -1
 
     // MARK: - Synchronization
 
@@ -147,13 +149,19 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
 
     // MARK: - Public API
 
-    /// Генерирует частицы синхронно
+
+
+    /// Генерирует частицы из изображения
     func generateParticles() throws -> [Particle] {
-        try generateParticles(screenSize: screenSize)
+        // This should not be called since screenSize is only in MetalRenderer
+        // But for compatibility, throw error
+        throw GeneratorError.analysisFailed(reason: "generateParticles() without screenSize not supported")
     }
 
     /// Генерирует частицы с указанным размером экрана
     func generateParticles(screenSize: CGSize) throws -> [Particle] {
+        // Сброс троттлинга прогресса при старте генерации
+        lastProgressUpdate = -1
         guard !isGenerating else {
             throw GeneratorError.analysisFailed(reason: "Generation already in progress")
         }
@@ -165,11 +173,16 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
             // Проверяем кэш
             if config.enableCaching,
                let cached = try cacheManager.retrieve([Particle].self, for: cacheKey()) {
-                Logger.shared.debug("Using cached particles")
-                stateQueue.async(flags: .barrier) {
-                    self.generatedParticles = cached
+                // Проверяем, что количество частиц в кэше соответствует целевому
+                if cached.count == targetParticleCount {
+                    Logger.shared.debug("Using cached particles")
+                    stateQueue.async(flags: .barrier) {
+                        self.generatedParticles = cached
+                    }
+                    return cached
+                } else {
+                    Logger.shared.debug("Cached particle count (\(cached.count)) doesn't match target (\(targetParticleCount)), regenerating")
                 }
-                return cached
             }
 
             // Этап 1: Анализ изображения
@@ -197,11 +210,24 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
                 originalImageSize: imageSize
             )
 
+            // Добавьте диагностику:
+            let imageHeight = Float(image.height)
+            let topHalf = particles.filter { $0.position.y < imageHeight / 2 }
+            let bottomHalf = particles.filter { $0.position.y >= imageHeight / 2 }
+            Logger.shared.debug("Particles distribution - Top: \(topHalf.count), Bottom: \(bottomHalf.count)")
+            Logger.shared.debug("Image dimensions: \(image.width)x\(image.height)")
+            // Проверяем минимальные и максимальные Y координаты
+            let minY = particles.map { $0.position.y }.min() ?? 0
+            let maxY = particles.map { $0.position.y }.max() ?? 0
+            Logger.shared.debug("Y range: \(minY) - \(maxY) (should be 0 - \(imageHeight))")
+
             // Сохраняем состояние
             stateQueue.async(flags: .barrier) {
                 self.analysis = currentAnalysis
                 self.generatedParticles = particles
+                self.samplesCache.removeAll(keepingCapacity: true)
                 self.samplesCache = samples
+                self.dominantColors.removeAll(keepingCapacity: true)
                 self.dominantColors = currentAnalysis.dominantColors.map { SIMD4<Float>($0.x, $0.y, $0.z, 1.0) }
             }
 
@@ -225,6 +251,8 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     func cancelGeneration() {
         Logger.shared.debug("[ImageParticleGenerator] Отмена генерации")
         
+        // Сброс троттлинга прогресса при отмене
+        lastProgressUpdate = -1
         generationQueue.cancelAllOperations()
         currentOperation?.cancel()
         currentOperation = nil
@@ -236,20 +264,7 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
         updateProgress(0.0, stage: "Отменено")
     }
 
-    /// Обновляет размер экрана
-    func updateScreenSize(_ size: CGSize) {
-        guard size.width > 0, size.height > 0 else {
-            Logger.shared.warning("Invalid screen size: \(size)")
-            return
-        }
 
-        guard size.width <= 32768, size.height <= 32768 else {
-            Logger.shared.warning("Screen size too large: \(size)")
-            return
-        }
-
-        screenSize = size
-    }
 
     /// Очищает кэш
     func clearCache() {
@@ -266,9 +281,9 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
         
         // 4. Очистка сгенерированных частиц
         stateQueue.async(flags: .barrier) {
-            self.generatedParticles.removeAll()
-            self.samplesCache.removeAll()
-            self.dominantColors.removeAll()
+            self.generatedParticles.removeAll(keepingCapacity: true)
+            self.samplesCache.removeAll(keepingCapacity: true)
+            self.dominantColors.removeAll(keepingCapacity: true)
         }
         
         // 5. Очистка PixelCache
@@ -338,6 +353,9 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     // MARK: - Private Methods
 
     private func updateProgress(_ progress: Float, stage: String) {
+        // Throttle обновления: обновляем только при изменении на >= 0.01
+        guard progress - lastProgressUpdate >= 0.01 || progress == 1.0 || progress == 0.0 else { return }
+        lastProgressUpdate = progress
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.generator(self, didUpdateProgress: progress, stage: stage)
@@ -370,8 +388,8 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     private func cleanupIntermediateData() {
         stateQueue.async(flags: .barrier) {
             // Очищаем только промежуточные данные, не финальные частицы
-            self.samplesCache.removeAll()
-            self.dominantColors.removeAll()
+            self.samplesCache.removeAll(keepingCapacity: true)
+            self.dominantColors.removeAll(keepingCapacity: true)
             self.pixelData = nil
         }
     }
@@ -408,14 +426,11 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     private func freeLargeBuffers() {
         // Освобождение больших буферов
         cleanupQueue.async {
-            #if DEBUG
-            // В отладочном режиме принудительно освобождаем память
             autoreleasepool {
-                // Создаем временные маленькие массивы для вытеснения больших
-                let smallArray = [UInt8](repeating: 0, count: 1024)
-                _ = smallArray.count
+                self.pixelData = nil
+                self.vertexBuffer = nil
+                self.metalTexture = nil
             }
-            #endif
         }
     }
     
@@ -434,8 +449,8 @@ final class ImageParticleGenerator: ImageParticleGeneratorProtocol, ParticleGene
     private func handleMemoryWarning() {
         Logger.shared.warning("[ImageParticleGenerator] Получено уведомление о низкой памяти")
         
-        // Немедленная очистка кэша
-        cleanupQueue.async { [weak self] in
+        // Немедленная очистка кэша через cleanupQueue с barrier
+        cleanupQueue.async(flags: .barrier) { [weak self] in
             self?.clearCache()
         }
         
@@ -511,9 +526,14 @@ private class AsyncGenerationOperation: Operation, @unchecked Sendable {
             // Проверяем кэш
             if config.enableCaching,
                let cached = try cacheManager.retrieve([Particle].self, for: cacheKey) {
-                progressCallback?(1.0, "Загружено из кэша")
-                result = cached
-                return
+                // Проверяем, что количество частиц в кэше соответствует целевому
+                if cached.count == targetCount {
+                    progressCallback?(1.0, "Загружено из кэша")
+                    result = cached
+                    return
+                } else {
+                    Logger.shared.debug("Cached particle count (\(cached.count)) doesn't match target (\(targetCount)), regenerating")
+                }
             }
 
             if isCancelled { return }

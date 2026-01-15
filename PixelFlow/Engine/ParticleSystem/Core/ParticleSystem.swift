@@ -20,7 +20,6 @@ final class ParticleSystem: NSObject {
     let imageController: ImageParticleGeneratorProtocol
     
     let particleCount: Int
-    var screenSize: CGSize = .zero
     var isConfigured = false
     private(set) var isUsingFastPreview: Bool = false
     
@@ -32,13 +31,33 @@ final class ParticleSystem: NSObject {
     var collectedCounterBuffer: MTLBuffer!
     
     let stateMachine = SimulationStateMachine()
-    let clock = SimulationClock()
+    let simulationClock = SimulationClock()
     let paramsUpdater = SimulationParamsUpdater()
     let particleGenerator: ParticleGenerator
+    let renderer: MetalRenderer
 
     /// Текущая конфигурация системы частиц
     private(set) var currentConfig: ParticleGenerationConfig
-    
+
+    // MARK: - SimulationEngineProtocol conformance
+
+    var state: SimulationState {
+        return stateMachine.state
+    }
+
+    var isActive: Bool {
+        return stateMachine.isActive
+    }
+
+    var resetCounterCallback: (() -> Void)? {
+        get { return stateMachine.resetCounterCallback }
+        set { stateMachine.resetCounterCallback = newValue }
+    }
+
+    var clock: SimulationClockProtocol {
+        return simulationClock
+    }
+
     // MARK: - Публичный интерфейс
     
     var hasActiveSimulation: Bool {
@@ -72,26 +91,24 @@ final class ParticleSystem: NSObject {
         stateMachine.startLightningStorm()
     }
     
-    func configure(screenSize: CGSize) {
-        precondition(!isConfigured, "ParticleSystem уже сконфигурирован")
-        self.screenSize = screenSize
-        imageController.updateScreenSize(screenSize)
-        particleGenerator.updateScreenSize(screenSize)
-        isConfigured = true
-    }
+
     
     /// Основная инициализация с качественными частицами
     func initialize() {
         precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
+        Logger.shared.info("Initializing high-quality particles")
         isUsingFastPreview = false
-        particleGenerator.recreateParticles(in: particleBuffer)
+        particleGenerator.recreateParticles(in: particleBuffer, screenSize: renderer.screenSize)
+        Logger.shared.info("High-quality particles initialized")
     }
     
     /// Быстрая инициализация с low-quality превью
     func initializeWithFastPreview() {
         precondition(isConfigured, "Вызовите configure(screenSize:) перед initialize()")
+        Logger.shared.info("Initializing fast preview particles")
         isUsingFastPreview = true
-        particleGenerator.createAndCopyFastPreviewParticles(in: particleBuffer)
+        particleGenerator.createAndCopyFastPreviewParticles(in: particleBuffer, screenSize: renderer.screenSize)
+        Logger.shared.info("Fast preview particles initialized, starting simulation")
         startSimulation()
     }
     
@@ -106,9 +123,19 @@ final class ParticleSystem: NSObject {
             }
 
             do {
-                self.particleGenerator.recreateParticles(in: self.particleBuffer)
+                // Перезаписываем существующий буфер high-quality частицами
+                self.particleGenerator.recreateParticles(in: self.particleBuffer, screenSize: self.renderer.screenSize)
                 self.isUsingFastPreview = false
-                DispatchQueue.main.async { completion(true) }
+                DispatchQueue.main.async { [weak self] in
+                    // Гарантируем, что MetalRenderer использует обновлённый буфер
+                    self?.renderer.setParticleBuffer(self?.particleBuffer)
+                    self?.renderer.setCollectedCounterBuffer(self?.collectedCounterBuffer)
+                    // Обновляем particleCount в MetalRenderer
+                    self?.renderer.updateParticleCount(self?.particleCount ?? 0)
+                    // После генерации high-quality частиц начинаем сбор
+                    self?.stateMachine.startCollecting()
+                    completion(true)
+                }
             } 
         }
     }
@@ -128,6 +155,7 @@ final class ParticleSystem: NSObject {
         self.commandQueue = queue
         self.particleCount = particleCount
         self.currentConfig = config
+        self.renderer = MetalRenderer(device: device)
 
         let imageController: ImageParticleGeneratorProtocol
 
@@ -139,13 +167,12 @@ final class ParticleSystem: NSObject {
         
         self.imageController = imageController
         self.particleGenerator = ParticleGenerator(
-            particleSystem: nil,
             imageController: imageController,
             particleCount: particleCount
         )
 
         super.init()
-        particleGenerator.weakParticleSystem = self
+        self.renderer.setSimulationEngine(self)
         self.mtkView = mtkView
         self.stateMachine.resetCounterCallback = { [weak self] in
             self?.resetCollectedCounterIfNeeded()
@@ -157,6 +184,9 @@ final class ParticleSystem: NSObject {
         do {
             try setupPipelines(view: mtkView)
             try setupBuffers()
+            renderer.setParticleBuffer(particleBuffer)
+            renderer.setCollectedCounterBuffer(collectedCounterBuffer)
+            renderer.updateParticleCount(particleCount)
         } catch {
             return nil
         }
@@ -177,6 +207,7 @@ final class ParticleSystem: NSObject {
         collectedCounterBuffer = nil
         renderPipeline = nil
         computePipeline = nil
+        renderer.cleanup()
         particleGenerator.cleanup()
         imageController.clearCache()
         isUsingFastPreview = false
@@ -184,5 +215,20 @@ final class ParticleSystem: NSObject {
     
     func stop() {
         stateMachine.stop()
+    }
+}
+
+// MARK: - SimulationEngineProtocol
+extension ParticleSystem: SimulationEngineProtocol {
+    func start() {
+        startSimulation()
+    }
+
+    func startCollecting() {
+        stateMachine.startCollecting()
+    }
+
+    func updateProgress(_ progress: Float) {
+        stateMachine.updateProgress(progress)
     }
 }

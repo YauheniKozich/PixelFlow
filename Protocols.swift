@@ -100,7 +100,7 @@ protocol ParticleGeneratorConfiguration: Codable {
 
 // MARK: - Supporting Types
 
-enum SamplingStrategy: Codable {
+enum SamplingStrategy: Codable, Equatable {
     case uniform         // Равномерный сэмплинг
     case importance      // По важности пикселей
     case adaptive        // Адаптивная плотность

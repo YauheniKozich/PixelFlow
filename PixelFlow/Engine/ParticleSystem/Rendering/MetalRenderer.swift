@@ -31,11 +31,12 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
     // MARK: - State
 
     private var particleCount: Int = 0
-    private var screenSize: CGSize = .zero
+    internal var screenSize: CGSize = .zero
     private var currentConfig: ParticleGenerationConfig = .standard
 
     private weak var simulationEngine: SimulationEngineProtocol?
     private var paramsUpdater: SimulationParamsUpdater?
+    private var firstDraw = true
 
     // MARK: - Initialization
 
@@ -136,15 +137,14 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
             return
         }
 
-        // Note: Need to fix state and clock types
-        // paramsUpdater.fill(
-        //     buffer: paramsBuffer,
-        //     state: simulationEngine.stateMachine.currentState,
-        //     clock: simulationEngine.clock as! SimulationClock,
-        //     screenSize: screenSize,
-        //     particleCount: particleCount,
-        //     config: currentConfig
-        // )
+        paramsUpdater.fill(
+            buffer: paramsBuffer,
+            state: simulationEngine.state,
+            clock: simulationEngine.clock,
+            screenSize: screenSize,
+            particleCount: particleCount,
+            config: currentConfig
+        )
     }
 
     func resetCollectedCounter() {
@@ -172,6 +172,33 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         let completionRatio = Float(collectedCount) / Float(particleCount)
 
         simulationEngine.updateProgress(completionRatio)
+    }
+
+    // MARK: - Compute Encoding
+
+    func encodeCompute(into buffer: MTLCommandBuffer) {
+        guard let encoder = buffer.makeComputeCommandEncoder() else {
+            logger.error("Failed to create compute command encoder")
+            return
+        }
+
+        guard let computePipeline = computePipeline else {
+            logger.error("Compute pipeline not available")
+            encoder.endEncoding()
+            return
+        }
+
+        encoder.setComputePipelineState(computePipeline)
+        encoder.setBuffer(particleBuffer, offset: 0, index: 0)
+        encoder.setBuffer(paramsBuffer, offset: 0, index: 1)
+        encoder.setBuffer(collectedCounterBuffer, offset: 0, index: 2)
+
+        let w = computePipeline.threadExecutionWidth
+        let threadgroups = MTLSize(width: (particleCount + w - 1) / w, height: 1, depth: 1)
+        let threadsPerThreadgroup = MTLSize(width: w, height: 1, depth: 1)
+
+        encoder.dispatchThreadgroups(threadgroups, threadsPerThreadgroup: threadsPerThreadgroup)
+        encoder.endEncoding()
     }
 
     func cleanup() {
@@ -216,6 +243,16 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         logger.debug("Particle buffer set from external source")
     }
 
+    func setCollectedCounterBuffer(_ buffer: MTLBuffer?) {
+        self.collectedCounterBuffer = buffer
+        logger.debug("Collected counter buffer set from external source")
+    }
+
+    func updateParticleCount(_ count: Int) {
+        self.particleCount = count
+        logger.debug("Particle count updated to \(count)")
+    }
+
     // MARK: - MTKViewDelegate
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -224,10 +261,29 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        guard view.drawableSize != .zero else {
+            return
+        }
+
+        guard view.bounds.size.width > 0 && view.bounds.size.height > 0 else {
+            return
+        }
+
+        guard !view.isHidden else {
+            return
+        }
+
+        guard view.alpha > 0 else {
+            return
+        }
+
+        guard !view.isPaused else {
+            return
+        }
+
         guard let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+              let commandBuffer = commandQueue.makeCommandBuffer() else {
             logger.warning("Cannot draw - missing Metal resources")
             return
         }
@@ -235,11 +291,35 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         // Обновляем параметры симуляции
         updateSimulationParams()
 
+        // Кодируем compute для обновления частиц
+        encodeCompute(into: commandBuffer)
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {
+            logger.warning("Cannot create render encoder")
+            return
+        }
+
         // Настраиваем render encoder
         renderEncoder.setRenderPipelineState(renderPipeline!)
         renderEncoder.setVertexBuffer(particleBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(paramsBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(paramsBuffer, offset: 0, index: 1)
+
+        guard let pb = particleBuffer, pb.length >= particleCount * MemoryLayout<Particle>.stride else {
+            logger.error("particleBuffer too small")
+            return
+        }
+
+        if firstDraw {
+            logger.info("First draw - logging particle positions")
+            if let particles = particleBuffer?.contents().bindMemory(to: Particle.self, capacity: particleCount) {
+                for i in 0..<min(10, particleCount) {
+                    let p = particles[i]
+                    logger.info("Particle \(i): pos(\(p.position.x), \(p.position.y)), size: \(p.size)")
+                }
+            }
+            firstDraw = false
+        }
 
         // Рисуем частицы (point primitives)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)

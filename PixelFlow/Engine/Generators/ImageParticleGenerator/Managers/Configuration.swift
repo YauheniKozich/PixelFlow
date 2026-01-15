@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum SamplingStrategy: Codable {
+enum SamplingStrategy: Codable, Equatable {
     case uniform         // Равномерный сэмплинг
     case importance      // По важности пикселей
     case adaptive        // Адаптивная плотность
@@ -68,8 +68,11 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
     let cacheSizeLimit: Int          // MB
 
     // Параметры отображения
-    let targetParticleCount: Int
-    var screenSize: CGSize
+    var targetParticleCount: Int
+
+    // Новые параметры сэмплинга
+    let importantSamplingRatio: Float
+    let topBottomRatio: Float
 
     // MARK: – Инициализатор
     init(samplingStrategy: SamplingStrategy,
@@ -85,7 +88,8 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
          useSIMD: Bool,
          cacheSizeLimit: Int,
          targetParticleCount: Int,
-         screenSize: CGSize) {
+         importantSamplingRatio: Float = 0.7,
+         topBottomRatio: Float = 0.5) {
 
         self.samplingStrategy = samplingStrategy
         self.qualityPreset = qualityPreset
@@ -100,13 +104,14 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
         self.useSIMD = useSIMD
         self.cacheSizeLimit = cacheSizeLimit
         self.targetParticleCount = targetParticleCount
-        self.screenSize = screenSize
+        self.importantSamplingRatio = importantSamplingRatio
+        self.topBottomRatio = topBottomRatio
     }
 
     // MARK: – Пресеты
 
     /// Стандартный сбалансированный пресет.
-    static nonisolated var standard: ParticleGenerationConfig {
+    static var standard: ParticleGenerationConfig {
         ParticleGenerationConfig(
             samplingStrategy: .importance,
             qualityPreset: .standard,
@@ -121,7 +126,8 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
             useSIMD: true,
             cacheSizeLimit: 100,
             targetParticleCount: 1000,
-            screenSize: CGSize(width: 1920, height: 1080)
+            importantSamplingRatio: 0.7,
+            topBottomRatio: 0.5
         )
     }
 
@@ -140,7 +146,8 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
         useSIMD: false,
         cacheSizeLimit: 10,
         targetParticleCount: 500,
-        screenSize: CGSize(width: 1920, height: 1080)
+        importantSamplingRatio: 0.7,
+        topBottomRatio: 0.5
     )
 
     /// Пресет «high» – более качественный, но уже не «ultra».
@@ -158,7 +165,8 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
         useSIMD: true,
         cacheSizeLimit: 300,
         targetParticleCount: 2000,
-        screenSize: CGSize(width: 1920, height: 1080)
+        importantSamplingRatio: 0.7,
+        topBottomRatio: 0.5
     )
 
     /// Пресет «ultra» – максимум качества, максимум нагрузки.
@@ -176,7 +184,8 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
         useSIMD: true,
         cacheSizeLimit: 500,
         targetParticleCount: 5000,
-        screenSize: CGSize(width: 1920, height: 1080)
+        importantSamplingRatio: 0.7,
+        topBottomRatio: 0.5
     )
 
     // MARK: – «Legacy» имена 
@@ -197,28 +206,36 @@ extension ParticleGenerationConfig {
                 importanceThreshold: importanceThreshold * 0.5,
                 contrastWeight: contrastWeight * 0.7,
                 saturationWeight: saturationWeight * 0.5,
-                edgeRadius: max(1, edgeDetectionRadius - 1)
+                edgeRadius: max(1, edgeDetectionRadius - 1),
+                importantSamplingRatio: self.importantSamplingRatio,
+                topBottomRatio: self.topBottomRatio
             )
         case .standard:
             return SamplingParams(
                 importanceThreshold: importanceThreshold,
                 contrastWeight: contrastWeight,
                 saturationWeight: saturationWeight,
-                edgeRadius: edgeDetectionRadius
+                edgeRadius: edgeDetectionRadius,
+                importantSamplingRatio: self.importantSamplingRatio,
+                topBottomRatio: self.topBottomRatio
             )
         case .high:
             return SamplingParams(
                 importanceThreshold: importanceThreshold * 1.2,
                 contrastWeight: contrastWeight * 1.3,
                 saturationWeight: saturationWeight * 1.2,
-                edgeRadius: edgeDetectionRadius + 1
+                edgeRadius: edgeDetectionRadius + 1,
+                importantSamplingRatio: self.importantSamplingRatio,
+                topBottomRatio: self.topBottomRatio
             )
         case .ultra:
             return SamplingParams(
                 importanceThreshold: importanceThreshold * 1.5,
                 contrastWeight: contrastWeight * 1.5,
                 saturationWeight: saturationWeight * 1.4,
-                edgeRadius: edgeDetectionRadius + 2
+                edgeRadius: edgeDetectionRadius + 2,
+                importantSamplingRatio: self.importantSamplingRatio,
+                topBottomRatio: self.topBottomRatio
             )
         }
     }

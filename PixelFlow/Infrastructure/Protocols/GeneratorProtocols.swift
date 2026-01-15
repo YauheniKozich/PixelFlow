@@ -15,6 +15,7 @@ protocol ParticleGenerationServiceProtocol {
     func generateParticles(
         from image: CGImage,
         config: ParticleGenerationConfig,
+        screenSize: CGSize,
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle]
 
@@ -69,10 +70,10 @@ protocol ParticleAssemblerProtocol {
     ) -> [Particle]
 
     /// Валидирует частицы
-    func validateParticles(_ particles: [Particle]) -> Bool
+   // func validateParticles(_ particles: [Particle]) -> Bool
 
     /// Размер частиц по умолчанию
-    var defaultParticleSize: Float { get }
+ //   var defaultParticleSize: Float { get }
 }
 
 /// Протокол для менеджера кэша
@@ -103,6 +104,8 @@ protocol CacheManagerProtocol {
 protocol OperationManagerProtocol {
     /// Добавляет операцию
     func addOperation(_ operation: Operation)
+    
+    func execute<T: Sendable>(_ operation: @escaping () async throws -> T) async throws -> T
 
     /// Отменяет все операции
     func cancelAllOperations()
@@ -124,6 +127,8 @@ protocol OperationManagerProtocol {
 
     /// Количество выполняющихся операций
     var executingOperationsCount: Int { get }
+    
+    var hasActiveOperations: Bool { get }
 }
 
 /// Протокол для трекера ресурсов
@@ -172,9 +177,6 @@ protocol GenerationContextProtocol {
 
     /// Конфигурация генерации
     var config: ParticleGenerationConfig? { get set }
-
-    /// Размер экрана
-    var screenSize: CGSize { get set }
 
     /// Целевое количество частиц
     var targetParticleCount: Int { get set }
@@ -259,6 +261,7 @@ protocol GenerationPipelineProtocol {
     func execute(
         image: CGImage,
         config: ParticleGenerationConfig,
+        screenSize: CGSize,
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle]
 
@@ -266,7 +269,8 @@ protocol GenerationPipelineProtocol {
     func executeStage(
         _ stage: GenerationStage,
         input: GenerationStageInput,
-        config: ParticleGenerationConfig
+        config: ParticleGenerationConfig,
+        screenSize: CGSize
     ) async throws -> GenerationStageOutput
 
     /// Валидирует предварительные условия
@@ -300,6 +304,7 @@ protocol GenerationCoordinatorProtocol {
     func generateParticles(
         from image: CGImage,
         config: ParticleGenerationConfig,
+        screenSize: CGSize,
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle]
 

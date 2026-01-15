@@ -10,13 +10,20 @@ import MetalKit
 
 extension ParticleSystem {
     func encodeRender(into buffer: MTLCommandBuffer, pass: MTLRenderPassDescriptor) {
-        let encoder = buffer.makeRenderCommandEncoder(descriptor: pass)!
+        guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else {
+            Logger.shared.error("Failed to create render command encoder")
+            return
+        }
+
         encoder.setRenderPipelineState(renderPipeline)
         encoder.setVertexBuffer(particleBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(paramsBuffer, offset: 0, index: 1)
-        
         encoder.setFragmentBuffer(paramsBuffer, offset: 0, index: 1)
-        encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)
+
+        if particleCount > 0 {
+            encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)
+        }
+
         encoder.endEncoding()
     }
 }

@@ -157,7 +157,7 @@ final class IntegrationTests: XCTestCase {
 
         // When
         XCTAssertNoThrow(try {
-            let particles = try generator.generateParticles(from: image, config: config)
+            let particles = try generator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080))
 
             // Then
             XCTAssertFalse(particles.isEmpty)

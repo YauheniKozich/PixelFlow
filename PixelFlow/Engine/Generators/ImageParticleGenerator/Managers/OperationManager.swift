@@ -14,7 +14,7 @@ final class OperationManager: OperationManagerProtocol {
     // MARK: - Properties
 
     private let operationQueue: OperationQueue
-    private let lock = NSLock()
+    private let activeOperationsQueue = DispatchQueue(label: "activeOperations", attributes: .concurrent)
     private var activeOperations: Set<Operation> = []
 
     private let logger: LoggerProtocol
@@ -54,19 +54,21 @@ final class OperationManager: OperationManagerProtocol {
     }
 
     var executingOperationsCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return activeOperations.count
+        activeOperationsQueue.sync {
+            activeOperations.count
+        }
     }
 
     var hasActiveOperations: Bool {
-        !activeOperations.isEmpty
+        activeOperationsQueue.sync {
+            !activeOperations.isEmpty
+        }
     }
 
     func addOperation(_ operation: Operation) {
-        lock.lock()
-        activeOperations.insert(operation)
-        lock.unlock()
+        activeOperationsQueue.async(flags: .barrier) {
+            self.activeOperations.insert(operation)
+        }
 
         // Настройка completion block для очистки
         let originalCompletion = operation.completionBlock
@@ -85,12 +87,11 @@ final class OperationManager: OperationManagerProtocol {
     }
 
     func cancelAllOperations() {
-        lock.lock()
-        let operationsToCancel = activeOperations
-        lock.unlock()
-
-        for operation in operationsToCancel {
-            operation.cancel()
+        activeOperationsQueue.sync {
+            let operationsToCancel = activeOperations
+            for operation in operationsToCancel {
+                operation.cancel()
+            }
         }
 
         operationQueue.cancelAllOperations()
@@ -123,9 +124,9 @@ final class OperationManager: OperationManagerProtocol {
 
     /// Получает статистику операций
     func operationStats() -> OperationStats {
-        lock.lock()
-        let activeCount = activeOperations.count
-        lock.unlock()
+        let activeCount = activeOperationsQueue.sync {
+            activeOperations.count
+        }
 
         return OperationStats(
             queuedOperations: operationQueue.operationCount,
@@ -138,9 +139,9 @@ final class OperationManager: OperationManagerProtocol {
     // MARK: - Private Methods
 
     private func removeOperation(_ operation: Operation) {
-        lock.lock()
-        activeOperations.remove(operation)
-        lock.unlock()
+        activeOperationsQueue.async(flags: .barrier) {
+            self.activeOperations.remove(operation)
+        }
 
         logger.debug("Removed operation: \(operation.name ?? "unnamed")")
     }
@@ -168,6 +169,9 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
     private let operationBlock: () async throws -> T
     private var executionTask: Task<T, Error>?
 
+    private var hasResultBeenHandled = false
+    private let resultHandlerLock = NSLock()
+
     var resultHandler: ((Result<T, Error>) -> Void)?
 
     init(operationBlock: @escaping () async throws -> T) {
@@ -176,8 +180,8 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
     }
 
     override func main() {
-        guard !isCancelled else {
-            resultHandler?(.failure(OperationError.cancelled))
+        if isCancelled {
+            callResultHandlerOnce(with: .failure(OperationError.cancelled))
             return
         }
 
@@ -188,10 +192,12 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
         Task {
             do {
                 let result = try await executionTask!.value
-                resultHandler?(.success(result))
+                callResultHandlerOnce(with: .success(result))
             } catch {
                 if !isCancelled {
-                    resultHandler?(.failure(error))
+                    callResultHandlerOnce(with: .failure(error))
+                } else {
+                    callResultHandlerOnce(with: .failure(OperationError.cancelled))
                 }
             }
         }
@@ -200,7 +206,16 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
     override func cancel() {
         super.cancel()
         executionTask?.cancel()
-        resultHandler?(.failure(OperationError.cancelled))
+        callResultHandlerOnce(with: .failure(OperationError.cancelled))
+    }
+
+    private func callResultHandlerOnce(with result: Result<T, Error>) {
+        resultHandlerLock.lock()
+        defer { resultHandlerLock.unlock() }
+        if !hasResultBeenHandled {
+            hasResultBeenHandled = true
+            resultHandler?(result)
+        }
     }
 }
 

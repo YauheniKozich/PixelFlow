@@ -12,14 +12,21 @@ struct SamplingParams {
     let contrastWeight: Float
     let saturationWeight: Float
     let edgeRadius: Int
+    let importantSamplingRatio: Float
+    let topBottomRatio: Float
+    var applyAntiClustering: Bool = true
     
     init(importanceThreshold: Float,
          contrastWeight: Float,
          saturationWeight: Float,
-         edgeRadius: Int) {
+         edgeRadius: Int,
+         importantSamplingRatio: Float,
+         topBottomRatio: Float) {
         self.importanceThreshold = importanceThreshold
         self.contrastWeight = contrastWeight
         self.saturationWeight = saturationWeight
         self.edgeRadius = edgeRadius
+        self.importantSamplingRatio = importantSamplingRatio
+        self.topBottomRatio = topBottomRatio
     }
 }

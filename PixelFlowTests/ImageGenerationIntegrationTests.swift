@@ -122,8 +122,8 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         let config = ParticleGenerationConfig.draft
 
         // When
-        async let particles1 = coordinator.generateParticles(from: image1, config: config) { _, _ in }
-        async let particles2 = coordinator.generateParticles(from: image2, config: config) { _, _ in }
+        async let particles1 = coordinator.generateParticles(from: image1, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
+        async let particles2 = coordinator.generateParticles(from: image2, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
 
         let (result1, result2) = try await (particles1, particles2)
 
@@ -167,7 +167,7 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // When
         var results: [Int] = []
         for config in configs {
-            let particles = try await coordinator.generateParticles(from: image, config: config) { _, _ in }
+            let particles = try await coordinator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
             results.append(particles.count)
         }
 
@@ -186,7 +186,7 @@ final class ImageGenerationIntegrationTests: XCTestCase {
 
         // When/Then
         do {
-            let _ = try await coordinator.generateParticles(from: image, config: config) { _, _ in }
+            let _ = try await coordinator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
             XCTFail("Should have thrown error for invalid config")
         } catch {
             // Ожидаем ошибку валидации
@@ -200,7 +200,7 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         let config = ParticleGenerationConfig.draft
 
         // When
-        let particles = try await coordinator.generateParticles(from: image, config: config) { _, _ in }
+        let particles = try await coordinator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
 
         // Then
         XCTAssertFalse(particles.isEmpty)

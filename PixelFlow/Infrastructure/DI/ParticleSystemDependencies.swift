@@ -44,8 +44,11 @@ final class ParticleSystemDependencies {
     private static func registerSimulationComponents(in container: DIContainer) {
         container.register(DefaultStateManager(), for: ParticleSystemStateManagerProtocol.self)
         container.register(DefaultSimulationClock(), for: SimulationClockProtocol.self)
-        container.register(SimulationEngine(), for: SimulationEngineProtocol.self)
-        container.register(SimulationEngine(), for: PhysicsEngineProtocol.self)
+        let simulationEngine = SimulationEngine()
+        Logger.shared.info("SimulationEngine created once in DI")
+        container.register(simulationEngine, for: SimulationEngineProtocol.self)
+        container.register(simulationEngine, for: PhysicsEngineProtocol.self)
+        Logger.shared.info("Same SimulationEngine registered for both protocols")
     }
 
     private static func registerStorageComponents(in container: DIContainer) {

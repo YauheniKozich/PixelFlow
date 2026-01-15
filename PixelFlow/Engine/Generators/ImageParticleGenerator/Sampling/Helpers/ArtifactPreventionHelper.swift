@@ -18,20 +18,11 @@ enum ArtifactPreventionHelper {
         /// Минимальное покрытие изображения сэмплами (0-1)
         static let minCoverageRatio: Float = 0.85
         
-        /// Смещение к краям для предотвращения пустых зон
-        static let edgeBias: Float = 1.8
-        
-        /// Порог шума для фильтрации
-        static let noiseThreshold: Float = 0.015
-        
         /// Расстояние для обнаружения кластеризации
         static let clusteringDistance: Int = 2
         
         /// Отступ от углов для проверки покрытия
         static let cornerMarginRatio: Float = 0.1
-        
-        /// Усиление яркости для корректировки
-        static let brightnessBoost: Float = 1.2
         
         /// Множитель максимальных попыток для случайного выбора
         static let maxAttemptsMultiplier: Int = 15
@@ -90,8 +81,8 @@ enum ArtifactPreventionHelper {
               imageSize.height > 0 else { return false }
         
         let gridSize = 4
-        let cellWidth = Int(imageSize.width) / gridSize
-        let cellHeight = Int(imageSize.height) / gridSize
+        let cellWidth = max(1, Int(imageSize.width) / gridSize)
+        let cellHeight = max(1, Int(imageSize.height) / gridSize)
         
         var coverageGrid = Array(repeating: Array(repeating: false,
                                                   count: gridSize),
@@ -142,83 +133,101 @@ enum ArtifactPreventionHelper {
     /// Проверяет наличие кластеризации сэмплов
     static func hasClustering(samples: [Sample]) -> Bool {
         guard samples.count > 10 else { return false }
-        
-        var clusterCount = 0
+
+        let cellSize = max(1, Constants.clusteringDistance * 3)
+        var grid: [Int: [Sample]] = [:]
+        grid.reserveCapacity(samples.count)
+
+        // spatial hash
+        for s in samples {
+            let gx = Int(s.x) / cellSize
+            let gy = Int(s.y) / cellSize
+            let key = (gy << 16) | gx
+            grid[key, default: []].append(s)
+        }
+
         let minClusterSize = 3
-        let clusterDistance = Float(Constants.clusteringDistance * 3)
-        
-        for sample in samples {
-            var nearbyCount = 0
-            for other in samples {
-                let dx = sample.x - other.x
-                let dy = sample.y - other.y
-                let distance = sqrtf(Float(dx * dx + dy * dy))
-                if distance < clusterDistance && distance > 0 {
-                    nearbyCount += 1
+        var clusteredSamples = 0
+
+        for s in samples {
+            let gx = Int(s.x) / cellSize
+            let gy = Int(s.y) / cellSize
+
+            var neighbors = 0
+
+            // проверяем только 3x3 соседние ячейки
+            for ny in (gy - 1)...(gy + 1) {
+                for nx in (gx - 1)...(gx + 1) {
+                    let key = (ny << 16) | nx
+                    guard let bucket = grid[key] else { continue }
+
+                    for other in bucket {
+                        if other.x == s.x && other.y == s.y { continue }
+                        let dx = Float(s.x - other.x)
+                        let dy = Float(s.y - other.y)
+                        if dx * dx + dy * dy < Float(cellSize * cellSize) {
+                            neighbors += 1
+                            if neighbors >= minClusterSize {
+                                clusteredSamples += 1
+                                break
+                            }
+                        }
+                    }
                 }
             }
-            if nearbyCount >= minClusterSize { clusterCount += 1 }
         }
-        
-        return Float(clusterCount) > Float(samples.count) * 0.1
+
+        return Float(clusteredSamples) > Float(samples.count) * 0.1
     }
     
     // MARK: - Коррекция
     
     /// Корректирует покрытие изображения
-    static func applyCoverageCorrection(samples: [Sample],
-                                        cache: PixelCache,
-                                        targetCount: Int,
-                                        imageSize: CGSize) -> [Sample] {
-        var corrected = samples
-        
-        let gridSize = max(
-            1,
-            Int(sqrt(Double(cache.width * cache.height) /
-                     Double(targetCount * 3)))
-        )
-        
-        for y in stride(from: 0, to: cache.height, by: gridSize) {
-            for x in stride(from: 0, to: cache.width, by: gridSize) {
-                if corrected.count >= targetCount { break }
-                
-                // Проверяем, есть ли уже сэмпл в радиусе gridSize
-                let alreadyExists = corrected.contains { sample in
-                    let dx = Float(x) - Float(sample.x)
-                    let dy = Float(y) - Float(sample.y)
-                    let distance = sqrtf(dx * dx + dy * dy)
-                    return distance < Float(gridSize)
+    static func applyCoverageCorrection(
+        samples: [Sample],
+        cache: PixelCache,
+        targetCount: Int,
+        imageSize: CGSize
+    ) -> [Sample] {
+
+        var result = samples
+        result.reserveCapacity(targetCount)
+
+        var occupied = Set<Int>()
+        occupied.reserveCapacity(result.count)
+
+        for s in result {
+            let key = Int(s.y) * cache.width + Int(s.x)
+            occupied.insert(key)
+        }
+
+        for y in 0..<cache.height {
+            for x in 0..<cache.width {
+
+                if result.count >= targetCount {
+                    return result
                 }
-                
-                if !alreadyExists {
-                    let color = cache.color(atX: x, y: y)
-                    if color.w > PixelCacheHelper.Constants.alphaThreshold {
-                        corrected.append(Sample(x: x, y: y, color: color))
-                    }
+
+                let key = y * cache.width + x
+                if occupied.contains(key) { continue }
+
+                let color = cache.color(atX: x, y: y)
+                if color.w > PixelCacheHelper.Constants.alphaThreshold {
+                    result.append(Sample(x: x, y: y, color: color))
+                    occupied.insert(key)
                 }
             }
         }
-        
-        return corrected
+
+        return result
     }
     
-    /// Устраняет кластеризацию сэмплов
-    static func applyAntiClustering(samples: [Sample]) -> [Sample] {
-        var filtered: [Sample] = []
-        var occupiedPositions = Set<String>()
-        let gridSize = Constants.clusteringDistance * 2
-        
-        for sample in samples {
-            let gridX = Int(sample.x) / gridSize
-            let gridY = Int(sample.y) / gridSize
-            let key = "\(gridX)_\(gridY)"
-            
-            if !occupiedPositions.contains(key) {
-                filtered.append(sample)
-                occupiedPositions.insert(key)
-            }
-        }
-        return filtered
+    /// Устраняет кластеризацию сэмплов через стратифицированную выборку на C
+    static func applyAntiClustering(samples: [Sample], bands: Int = 16) -> [Sample] {
+        guard !samples.isEmpty else { return [] }
+
+        let imageHeight = samples.map { $0.y }.max() ?? 1
+        return stratifiedSample(samples: samples, targetCount: samples.count, imageHeight: imageHeight, bands: bands)
     }
     
     /// Добавляет сэмплы в углы изображения
@@ -267,22 +276,39 @@ enum ArtifactPreventionHelper {
         let needed = targetCount - samples.count
         guard needed > 0 else { return samples }
         
-        let stepX = max(1, cache.width / max(1, Int(sqrt(Double(targetCount)))))
-        let stepY = max(1, cache.height / max(1, Int(sqrt(Double(targetCount)))))
+        let grid = max(1, Int(sqrt(Double(targetCount))))
+        let stepX = max(1, cache.width / grid)
+        let stepY = max(1, cache.height / grid)
         
-        var usedPositions = Set(samples.map { "\($0.x)_\($0.y)" })
+        var usedPositions = Set(samples.map { ($0.y << 16) | $0.x })
         
         // Равномерное заполнение
         outerLoop: for y in stride(from: 0, to: cache.height, by: stepY) {
             for x in stride(from: 0, to: cache.width, by: stepX) {
                 if filled.count >= targetCount { break outerLoop }
-                
-                let key = "\(x)_\(y)"
+                let key = (y << 16) | x
                 if !usedPositions.contains(key) {
                     let color = cache.color(atX: x, y: y)
                     if color.w > PixelCacheHelper.Constants.alphaThreshold {
                         filled.append(Sample(x: x, y: y, color: color))
                         usedPositions.insert(key)
+                    }
+                }
+            }
+        }
+
+        // Плотный вертикальный проход по всей высоте (sweep), если не хватило
+        if filled.count < targetCount {
+            for y in 0..<cache.height {
+                for x in stride(from: 0, to: cache.width, by: stepX) {
+                    if filled.count >= targetCount { break }
+                    let key = (y << 16) | x
+                    if !usedPositions.contains(key) {
+                        let color = cache.color(atX: x, y: y)
+                        if color.w > PixelCacheHelper.Constants.alphaThreshold {
+                            filled.append(Sample(x: x, y: y, color: color))
+                            usedPositions.insert(key)
+                        }
                     }
                 }
             }
@@ -296,7 +322,7 @@ enum ArtifactPreventionHelper {
             while filled.count < targetCount && attempts < maxAttempts {
                 let x = Int.random(in: 0..<cache.width)
                 let y = Int.random(in: 0..<cache.height)
-                let key = "\(x)_\(y)"
+                let key = (y << 16) | x
                 
                 if !usedPositions.contains(key) {
                     let color = cache.color(atX: x, y: y)
@@ -314,61 +340,7 @@ enum ArtifactPreventionHelper {
     
     // MARK: - Расширенные алгоритмы
     
-    /// Применяет антикластеризацию для кандидатов
-    static func applyAntiClusteringForCandidates(
-        candidates: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)]
-    ) -> [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)] {
-        var filtered: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)] = []
-        var occupiedGrid = Set<String>()
-        let gridSize = Constants.clusteringDistance
-        
-        for candidate in candidates {
-            let gridX = candidate.x / gridSize
-            let gridY = candidate.y / gridSize
-            let key = "\(gridX)_\(gridY)"
-            if !occupiedGrid.contains(key) {
-                filtered.append(candidate)
-                occupiedGrid.insert(key)
-            }
-        }
-        return filtered
-    }
     
-    /// Вычисляет важность пикселя для семплирования
-    static func calculateEnhancedPixelImportance(
-        r: Float, g: Float, b: Float, a: Float,
-        neighbors: [(r: Float, g: Float, b: Float, a: Float)],
-        params: SamplingParams,
-        dominantColors: [SIMD3<Float>]
-    ) -> Float {
-        guard a > PixelCacheHelper.Constants.alphaThreshold else { return 0.0 }
-        
-        // Локальный контраст
-        let localContrast = calculateLocalContrast(
-            r: r, g: g, b: b,
-            neighbors: neighbors
-        )
-        
-        // Насыщенность
-        let saturation = calculateSaturation(r: r, g: g, b: b)
-        
-        // Уникальность относительно доминирующих цветов
-        let uniqueness = calculateUniqueness(
-            r: r, g: g, b: b,
-            dominantColors: dominantColors
-        )
-        
-        // Взвешивание компонентов
-        let contrastWeight = params.contrastWeight * 0.8
-        let saturationWeight = params.saturationWeight
-        let uniquenessWeight: Float = 0.4
-        
-        let importance = (contrastWeight * localContrast) +
-                         (saturationWeight * saturation) +
-                         (uniquenessWeight * uniqueness)
-        
-        return max(importance, 0.0)
-    }
     
     /// Выбирает сэмплы с учетом их важности
     static func selectWeightedSamples(
@@ -379,6 +351,7 @@ enum ArtifactPreventionHelper {
         
         var samples: [Sample] = []
         samples.reserveCapacity(count)
+        var used = Set<Int>()
         
         let totalImportance = candidates.reduce(0.0) { $0 + $1.importance }
         
@@ -392,7 +365,11 @@ enum ArtifactPreventionHelper {
             for candidate in candidates {
                 target -= candidate.importance
                 if target <= 0 {
-                    samples.append(Sample(x: candidate.x, y: candidate.y, color: candidate.color))
+                    let key = (candidate.y << 16) | candidate.x
+                    if !used.contains(key) {
+                        samples.append(Sample(x: candidate.x, y: candidate.y, color: candidate.color))
+                        used.insert(key)
+                    }
                     break
                 }
             }
@@ -409,13 +386,18 @@ enum ArtifactPreventionHelper {
         
         var samples: [Sample] = []
         samples.reserveCapacity(count)
+        var used = Set<Int>()
         
         var attempts = 0
         let maxAttempts = count * Constants.maxAttemptsMultiplier
         
         while samples.count < count && attempts < maxAttempts {
             guard let candidate = candidates.randomElement() else { break }
-            samples.append(Sample(x: candidate.x, y: candidate.y, color: candidate.color))
+            let key = (candidate.y << 16) | candidate.x
+            if !used.contains(key) {
+                samples.append(Sample(x: candidate.x, y: candidate.y, color: candidate.color))
+                used.insert(key)
+            }
             attempts += 1
         }
         return samples
@@ -463,5 +445,120 @@ enum ArtifactPreventionHelper {
         }
         
         return min(minDistance, 1.0)
+    }
+}
+
+// Swift-обёртка для C-функции stratifiedSampleC
+extension ArtifactPreventionHelper {
+
+    static func stratifiedSample(samples: [Sample],
+                                 targetCount: Int,
+                                 imageHeight: Int,
+                                 bands: Int = 16) -> [Sample] {
+        guard !samples.isEmpty else { return [] }
+
+        // Преобразуем Swift Sample -> C SampleC
+        var cSamples = samples.map { s in
+            SampleC(x: Int32(s.x),
+                    y: Int32(s.y),
+                    r: s.color.x,
+                    g: s.color.y,
+                    b: s.color.z,
+                    a: s.color.w)
+        }
+
+        // Выходной массив для C
+        var outCSamples = [SampleC](repeating: SampleC(x:0, y:0, r:0, g:0, b:0, a:0), count: targetCount)
+
+        // Вызов C-функции
+        stratifiedSampleC(&cSamples,
+                          Int32(cSamples.count),
+                          Int32(targetCount),
+                          Int32(imageHeight),
+                          Int32(bands),
+                          &outCSamples)
+
+        // Преобразуем обратно в Swift Sample
+        return outCSamples.map { s in
+            Sample(x: Int(s.x),
+                   y: Int(s.y),
+                   color: SIMD4<Float>(s.r, s.g, s.b, s.a))
+        }
+    }
+}
+
+// MARK: - Структура для хранения всех пикселей с важностью
+struct PixelData {
+    let x: Int
+    let y: Int
+    let color: SIMD4<Float>
+    let importance: Float
+}
+
+// MARK: - Сбор всех пикселей из cache
+extension ArtifactPreventionHelper {
+
+    static func collectAllPixels(from cache: PixelCache) -> [PixelData] {
+        var pixels: [PixelData] = []
+        for y in 0..<cache.height {
+            for x in 0..<cache.width {
+                let color = cache.color(atX: x, y: y)
+                if color.w > PixelCacheHelper.Constants.alphaThreshold {
+                    let importance = color.w * (color.x + color.y + color.z) / 3.0
+                    pixels.append(PixelData(x: x, y: y, color: color, importance: importance))
+                }
+            }
+        }
+        return pixels
+    }
+}
+
+// MARK: - Выбор сэмплов для рендеринга
+extension ArtifactPreventionHelper {
+
+    static func selectPixelsForRendering(pixels: [PixelData], targetCount: Int, bands: Int = 16) -> [Sample] {
+        guard !pixels.isEmpty else { return [] }
+
+        let imageHeight = pixels.map { $0.y }.max() ?? 1
+        let selectedPixelData = stratifiedSample(pixels: pixels, targetCount: targetCount, imageHeight: imageHeight, bands: bands)
+
+        return selectedPixelData.map { p in
+            Sample(x: p.x, y: p.y, color: p.color)
+        }
+    }
+
+    // Stratified sampling для PixelData через C-функцию
+    static func stratifiedSample(pixels: [PixelData], targetCount: Int, imageHeight: Int, bands: Int = 16) -> [PixelData] {
+        guard !pixels.isEmpty else { return [] }
+
+        var cSamples = pixels.map { p in
+            SampleC(x: Int32(p.x),
+                    y: Int32(p.y),
+                    r: p.color.x,
+                    g: p.color.y,
+                    b: p.color.z,
+                    a: p.color.w)
+        }
+
+        var outCSamples = [SampleC](repeating: SampleC(x:0, y:0, r:0, g:0, b:0, a:0), count: targetCount)
+
+        stratifiedSampleC(&cSamples,
+                          Int32(cSamples.count),
+                          Int32(targetCount),
+                          Int32(imageHeight),
+                          Int32(bands),
+                          &outCSamples)
+
+        // Восстанавливаем PixelData с сохранением оригинальной важности
+        return outCSamples.map { c in
+            if let original = pixels.first(where: { $0.x == Int(c.x) && $0.y == Int(c.y) }) {
+                return original
+            } else {
+                return PixelData(x: Int(c.x),
+                                 y: Int(c.y),
+                                 color: SIMD4<Float>(c.r, c.g, c.b, c.a),
+                                 importance: c.a * (c.r + c.g + c.b)/3.0)
+            }
+        }
     }
 }

@@ -91,15 +91,14 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
     }
 
     private func analyzeWorkload(_ config: ParticleGenerationConfig) -> WorkloadAnalysis {
-        let imageSize = config.screenSize.width * config.screenSize.height
         let particleCount = config.targetParticleCount
         let complexity = estimateComplexity(config)
 
         // Определяем тип workload
         let workloadType: WorkloadType
-        if imageSize > 2000000 || particleCount > 20000 { // Большой workload
+        if particleCount > 20000 { // Большой workload
             workloadType = .heavy
-        } else if imageSize > 500000 || particleCount > 5000 { // Средний workload
+        } else if particleCount > 5000 { // Средний workload
             workloadType = .medium
         } else { // Маленький workload
             workloadType = .light
@@ -107,7 +106,6 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
 
         return WorkloadAnalysis(
             type: workloadType,
-            imageSize: imageSize,
             particleCount: particleCount,
             complexity: complexity,
             availableConcurrency: availableConcurrency,
@@ -269,7 +267,7 @@ enum PerformanceClass {
 /// Анализ workload
 struct WorkloadAnalysis {
     let type: WorkloadType
-    let imageSize: CGFloat
+   // let imageSize: CGFloat
     let particleCount: Int
     let complexity: Double
     let availableConcurrency: Int

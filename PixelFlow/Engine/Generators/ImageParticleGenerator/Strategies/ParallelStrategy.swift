@@ -68,13 +68,6 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         guard maxConcurrentOperations > 1 else {
             throw ParallelStrategyError.insufficientConcurrency
         }
-
-        // Для больших изображений параллелизм особенно важен
-        let imageSize = config.screenSize.width * config.screenSize.height
-        if imageSize > 2000000 && maxConcurrentOperations < 2 { // > 2M pixels
-            logger.warning("Large image with low concurrency may be slow")
-        }
-
         logger.debug("ParallelStrategy validation passed")
     }
 
@@ -133,11 +126,6 @@ final class ParallelStrategy: GenerationStrategyProtocol {
 
         switch stage {
         case .analysis:
-            // Анализ хорошо параллелится для больших изображений
-            let imageSize = config.screenSize.width * config.screenSize.height
-            if imageSize > 1000000 { // > 1M pixels
-                return min(availableConcurrency, 2)
-            }
             return 1
 
         case .sampling:
@@ -177,10 +165,9 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         // - Доступных ресурсов для параллелизма
 
         let particleCount = config.targetParticleCount
-        let imageSize = config.screenSize.width * config.screenSize.height
         let hasConcurrency = maxConcurrentOperations > 1
 
-        return (particleCount > 10000 || imageSize > 1000000) && hasConcurrency
+        return (particleCount > 10000 || config.targetParticleCount.isMultiple(of: 1000000)) && hasConcurrency
     }
 
     // MARK: - Private Methods

@@ -30,7 +30,8 @@ using namespace metal;
 // Collection physics
 #define COLLECTION_BASE_SPEED 150.0
 #define COLLECTION_MIN_SPEED 5.0
-#define COLLECTION_THRESHOLD 8.0
+#define COLLECTION_THRESHOLD 0.5
+#define COLLECTION_MOVE_THRESHOLD 0.01
 #define COLLECTION_VELOCITY_DAMPING 0.9
 
 // Chaotic physics
@@ -102,7 +103,7 @@ static inline float2 calculateCollectionMovement(
 
     float2 prevPos = p.position.xy;
 
-    if (distToTarget > COLLECTION_THRESHOLD * 0.1) {
+    if (distToTarget > COLLECTION_MOVE_THRESHOLD) {
         float2 direction = safeNormalize2(toTarget);
         p.position.xy += direction * moveDistance;
     }
@@ -265,8 +266,11 @@ kernel void updateParticles(
     device Particle* particles [[buffer(0)]],
     constant SimulationParams * params [[buffer(1)]],
     device atomic_uint* collectedCounter [[buffer(2)]],
-    uint id [[thread_position_in_grid]]
+    uint thread_position [[thread_position_in_threadgroup]],
+    uint threadgroup_position [[threadgroup_position_in_grid]]
 ) {
+    uint threads_per_threadgroup = 256;
+    uint id = threadgroup_position * threads_per_threadgroup + thread_position;
     if (id >= params[0].particleCount) return;
 
     Particle p = particles[id];

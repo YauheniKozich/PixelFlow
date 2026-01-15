@@ -13,19 +13,15 @@ import UIKit
 import simd
 
 final class ParticleGenerator {
-    
+
     // MARK: - Свойства
-    
-    weak var weakParticleSystem: ParticleSystem?
-    
-    private weak var particleSystem: ParticleSystem?
+
     private let imageController: ImageParticleGeneratorProtocol
     private let particleCount: Int
-    
-    private var screenSize: CGSize = .zero
+
     private static var loggedParticleBoundsKey: UInt8 = 0
     private var cachedImage: UIImage?
-    
+
     private var loggedParticleBounds: Bool {
         get {
             objc_getAssociatedObject(self,
@@ -40,34 +36,27 @@ final class ParticleGenerator {
     }
     
     // MARK: - Инициализация
-    
-    init(particleSystem: ParticleSystem?,
-         imageController: ImageParticleGeneratorProtocol,
+
+    init(imageController: ImageParticleGeneratorProtocol,
          particleCount: Int) {
-        self.particleSystem = particleSystem
         self.imageController = imageController
         self.particleCount = particleCount
         self.cachedImage = UIImage(cgImage: imageController.image)
     }
     
     // MARK: - Публичные методы
-    
-    func updateScreenSize(_ size: CGSize) {
-        screenSize = size
-        imageController.updateScreenSize(size)
-    }
-    
+
     /// Основная генерация частиц (качественная)
-    func recreateParticles(in buffer: MTLBuffer) {
+    func recreateParticles(in buffer: MTLBuffer, screenSize: CGSize) {
         precondition(screenSize.width > 0 && screenSize.height > 0,
-                     "screenSize must be set before creating particles")
+                      "screenSize must be set before creating particles")
         
         var particles: [Particle]
         
         do {
-            particles = try imageController.generateParticles()
+            particles = try imageController.generateParticles(screenSize: screenSize)
         } catch {
-            particles = createFastLowQualityParticles()
+            particles = createFastLowQualityParticles(screenSize: screenSize)
         }
         
         let imgW = CGFloat(imageController.image.width)
@@ -75,10 +64,11 @@ final class ParticleGenerator {
         
         if imgW > 0 && imgH > 0 && !(imageController is ImageParticleGenerator) {
             particles = applyImageScaling(particles,
-                                          imgW: imgW,
-                                          imgH: imgH)
+                                           imgW: imgW,
+                                           imgH: imgH,
+                                           screenSize: screenSize)
         } else if imgW <= 0 || imgH <= 0 {
-            particles = createFastLowQualityParticles()
+            particles = createFastLowQualityParticles(screenSize: screenSize)
         }
         
         copyParticlesToBuffer(particles, buffer: buffer)
@@ -86,8 +76,8 @@ final class ParticleGenerator {
     }
     
     /// Быстрая генерация низкокачественных частиц
-    func createAndCopyFastPreviewParticles(in buffer: MTLBuffer) {
-        let particles = createFastLowQualityParticles()
+    func createAndCopyFastPreviewParticles(in buffer: MTLBuffer, screenSize: CGSize) {
+        let particles = createFastLowQualityParticles(screenSize: screenSize)
         copyParticlesToBuffer(particles, buffer: buffer)
         logParticleBoundsOnce(particles)
     }
@@ -96,7 +86,8 @@ final class ParticleGenerator {
     
     private func applyImageScaling(_ particles: [Particle],
                                    imgW: CGFloat,
-                                   imgH: CGFloat) -> [Particle] {
+                                   imgH: CGFloat,
+                                   screenSize: CGSize) -> [Particle] {
         
         let scaleX = screenSize.width / imgW
         let scaleY = screenSize.height / imgH
@@ -124,31 +115,21 @@ final class ParticleGenerator {
         return scaled
     }
     
-    private func createFastLowQualityParticles() -> [Particle] {
+    private func createFastLowQualityParticles(screenSize: CGSize) -> [Particle] {
         guard particleCount > 0 else { return [] }
         
         var particles: [Particle] = []
         particles.reserveCapacity(particleCount)
         
-        let scrSize: CGSize
-        if let view = particleSystem?.mtkViewForGenerator,
-           view.drawableSize.width > 0 {
-            scrSize = view.drawableSize
-        } else if screenSize.width > 0 {
-            scrSize = screenSize
-        } else {
-            scrSize = CGSize(width: 1024, height: 768)
-        }
-        
         guard let image = getSourceCGImage() else {
             return createColorfulGradientParticles(count: particleCount,
-                                                   screenSize: scrSize)
+                                                   screenSize: screenSize)
         }
         
         particles = createImprovedImageSamplingParticles(
             image: image,
             targetCount: particleCount,
-            screenSize: scrSize
+            screenSize: screenSize
         )
         
         return particles
@@ -182,52 +163,14 @@ final class ParticleGenerator {
         let data = context.data!.assumingMemoryBound(to: UInt8.self)
         
         let totalPixels = imgW * imgH
-        let sampleRate = max(1,
-                             Int(round(Double(totalPixels) / Double(targetCount))))
-        
-        var collected = 0
-        
-        for y in 0..<imgH {
-            for x in 0..<imgW {
-                if ((y * imgW + x) % sampleRate) != 0 { continue }
-                if collected >= targetCount { break }
-                
-                let color = getPixelColorSafe(
-                    from: data,
-                    x: x,
-                    y: y,
-                    width: imgW,
-                    height: imgH,
-                    bytesPerRow: bytesPerRow
-                )
-                
-                var particle = Particle()
-                
-                let nx = Float(x) / Float(imgW)
-                let ny = Float(y) / Float(imgH)
-                
-                let screenX = offsetX + nx * scaledImgW
-                let screenY = offsetY + ny * scaledImgH
-                
-                particle.position = SIMD3<Float>(screenX, screenY, 0)
-                particle.targetPosition = particle.position
-                particle.size = 4
-                particle.baseSize = 4
-                particle.color = color
-                particle.originalColor = color
-                particle.life = 0
-                particle.idleChaoticMotion = 0
-                
-                particles.append(particle)
-                collected += 1
-            }
-            if collected >= targetCount { break }
-        }
-        
-        while particles.count < targetCount && collected < targetCount {
-            let x = Int.random(in: 0..<imgW)
-            let y = Int.random(in: 0..<imgH)
-            
+        let step = max(1, totalPixels / targetCount)
+
+        for i in stride(from: 0, to: totalPixels, by: step) {
+            if particles.count >= targetCount { break }
+
+            let x = i % imgW
+            let y = i / imgW
+
             let color = getPixelColorSafe(
                 from: data,
                 x: x,
@@ -236,15 +179,15 @@ final class ParticleGenerator {
                 height: imgH,
                 bytesPerRow: bytesPerRow
             )
-            
+
             var particle = Particle()
-            
+
             let nx = Float(x) / Float(imgW)
             let ny = Float(y) / Float(imgH)
-            
+
             let screenX = offsetX + nx * scaledImgW
             let screenY = offsetY + ny * scaledImgH
-            
+
             particle.position = SIMD3<Float>(screenX, screenY, 0)
             particle.targetPosition = particle.position
             particle.size = 4
@@ -253,9 +196,8 @@ final class ParticleGenerator {
             particle.originalColor = color
             particle.life = 0
             particle.idleChaoticMotion = 0
-            
+
             particles.append(particle)
-            collected += 1
         }
         
         return particles
@@ -376,12 +318,9 @@ final class ParticleGenerator {
     }
     
     // MARK: - Очистка
-    
+
     func cleanup() {
         loggedParticleBounds = false
-        weakParticleSystem = nil
-        particleSystem = nil
-        screenSize = .zero
         cachedImage = nil
     }
 }

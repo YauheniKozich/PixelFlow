@@ -9,15 +9,7 @@ import Foundation
 
 final class SimulationStateMachine {
 
-    enum State {
-        case idle
-        case chaotic
-        case collecting(progress: Float)
-        case collected(frames: Int)
-        case lightningStorm
-    }
-
-    private(set) var state: State = .idle
+    private(set) var state: SimulationState = .idle
     var resetCounterCallback: (() -> Void)?
 
     // Таймаут для сбора частиц
@@ -60,6 +52,8 @@ final class SimulationStateMachine {
     
     func updateProgress(_ progress: Float) {
         guard case .collecting = state else { return }
+
+        Logger.shared.debug("[StateMachine] updateProgress(\(String(format: "%.3f", progress))) called on thread: \(Thread.isMainThread ? "MAIN" : "BACKGROUND") at \(Date().timeIntervalSince1970)")
 
         let currentTime = ProcessInfo.processInfo.systemUptime
 

@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension SimulationStateMachine.State {
+extension SimulationState {
     var shaderValue: UInt32 {
         switch self {
         case .idle: return 0

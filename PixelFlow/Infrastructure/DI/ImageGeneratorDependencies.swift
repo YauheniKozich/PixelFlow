@@ -168,15 +168,6 @@ final class ConfigurationValidator: ConfigurationValidatorProtocol {
         guard config.targetParticleCount <= maxParticleCount else {
             throw ValidationError.invalidParticleCount("Too many particles: \(config.targetParticleCount)")
         }
-
-        guard config.screenSize.width > 0 && config.screenSize.height > 0 else {
-            throw ValidationError.invalidScreenSize("Invalid screen size: \(config.screenSize)")
-        }
-
-        guard config.screenSize.width <= maxImageSize.width &&
-              config.screenSize.height <= maxImageSize.height else {
-            throw ValidationError.invalidScreenSize("Screen size too large: \(config.screenSize)")
-        }
     }
 
     func validate(image: CGImage) throws {
@@ -210,11 +201,6 @@ final class ConfigurationValidator: ConfigurationValidatorProtocol {
         if config.targetParticleCount > maxParticleCount {
             suggestions.append("Reduce particle count to maximum \(maxParticleCount)")
         }
-
-        if config.screenSize.width <= 0 || config.screenSize.height <= 0 {
-            suggestions.append("Set valid screen size (width and height > 0)")
-        }
-
         return suggestions
     }
 }

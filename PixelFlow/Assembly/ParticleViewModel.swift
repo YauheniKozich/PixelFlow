@@ -3,6 +3,7 @@
 //  PixelFlow
 //
 //  Created by Yauheni Kozich on 11.01.26.
+
 import UIKit
 import MetalKit
 
@@ -47,10 +48,8 @@ final class ParticleViewModel {
     }
     
     deinit {
-        Task { @MainActor in
-            self.cleanupAllResources()
-            self.logger.info("ParticleViewModel deinit")
-        }
+        self.cleanupAllResources()
+        self.logger.info("ParticleViewModel deinit")
     }
     
     // --------------------------------------------------------------------
@@ -78,13 +77,13 @@ final class ParticleViewModel {
     /// Создаёт и запускает `ParticleSystem` в переданном `MTKView`.
     /// Возвращает `true`, если всё прошло успешно.
     @MainActor
-    public func createSystem(in view: MTKView, screenSize: CGSize) async -> Bool {
+    public func createSystem(in view: MTKView) async -> Bool {
         guard !isConfigured else {
             logger.info("Particle system is already configured")
             return true
         }
         
-        // 1️⃣ Загрузка изображения
+        // Загрузка изображения
         logger.info("Loading source image…")
         guard let image = imageLoader.loadImageWithFallback() else {
             logger.error("Failed to load source image")
@@ -95,31 +94,34 @@ final class ParticleViewModel {
         let particleCount = optimalParticleCount(for: image,
                                                  preset: currentConfig.qualityPreset)
         logger.info("Calculated particle count: \(particleCount)")
-        
+
+        // Обновляем конфигурацию с правильным количеством частиц
+        var config = currentConfig
+        config.targetParticleCount = particleCount
+
         // Инициализация ParticleSystem через адаптер (новая архитектура).
         //    `ParticleSystemAdapter` имеет failable‑initializer → возвращает `ParticleSystemAdapter?`.
         guard let system = ParticleSystemAdapter(
             mtkView: view,
             image: image,
             particleCount: particleCount,
-            config: currentConfig) else {
+            config: config) else {
 
             logger.error("ParticleSystemAdapter initialization failed (nil returned)")
             return false
         }
-        
-        // 4️⃣ Сохранить ссылку
+
+        // Сохранить ссылку
         particleSystem = system
-        
-        // 5️⃣ Быстрый превью
-        system.configure(screenSize: screenSize)
+
+        // Быстрый превью
         system.initializeWithFastPreview()
         system.startSimulation()
-        
+
         isConfigured = true
         logger.info("Particle system created – fast preview started")
         
-        // 6️⃣ Фоновая генерация качественных частиц
+        // Фоновая генерация качественных частиц
         startQualityGeneration(for: system)
         
         return true
@@ -229,7 +231,7 @@ final class ParticleViewModel {
     // --------------------------------------------------------------------
     // MARK: - Full Cleanup
     
-    @MainActor public func cleanupAllResources() {
+    public func cleanupAllResources() {
         logger.info("Performing full resource cleanup")
         
         cancelQualityTask()

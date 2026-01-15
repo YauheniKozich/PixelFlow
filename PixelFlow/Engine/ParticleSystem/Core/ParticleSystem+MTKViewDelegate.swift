@@ -12,30 +12,34 @@ import MetalKit
 
 extension ParticleSystem: MTKViewDelegate {
     @objc func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        screenSize = size
-        imageController.updateScreenSize(size)
-        
+        // screenSize is now only in MetalRenderer
+        renderer.mtkView(view, drawableSizeWillChange: size)
+
         if !stateMachine.isActive {
-            particleGenerator.recreateParticles(in: particleBuffer)
+            particleGenerator.recreateParticles(in: particleBuffer, screenSize: size)
         }
     }
     
     func draw(in view: MTKView) {
-        guard
-            stateMachine.isActive,
-            let drawable = view.currentDrawable,
-            let commandBuffer = commandQueue.makeCommandBuffer()
-        else { return }
+        guard stateMachine.isActive else {
+            return
+        }
 
-        clock.update()
+        guard view.currentDrawable != nil else {
+            return
+        }
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            return
+        }
+
+        simulationClock.update()
         updateSimulationParams()
-        
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = drawable.texture
-        pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].storeAction = .store
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        
+
+        guard let pass = view.currentRenderPassDescriptor else {
+            return
+        }
+
         encodeCompute(into: commandBuffer)
         encodeRender(into: commandBuffer, pass: pass)
 
@@ -45,7 +49,7 @@ extension ParticleSystem: MTKViewDelegate {
             stateMachine.tickCollected()
         }
 
-        commandBuffer.present(drawable)
+        commandBuffer.present(view.currentDrawable!)
         commandBuffer.commit()
     }
 }

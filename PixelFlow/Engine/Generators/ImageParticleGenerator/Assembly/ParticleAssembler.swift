@@ -9,22 +9,16 @@
 //
 
 import Foundation
-import UIKit
 import simd
 import CoreGraphics
 
 final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtocol {
-
+    
+    
     private let config: ParticleGenerationConfig
-    private let randomGenerator = SystemRandomNumberGenerator()
-
-    // MARK: - ParticleAssemblerProtocol
-
-    var defaultParticleSize: Float { 5.0 }
-
+    
     init(config: ParticleGenerationConfig) {
         self.config = config
-        print("DefaultParticleAssembler инициализирован")
     }
     
     func assembleParticles(
@@ -84,24 +78,36 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         let sizeRange = getSizeRange(for: config.qualityPreset)
         let sizeVariation = sizeRange.upperBound - sizeRange.lowerBound
         
-        // Генерация частиц
-        let particles = samples.enumerated().map { index, sample -> Particle in
-            createParticle(
-                from: sample,
-                index: index,
-                transformation: transformation,
-                sizeRange: sizeRange,
-                sizeVariation: sizeVariation,
-                config: config,
-                displayMode: displayMode,
-                totalSamples: samples.count,
-                originalImageSize: originalImageSize,
-                scaledImageSize: imageSize,
-                screenSize: screenSize
+        // Генерация частиц (оптимизировано)
+        var particles: [Particle] = []
+        particles.reserveCapacity(samples.count)
+        for (index, sample) in samples.enumerated() {
+            particles.append(
+                createParticle(
+                    from: sample,
+                    index: index,
+                    transformation: transformation,
+                    sizeRange: sizeRange,
+                    sizeVariation: sizeVariation,
+                    config: config,
+                    totalSamples: samples.count,
+                    originalImageSize: originalImageSize,
+                    screenSize: screenSize
+                )
             )
         }
         
         Logger.shared.debug("Сборка частиц завершена: \(particles.count) частиц")
+        
+        // Логирование первых 10 частиц для отладки
+        if particles.count >= 10 {
+            Logger.shared.debug("Первые 10 частиц:")
+            for i in 0..<10 {
+                let p = particles[i]
+                Logger.shared.debug("  [\(i)] pos=(\(p.position.x), \(p.position.y)) color=(\(p.color.x), \(p.color.y), \(p.color.z), \(p.color.w)) size=\(p.size)")
+            }
+        }
+        
         return particles
     }
     
@@ -109,17 +115,9 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     
     /// Получаем режим отображения из конфигурации
     private func getDisplayMode(from config: ParticleGenerationConfig) -> ImageDisplayMode {
-        // Если протокол поддерживает свойство imageDisplayMode
         if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
             return configWithDisplayMode.imageDisplayMode
         }
-        
-        // Проверяем наличие свойства через Mirror
-        if let displayModeValue = Mirror(reflecting: config).children.first(where: { $0.label == "imageDisplayMode" })?.value as? ImageDisplayMode {
-            return displayModeValue
-        }
-        
-        // Значение по умолчанию
         return .fit
     }
     
@@ -195,33 +193,35 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         sizeRange: ClosedRange<Float>,
         sizeVariation: Float,
         config: ParticleGenerationConfig,
-        displayMode: ImageDisplayMode,
         totalSamples: Int,
         originalImageSize: CGSize,
-        scaledImageSize: CGSize,
         screenSize: CGSize
     ) -> Particle {
         
         var particle = Particle()
         
-        // Нормализуем координаты внутри оригинального изображения
-        let normalizedX = CGFloat(sample.x) / originalImageSize.width
-        let normalizedY = CGFloat(sample.y) / originalImageSize.height
-        
-        // Применяем формулу трансформации
-        let screenX = transformation.offset.x +
-        normalizedX * scaledImageSize.width * transformation.scaleX
-        let screenY = transformation.offset.y +
-        normalizedY * scaledImageSize.height * transformation.scaleY
-        
-        // Граничная валидация
-        guard screenX >= -50 && screenX <= screenSize.width + 50,
-              screenY >= -50 && screenY <= screenSize.height + 50 else {
-            return Particle()
+        // Защита от некорректных размеров
+        guard originalImageSize.width > 0, originalImageSize.height > 0 else {
+            return particle
         }
         
+        // Координаты в пространстве изображения
+        let imageX = CGFloat(sample.x)
+        let imageY = CGFloat(sample.y)
+        
+        // Применяем масштаб и смещение трансформации
+        let screenX = transformation.offset.x + imageX * transformation.scaleX
+        let screenY = transformation.offset.y + imageY * transformation.scaleY
+        
+        // Граничная валидация и clamping
+        let maxX = max(screenSize.width - 1, 0)
+        let maxY = max(screenSize.height - 1, 0)
+        
+        let clampedX = min(max(screenX, 0), maxX)
+        let clampedY = min(max(screenY, 0), maxY)
+        
         // Заполняем параметры частицы
-        particle.position = SIMD3<Float>(Float(screenX), Float(screenY), 0)
+        particle.position = SIMD3<Float>(Float(clampedX), Float(clampedY), 0)
         particle.targetPosition = particle.position
         particle.color = sample.color
         particle.originalColor = sample.color
@@ -239,69 +239,57 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         // Жизненный цикл и движение
         particle.life = 0.0
         
-        let chaosFactor = Float.random(in: 0.8...1.2)
+        // Быстрый PRNG на основе sample координат и индекса
+        var seed = UInt32(sample.x) &* 73856093 ^ UInt32(sample.y) &* 19349663 ^ UInt32(index)
+        func xorshift32(_ value: inout UInt32) -> UInt32 {
+            var x = value
+            x ^= x << 13
+            x ^= x >> 17
+            x ^= x << 5
+            value = x
+            return x
+        }
+        
+        // Используем PRNG для скорости и хаоса
+        let chaosFactor = 0.8 + Float(xorshift32(&seed) % 400) / 1000.0
+        let vx = -0.5 + Float(xorshift32(&seed) % 1000) / 1000.0
+        let vy = -0.5 + Float(xorshift32(&seed) % 1000) / 1000.0
+        
         particle.idleChaoticMotion = 0
-        particle.velocity = SIMD3<Float>(
-            Float.random(in: -0.5...0.5),
-            Float.random(in: -0.5...0.5),
-            0
-        ) * getParticleSpeed(from: config) * chaosFactor
+        particle.velocity = SIMD3<Float>(vx, vy, 0) * getParticleSpeed(from: config) * chaosFactor
         
         return particle
     }
     
     private func getSizeRange(for preset: QualityPreset) -> ClosedRange<Float> {
-        // Стандартные диапазоны по умолчанию
+        if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
+            switch preset {
+            case .ultra:
+                return configWithDisplayMode.particleSizeUltra ?? 0.8...15.0
+            case .high:
+                return configWithDisplayMode.particleSizeHigh ?? 1.5...12.0
+            case .standard:
+                return configWithDisplayMode.particleSizeStandard ?? 2.0...9.0
+            case .draft:
+                return configWithDisplayMode.particleSizeLow ?? 3.0...7.0
+            }
+        }
+        
+        // Значения по умолчанию
         let defaultRanges: [QualityPreset: ClosedRange<Float>] = [
             .ultra: 0.8...15.0,
             .high: 1.5...12.0,
             .standard: 2.0...9.0,
             .draft: 3.0...7.0
         ]
-        
-        // Пробуем получить кастомные значения через Mirror
-        if let sizeRange: ClosedRange<Float> = getCustomProperty(named: "particleSize\(preset)", from: config) {
-            return sizeRange
-        }
-        
-        // Возвращаем значения по умолчанию
         return defaultRanges[preset] ?? 2.0...8.0
-    }
-    
-    /// Получение времени жизни частицы
-    private func getParticleLifetime(from config: ParticleGenerationConfig) -> Float {
-        if let lifetime: Float = getCustomProperty(named: "particleLifetime", from: config) {
-            return lifetime
-        }
-        return 5.0 // Значение по умолчанию
     }
     
     /// Получение скорости частицы
     private func getParticleSpeed(from config: ParticleGenerationConfig) -> Float {
-        if let speed: Float = getCustomProperty(named: "particleSpeed", from: config) {
-            return speed
+        if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
+            return configWithDisplayMode.particleSpeed
         }
-        return 1.0 // Значение по умолчанию
-    }
-    
-    /// Получение кастомного свойства через reflection
-    private func getCustomProperty<T>(named name: String, from config: ParticleGenerationConfig) -> T? {
-        let mirror = Mirror(reflecting: config)
-        for child in mirror.children {
-            if child.label == name {
-                return child.value as? T
-            }
-        }
-        return nil
-    }
-
-    // MARK: - ParticleAssemblerProtocol
-
-    func validateParticles(_ particles: [Particle]) -> Bool {
-        // Простая валидация: все частицы должны иметь валидные позиции и размеры
-        return particles.allSatisfy { particle in
-            particle.size > 0 &&
-            particle.position.x.isFinite && particle.position.y.isFinite && particle.position.z.isFinite
-        }
+        return 1.0
     }
 }

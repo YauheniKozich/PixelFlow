@@ -14,8 +14,8 @@ final class SimulationParamsUpdater {
     
     func fill(
         buffer: MTLBuffer,
-        state: SimulationStateMachine.State,
-        clock: SimulationClock,
+        state: SimulationState,
+        clock: SimulationClockProtocol,
         screenSize: CGSize,
         particleCount: Int,
         config: ParticleGenerationConfig
@@ -38,7 +38,7 @@ final class SimulationParamsUpdater {
 
         
         // === Параметры анимации и эффектов ===
-        p.collectionSpeed = 1.0  // Множитель скорости сбора по умолчанию
+        p.collectionSpeed = 5.0  // Множитель скорости сбора
         p.brightnessBoost = 0.8  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
         p.pixelSizeMode = 0      // 0 = плавный, 1 = пиксельно-точный (используется вершинным шейдером)
         p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные

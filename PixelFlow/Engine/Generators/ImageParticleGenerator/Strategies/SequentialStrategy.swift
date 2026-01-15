@@ -99,9 +99,8 @@ final class SequentialStrategy: GenerationStrategyProtocol {
         // - Ограниченных ресурсов
 
         let particleCount = config.targetParticleCount
-        let isSmallImage = config.screenSize.width * config.screenSize.height < 1000000 // < 1M pixels
 
-        return particleCount < 10000 || isSmallImage
+        return particleCount < 100000
     }
 
     // MARK: - Private Methods

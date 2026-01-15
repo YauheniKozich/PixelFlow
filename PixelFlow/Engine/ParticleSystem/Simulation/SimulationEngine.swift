@@ -14,12 +14,12 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     // MARK: - Properties
 
-    private(set) var state: SimulationState = .idle
-    var resetCounterCallback: (() -> Void)?
-
     private let stateMachine: ParticleSystemStateManagerProtocol
-    private let clock: SimulationClockProtocol
+    let clock: SimulationClockProtocol
     private let logger: LoggerProtocol
+
+    var state: SimulationState { stateMachine.currentState }
+    var resetCounterCallback: (() -> Void)?
 
     // MARK: - Initialization
 
@@ -53,6 +53,7 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     func startCollecting() {
         logger.info("Starting particle collection")
+        startCollectionTracking()
         stateMachine.transition(to: .collecting(progress: 0.0))
         resetCounterCallback?()
     }
@@ -64,6 +65,8 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     func updateProgress(_ progress: Float) {
         guard case .collecting = stateMachine.currentState else { return }
+
+        logger.debug("updateProgress called with progress: \(String(format: "%.3f", progress))")
 
         // Проверяем условия завершения сбора
         if shouldCompleteCollection(progress: progress) {
@@ -203,14 +206,4 @@ final class DefaultStateManager: ParticleSystemStateManagerProtocol {
     func transition(to state: SimulationState) {
         currentState = state
     }
-}
-
-// MARK: - SimulationState
-
-enum SimulationState {
-    case idle
-    case chaotic
-    case collecting(progress: Float)
-    case collected(frames: Int)
-    case lightningStorm
 }

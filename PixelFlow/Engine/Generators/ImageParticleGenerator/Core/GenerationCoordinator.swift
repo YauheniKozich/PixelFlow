@@ -65,6 +65,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
     func generateParticles(
         from image: CGImage,
         config: ParticleGenerationConfig,
+        screenSize: CGSize,
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle] {
 
@@ -92,20 +93,26 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
                 // Проверка кэша
                 let cacheKey = self.cacheKey(for: image, config: config)
                 if config.enableCaching,
-                   let cachedParticles: [Particle] = try await self.cacheManager.retrieve([Particle].self, for: cacheKey) {
+                   let cachedParticles: [Particle] = try self.cacheManager.retrieve([Particle].self, for: cacheKey) {
 
-                    await MainActor.run {
-                        progress(1.0, "Loaded from cache")
+                    // Проверяем, что количество частиц в кэше соответствует целевому
+                    if cachedParticles.count == config.targetParticleCount {
+                        await MainActor.run {
+                            progress(1.0, "Loaded from cache")
+                        }
+
+                        self.logger.info("Loaded \(cachedParticles.count) particles from cache")
+                        return cachedParticles
+                    } else {
+                        self.logger.debug("Cached particle count (\(cachedParticles.count)) doesn't match target (\(config.targetParticleCount)), regenerating")
                     }
-
-                    self.logger.info("Loaded \(cachedParticles.count) particles from cache")
-                    return cachedParticles
                 }
 
                 // Выполнение генерации через pipeline
                 let particles = try await self.pipeline.execute(
                     image: image,
-                    config: config
+                    config: config,
+                    screenSize: screenSize
                 ) { progressValue, stage in
                     self.stateQueue.async(flags: .barrier) {
                         self._currentProgress = progressValue
@@ -119,7 +126,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
 
                 // Кэширование результата
                 if config.enableCaching {
-                    try await self.cacheManager.cache(particles, for: cacheKey)
+                    try self.cacheManager.cache(particles, for: cacheKey)
                     self.logger.debug("Cached \(particles.count) particles")
                 }
 
@@ -185,11 +192,17 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
     private func cacheKey(for image: CGImage, config: ParticleGenerationConfig) -> String {
         let components = [
             "\(image.width)x\(image.height)",
+            "\(config.targetParticleCount)",
             "\(config.qualityPreset)",
             "\(config.samplingStrategy)",
             String(format: "%.2f", config.importanceThreshold)
         ]
         return "generation_" + components.joined(separator: "_")
+    }
+
+    func clearCache() {
+        logger.info("Clearing generation cache")
+        cacheManager.clear()
     }
 }
 

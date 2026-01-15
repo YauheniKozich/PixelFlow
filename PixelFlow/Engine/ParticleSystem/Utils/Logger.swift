@@ -13,6 +13,7 @@ enum LogLevel: String {
     case info = "INFO"
     case warning = "WARNING"
     case error = "ERROR"
+    case trace = "TRACE"
 }
 
 final class Logger {
@@ -51,6 +52,10 @@ final class Logger {
     func error(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
         log(message, level: .error, file: file, function: function, line: line)
     }
+    
+    func trace(_ message: String, file: String = #file, function: String = #function, line: Int = #line) {
+        log(message, level: .trace, file: file, function: function, line: line)
+    }
 }
 
 // MARK: - LoggerProtocol Conformance
@@ -70,5 +75,9 @@ extension Logger: LoggerProtocol {
 
     func debug(_ message: String) {
         log(message, level: .debug, file: #file, function: #function, line: #line)
+    }
+    
+    func trace(_ message: String) {
+        log(message, level: .trace, file: #file, function: #function, line: #line)
     }
 }

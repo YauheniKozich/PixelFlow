@@ -13,7 +13,6 @@ class ViewController: UIViewController {
     // MARK: - Свойства
     
     private var mtkView: MTKView!
-    private var displayLink: CADisplayLink?
     private let viewModel: ParticleViewModel
     private var qualityUpgradeLabel: UILabel?
     private var isFirstLayout = true
@@ -42,6 +41,10 @@ class ViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         mtkView.frame = view.bounds
+        // Установить drawableSize при layout
+        mtkView.drawableSize = mtkView.bounds.size
+        // Вызываем делегат чтобы обновить screenSize в MetalRenderer
+        mtkView.delegate?.mtkView(mtkView, drawableSizeWillChange: mtkView.bounds.size)
         
         // Инициализируем систему частиц только один раз после layout
         guard isFirstLayout else { return }
@@ -50,10 +53,10 @@ class ViewController: UIViewController {
             isFirstLayout = false
             
             Task { @MainActor in
-                if await viewModel.isConfigured { return }
+                if  viewModel.isConfigured { return }
                 
-                if await viewModel.createSystem(in: mtkView, screenSize: view.bounds.size) {
-                    setupDisplayLink()
+                if await viewModel.createSystem(in: mtkView) {
+                    startRenderingIfNeeded()
                     activateGestures()
                 }
             }
@@ -62,12 +65,12 @@ class ViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        startDisplayLinkIfNeeded()
+        startRenderingIfNeeded()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        displayLink?.isPaused = true
+        mtkView.isPaused = true
     }
     
     override var prefersStatusBarHidden: Bool {
@@ -116,19 +119,7 @@ class ViewController: UIViewController {
         doubleTap.require(toFail: tripleTap)
     }
     
-    private func setupDisplayLink() {
-        guard displayLink == nil else { return }
-        
-        displayLink = CADisplayLink(target: self, selector: #selector(renderLoop))
-        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
-        displayLink?.add(to: .main, forMode: .common)
-        displayLink?.isPaused = true // Начинаем приостановленным
-    }
     
-    @objc private func renderLoop() {
-        // Просто запрашиваем перерисовку
-        mtkView.setNeedsDisplay()
-    }
     
     // MARK: - Обработчики жестов
     
@@ -137,14 +128,14 @@ class ViewController: UIViewController {
         
         Task { @MainActor in
             viewModel.toggleSimulation()
-            startDisplayLinkIfNeeded()
+            startRenderingIfNeeded()
         }
     }
     
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
         
-        displayLink?.isPaused = true
+        mtkView.isPaused = true
         
         Task { @MainActor in
             viewModel.resetParticleSystem()
@@ -161,15 +152,12 @@ class ViewController: UIViewController {
         
         Task { @MainActor in
             viewModel.startLightningStorm()
-            startDisplayLinkIfNeeded()
+            startRenderingIfNeeded()
         }
     }
     
-    private func startDisplayLinkIfNeeded() {
-        if displayLink?.isPaused ?? true {
-            displayLink?.isPaused = false
-            mtkView.isPaused = false
-        }
+    private func startRenderingIfNeeded() {
+        mtkView.isPaused = false
     }
     
     // MARK: - Визуальная обратная связь
@@ -259,13 +247,9 @@ class ViewController: UIViewController {
     // MARK: - Деинициализация
     
     deinit {
-        displayLink?.invalidate()
-        displayLink = nil
         NotificationCenter.default.removeObserver(self)
         
         // Очищаем ресурсы при деините ViewController
-        Task { @MainActor in
-            viewModel.cleanupAllResources()
-        }
+        viewModel.cleanupAllResources()
     }
 }

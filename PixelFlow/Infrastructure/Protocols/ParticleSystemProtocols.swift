@@ -24,7 +24,7 @@ protocol ParticleSystemCoordinatorProtocol: AnyObject {
     func startLightningStorm()
 
     /// Обновляет конфигурацию системы частиц
-    func updateConfiguration(_ config: ParticleGenerationConfig)
+    func updateConfiguration(_ config: ParticleGenerationConfig) async
 
     /// Устанавливает размер экрана
     func configure(screenSize: CGSize)
@@ -71,6 +71,9 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
     /// Проверяет завершение сбора частиц
     func checkCollectionCompletion()
 
+    /// Кодирует render команды
+  //  func encodeRender(into commandBuffer: MTLCommandBuffer, pass: MTLRenderPassDescriptor)
+
     /// Очищает Metal ресурсы
     func cleanup()
 
@@ -97,6 +100,9 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
 
     /// Буфер счетчика собранных частиц
     var collectedCounterBuffer: MTLBuffer? { get }
+
+    /// Размер экрана для симуляции
+    var screenSize: CGSize { get }
 }
 
 /// Протокол для движка симуляции
@@ -121,6 +127,9 @@ protocol SimulationEngineProtocol: AnyObject {
 
     /// Активна ли симуляция
     var isActive: Bool { get }
+
+    /// Часы симуляции
+    var clock: SimulationClockProtocol { get }
 
     /// Колбек для сброса счетчика
     var resetCounterCallback: (() -> Void)? { get set }
@@ -167,6 +176,9 @@ protocol ParticleStorageProtocol: AnyObject {
     /// Заменяет частицы на высококачественные
     func recreateHighQualityParticles()
 
+    /// Обновляет частицы новыми данными
+    func updateParticles(_ particles: [Particle])
+
     /// Очищает хранилище
     func clear()
 }
@@ -174,10 +186,10 @@ protocol ParticleStorageProtocol: AnyObject {
 /// Протокол для генератора частиц
 protocol ParticleGeneratorProtocol: AnyObject {
     /// Генерирует частицы из изображения
-    func generateParticles(from image: CGImage, config: ParticleGenerationConfig) throws -> [Particle]
+    func generateParticles(from image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) async throws -> [Particle]
 
     /// Обновляет размер экрана
-    func updateScreenSize(_ size: CGSize)
+ //   func updateScreenSize(_ size: CGSize)
 
     /// Очищает кэш
     func clearCache()
@@ -244,4 +256,15 @@ protocol MemoryManagerProtocol: AnyObject {
 
     /// Текущее использование памяти
     var currentUsage: Int64 { get }
+}
+
+// MARK: - SimulationState
+
+/// Состояние симуляции частиц
+enum SimulationState {
+    case idle
+    case chaotic
+    case collecting(progress: Float)
+    case collected(frames: Int)
+    case lightningStorm
 }

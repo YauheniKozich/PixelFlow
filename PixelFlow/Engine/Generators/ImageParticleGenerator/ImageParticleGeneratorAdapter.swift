@@ -15,8 +15,8 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
     // MARK: - Properties
 
     let image: CGImage
-    var screenSize: CGSize = .zero
 
+    private let config: ParticleGenerationConfig
     private let coordinator: GenerationCoordinator
     private let logger: LoggerProtocol
 
@@ -28,6 +28,7 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
 
     init(image: CGImage, particleCount: Int, config: ParticleGenerationConfig) throws {
         self.image = image
+        self.config = config
         self.logger = Logger.shared
 
         // Создаем новый координатор генерации
@@ -38,16 +39,16 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
 
     // MARK: - ImageParticleGeneratorProtocol
 
+
+
     func generateParticles() throws -> [Particle] {
-        try generateParticles(screenSize: screenSize)
+        // For compatibility, use a default screenSize since screenSize is only in MetalRenderer
+        let screenSize = CGSize(width: 1920, height: 1080)
+        return try generateParticles(screenSize: screenSize)
     }
 
     func generateParticles(screenSize: CGSize) throws -> [Particle] {
         logger.debug("Generating particles via adapter for screen size: \(screenSize)")
-
-        // Настраиваем конфигурацию для совместимости
-        var config = ParticleGenerationConfig.standard
-        config.screenSize = screenSize
 
         // Выполняем генерацию через новый координатор с блокировкой
         var result: [Particle]?
@@ -60,6 +61,7 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
                 result = try await coordinator.generateParticles(
                     from: image,
                     config: config,
+                    screenSize: screenSize,
                     progress: { [self] progress, stage in
                         logger.debug("Generation progress: \(String(format: "%.1f%%", progress * 100)) - \(stage)")
                     }
@@ -84,10 +86,7 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
         return particles
     }
 
-    func updateScreenSize(_ size: CGSize) {
-        screenSize = size
-        logger.debug("Updated screen size to: \(size)")
-    }
+
 
     func clearCache() {
         // Очищаем кэш через координатор
@@ -101,7 +100,7 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
     func generateParticlesSync() async throws -> [Particle] {
         // Для совместимости с существующим кодом
         // В новой архитектуре все async, поэтому оборачиваем
-        return try await generateParticles()
+        return try generateParticles()
     }
 
     /// Генерация с прогрессом (расширенная совместимость)
@@ -109,12 +108,12 @@ final class ImageParticleGeneratorAdapter: ImageParticleGeneratorProtocol {
         _ progressCallback: @escaping (Float, String) -> Void
     ) async throws -> [Particle] {
 
-        var config = ParticleGenerationConfig.standard
-        config.screenSize = screenSize
+        let screenSize = CGSize(width: 1920, height: 1080) // Dummy screenSize
 
         return try await coordinator.generateParticles(
             from: image,
             config: config,
+            screenSize: screenSize,
             progress: progressCallback
         )
     }
@@ -202,7 +201,7 @@ struct GeneratorMigrationHelper {
         do {
             let start = CACurrentMediaTime()
             let legacyGenerator = try ImageParticleGenerator(image: image, particleCount: particleCount, config: config)
-            let particles = try legacyGenerator.generateParticles()
+            let particles = try legacyGenerator.generateParticles(screenSize: CGSize(width: 1920, height: 1080))
             legacyTime = CACurrentMediaTime() - start
             legacyParticles = particles.count
         } catch {
@@ -213,7 +212,7 @@ struct GeneratorMigrationHelper {
         do {
             let start = CACurrentMediaTime()
             let newGenerator = try ImageParticleGeneratorAdapter(image: image, particleCount: particleCount, config: config)
-            let particles = try await newGenerator.generateParticles()
+            let particles = try newGenerator.generateParticles(screenSize: CGSize(width: 1920, height: 1080)) // Use dummy screenSize
             newTime = CACurrentMediaTime() - start
             newParticles = particles.count
         } catch {

@@ -18,7 +18,6 @@ final class GenerationContext: GenerationContextProtocol {
 
     private var _image: CGImage?
     private var _config: ParticleGenerationConfig?
-    private var _screenSize: CGSize = .zero
     private var _targetParticleCount: Int = 0
     private var _isCancelled: Bool = false
     private var _analysis: ImageAnalysis?
@@ -46,11 +45,6 @@ final class GenerationContext: GenerationContextProtocol {
     var config: ParticleGenerationConfig? {
         get { stateQueue.sync { _config } }
         set { stateQueue.async(flags: .barrier) { self._config = newValue } }
-    }
-
-    var screenSize: CGSize {
-        get { stateQueue.sync { _screenSize } }
-        set { stateQueue.async(flags: .barrier) { self._screenSize = newValue } }
     }
 
     var targetParticleCount: Int {
@@ -92,7 +86,6 @@ final class GenerationContext: GenerationContextProtocol {
         stateQueue.async(flags: .barrier) {
             self._image = nil
             self._config = nil
-            self._screenSize = .zero
             self._targetParticleCount = 0
             self._isCancelled = false
             self._analysis = nil
