@@ -32,7 +32,7 @@ final class ParticleViewModel {
 
     private let logger: LoggerProtocol
     private let imageLoader: ImageLoaderProtocol
-    private var currentConfig = ParticleGenerationConfig.standard
+    private var currentConfig = ParticleGenerationConfig.draft
     private var qualityTask: Task<Void, Never>?
     private var memoryWarningObserver: NSObjectProtocol?
     

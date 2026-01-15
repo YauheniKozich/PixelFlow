@@ -258,6 +258,17 @@ protocol MemoryManagerProtocol: AnyObject {
     var currentUsage: Int64 { get }
 }
 
+// MARK: - Supporting Protocols (moved from SimulationEngine.swift)
+
+protocol SimulationClockProtocol {
+    var time: Float { get }
+    var deltaTime: Float { get }
+
+    func update()
+    func update(with deltaTime: Float)
+    func reset()
+}
+
 // MARK: - SimulationState
 
 /// Состояние симуляции частиц

@@ -1,0 +1,12 @@
+{
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/DIContainerTests.swift" : {
+    "abi-baseline-json" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.abi.json",
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.dia",
+    "objc-header" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-Swift.h",
+    "swiftdoc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.swiftdoc",
+    "swiftmodule" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.swiftmodule",
+    "swiftsourceinfo" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.swiftsourceinfo"
+  }
+}

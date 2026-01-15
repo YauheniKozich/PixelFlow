@@ -57,6 +57,11 @@ PixelFlow/
 │   ├── AppDelegate.swift      # Делегат приложения
 │   └── SceneDelegate.swift    # Делегат сцены
 │
+├── 📁 Infrastructure/         # 🏗️ Инфраструктурные компоненты
+│   ├── DI/                    # Внедрение зависимостей
+│   ├── Protocols/             # Общие протоколы
+│   └── Services/              # Сервисы приложения
+│
 ├── 📁 Resources/              # 🎯 Ресурсы и ассеты
 │   ├── Assets.xcassets/       # Иконки и изображения
 │   └── Base.lproj/           # Storyboards и локализация
@@ -115,8 +120,8 @@ PixelFlow/
 ## 📚 Документация
 
 ### 🎯 Основные руководства
-- **[Engine README](PixelFlow/Engine/Engine-README.md)** - Архитектура и компоненты Engine
-- **[ImageParticleGenerator](PixelFlow/Engine/Generators/ImageParticleGenerator/ImageParticleGenerator-README.md)** - Детальное руководство по генератору частиц
+- **[Engine README](PixelFlow/Docs/Engine-README.md)** - Архитектура и компоненты Engine
+- **[ImageParticleGenerator](PixelFlow/Docs/ImageParticleGenerator-README.md)** - Детальное руководство по генератору частиц
 - **[Shaders Guide](PixelFlow/Docs/Shaders-README.md)** - Структура Metal шейдеров
 - **[Shader Usage](PixelFlow/Docs/ShaderUsageGuide.md)** - Практическое использование шейдеров
 
@@ -125,12 +130,12 @@ PixelFlow/
 - **[Image Generator](PixelFlow/Docs/ImageGenerator-README.md)** - Генерация частиц из изображений
 
 ### 🏗️ Архитектурная документация
-- **[Core Components](PixelFlow/Engine/Generators/ImageParticleGenerator/Core/Core-README.md)** - Ядро генератора
-- **[Analysis Module](PixelFlow/Engine/Generators/ImageParticleGenerator/Analysis/Analysis-README.md)** - Анализ изображений
-- **[Sampling Strategies](PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Sampling-README.md)** - Стратегии сэмплинга
-- **[Assembly Process](PixelFlow/Engine/Generators/ImageParticleGenerator/Assembly/Assembly-README.md)** - Сборка частиц
-- **[Configuration](PixelFlow/Engine/Generators/ImageParticleGenerator/Configuration/Configuration-README.md)** - Настройки системы
-- **[Caching](PixelFlow/Engine/Generators/ImageParticleGenerator/Caching/Caching-README.md)** - Система кэширования
+- **[Core Components](PixelFlow/Docs/Core-README.md)** - Ядро генератора
+- **[Analysis Module](PixelFlow/Docs/Analysis-README.md)** - Анализ изображений
+- **[Sampling Strategies](PixelFlow/Docs/Sampling-README.md)** - Стратегии сэмплинга
+- **[Generation Strategies](PixelFlow/Docs/Strategies-README.md)** - Стратегии генерации
+- **[Assembly Process](PixelFlow/Docs/Assembly-README.md)** - Сборка частиц
+- **[Caching](PixelFlow/Docs/Caching-README.md)** - Система кэширования
 
 ## 🛠️ Системные требования
 

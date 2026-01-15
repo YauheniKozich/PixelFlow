@@ -97,18 +97,3 @@ final class ImageLoader: ImageLoaderProtocol {
     }
 }
 
-// MARK: - Errors
-
-enum ImageLoaderError: Error {
-    case invalidImageData
-    case networkError(Error)
-
-    var localizedDescription: String {
-        switch self {
-        case .invalidImageData:
-            return "Невалидные данные изображения"
-        case .networkError(let error):
-            return "Ошибка сети: \(error.localizedDescription)"
-        }
-    }
-}

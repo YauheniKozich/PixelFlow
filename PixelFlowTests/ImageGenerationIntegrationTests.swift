@@ -6,21 +6,23 @@
 //  Интеграционные тесты для новой системы генерации частиц
 //
 
-import XCTest
+import Testing
 import CoreGraphics
+import Foundation
 @testable import PixelFlow
 
-final class ImageGenerationIntegrationTests: XCTestCase {
+@MainActor
+class ImageGenerationIntegrationTests {
 
     private var container: DIContainer!
     private var coordinator: GenerationCoordinator!
     private var context: GenerationContext!
+    private var config: ParticleGenerationConfig!
 
-    override func setUp() {
-        super.setUp()
-
+    init() {
         // Настройка DI контейнера для тестов
         container = DIContainer()
+        config = ParticleGenerationConfig.standard
 
         // Регистрация mock зависимостей
         setupMockDependencies()
@@ -30,16 +32,9 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         context = GenerationContext()
     }
 
-    override func tearDown() {
-        coordinator.cancelGeneration()
-        container.reset()
-        container = nil
-        coordinator = nil
-        context = nil
-        super.tearDown()
-    }
 
-    func testFullGenerationPipeline() async throws {
+
+    @Test func testFullGenerationPipeline() async throws {
         // Given
         let image = createTestImage()
         let config = ParticleGenerationConfig.draft
@@ -48,31 +43,33 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // When
         let particles = try await coordinator.generateParticles(
             from: image,
-            config: config
+            config: config,
+            screenSize: CGSize(width: 1920, height: 1080)
         ) { progress, stage in
             progressUpdates.append((progress, stage))
         }
 
         // Then
-        XCTAssertFalse(particles.isEmpty)
-        XCTAssertGreaterThan(particles.count, 0)
-        XCTAssertLessThanOrEqual(particles.count, 10000) // draft limit
+        #expect(!particles.isEmpty)
+        #expect(particles.count > 0)
+        #expect(particles.count <= 10000) // draft limit
 
         // Проверяем прогресс
-        XCTAssertFalse(progressUpdates.isEmpty)
-        XCTAssertEqual(progressUpdates.last?.0, 1.0) // Завершен
-        XCTAssertEqual(progressUpdates.last?.1, "Completed")
+        #expect(!progressUpdates.isEmpty)
+        #expect(progressUpdates.last?.0 == 1.0) // Завершен
+        #expect(progressUpdates.last?.1 == "Completed")
     }
 
-    func testGenerationCancellation() async {
+    @Test func testGenerationCancellation() async {
         // Given
         let image = createTestImage()
         let config = ParticleGenerationConfig.high // Более долгая генерация
 
         // When
-        async let generationTask: () = coordinator.generateParticles(
+        async let generationTask = coordinator.generateParticles(
             from: image,
-            config: config
+            config: config,
+            screenSize: CGSize(width: 1920, height: 1080)
         ) { _, _ in }
 
         // Даем небольшую задержку для старта генерации
@@ -83,14 +80,14 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // Then
         do {
             let _ = try await generationTask
-            XCTFail("Generation should have been cancelled")
+            Issue.record("Generation should have been cancelled")
         } catch {
             // Ожидаем отмену
-            XCTAssertTrue(coordinator.currentProgress < 1.0 || !coordinator.isGenerating)
+            #expect(coordinator.currentProgress < 1.0 || !coordinator.isGenerating)
         }
     }
 
-    func testGenerationProgressUpdates() async throws {
+    @Test func testGenerationProgressUpdates() async throws {
         // Given
         let image = createTestImage()
         let config = ParticleGenerationConfig.draft
@@ -99,23 +96,24 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // When
         let _ = try await coordinator.generateParticles(
             from: image,
-            config: config
+            config: config,
+            screenSize: CGSize(width: 1920, height: 1080)
         ) { progress, _ in
             progressValues.append(progress)
         }
 
         // Then
-        XCTAssertFalse(progressValues.isEmpty)
-        XCTAssertEqual(progressValues.first, 0.0) // Начинается с 0
-        XCTAssertEqual(progressValues.last, 1.0)  // Заканчивается 1.0
+        #expect(!progressValues.isEmpty)
+        #expect(progressValues.first == 0.0) // Начинается с 0
+        #expect(progressValues.last == 1.0)  // Заканчивается 1.0
 
         // Проверяем монотонность прогресса
         for i in 1..<progressValues.count {
-            XCTAssertGreaterThanOrEqual(progressValues[i], progressValues[i-1])
+            #expect(progressValues[i] >= progressValues[i-1])
         }
     }
 
-    func testMultipleConcurrentGenerations() async throws {
+    @Test func testMultipleConcurrentGenerations() async throws {
         // Given
         let image1 = createTestImage()
         let image2 = createTestImage()
@@ -128,12 +126,12 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         let (result1, result2) = try await (particles1, particles2)
 
         // Then
-        XCTAssertFalse(result1.isEmpty)
-        XCTAssertFalse(result2.isEmpty)
-        XCTAssertNotEqual(result1.count, result2.count) // Разные изображения дают разные результаты
+        #expect(!result1.isEmpty)
+        #expect(!result2.isEmpty)
+        #expect(result1.count != result2.count) // Разные изображения дают разные результаты
     }
 
-    func testGenerationContextState() async throws {
+    @Test func testGenerationContextState() async throws {
         // Given
         let image = createTestImage()
         let config = ParticleGenerationConfig.standard
@@ -141,21 +139,22 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // When
         let _ = try await coordinator.generateParticles(
             from: image,
-            config: config
+            config: config,
+            screenSize: CGSize(width: 1920, height: 1080)
         ) { _, _ in }
 
         // Then
         // Контекст должен быть очищен после генерации
-        XCTAssertNil(context.image)
-        XCTAssertNil(context.config)
-        XCTAssertNil(context.analysis)
-        XCTAssertTrue(context.samples.isEmpty)
-        XCTAssertTrue(context.particles.isEmpty)
-        XCTAssertEqual(context.progress, 0.0)
-        XCTAssertEqual(context.currentStage, "Idle")
+        #expect(context.image == nil)
+        #expect(context.config == nil)
+        #expect(context.analysis == nil)
+        #expect(context.samples.isEmpty)
+        #expect(context.particles.isEmpty)
+        #expect(context.progress == 0.0)
+        #expect(context.currentStage == "Idle")
     }
 
-    func testGenerationWithDifferentConfigs() async throws {
+    @Test func testGenerationWithDifferentConfigs() async throws {
         // Given
         let image = createTestImage()
         let configs = [
@@ -172,13 +171,13 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         }
 
         // Then
-        XCTAssertEqual(results.count, 3)
+        #expect(results.count == 3)
         // Проверяем что разные конфигурации дают разные количества частиц
-        XCTAssertNotEqual(results[0], results[1])
-        XCTAssertNotEqual(results[1], results[2])
+        #expect(results[0] != results[1])
+        #expect(results[1] != results[2])
     }
 
-    func testErrorHandlingInvalidConfig() async {
+    @Test func testErrorHandlingInvalidConfig() async {
         // Given
         let image = createTestImage()
         var config = ParticleGenerationConfig.draft
@@ -187,14 +186,14 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // When/Then
         do {
             let _ = try await coordinator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
-            XCTFail("Should have thrown error for invalid config")
+            Issue.record("Should have thrown error for invalid config")
         } catch {
             // Ожидаем ошибку валидации
-            XCTAssertNotNil(error)
+            #expect(error != nil)
         }
     }
 
-    func testMemoryManagement() async throws {
+    @Test func testMemoryManagement() async throws {
         // Given
         let image = createTestImage()
         let config = ParticleGenerationConfig.draft
@@ -203,11 +202,11 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         let particles = try await coordinator.generateParticles(from: image, config: config, screenSize: CGSize(width: 1920, height: 1080)) { _, _ in }
 
         // Then
-        XCTAssertFalse(particles.isEmpty)
+        #expect(!particles.isEmpty)
 
         // Проверяем что память отслеживается
         let memoryManager: MemoryManagerProtocol? = container.resolve(MemoryManagerProtocol.self)
-        XCTAssertGreaterThan(memoryManager?.currentUsage ?? 0, 0)
+        #expect(memoryManager?.currentUsage ?? 0 > 0)
     }
 
     // MARK: - Helper Methods
@@ -216,9 +215,15 @@ final class ImageGenerationIntegrationTests: XCTestCase {
         // Регистрация реальных компонентов для интеграционных тестов
         // (не mock'и, а реальные реализации для проверки интеграции)
 
-        container.register(DefaultImageAnalyzer(), for: ImageAnalyzerProtocol.self)
-        container.register(DefaultPixelSampler(), for: PixelSamplerProtocol.self)
-        container.register(DefaultParticleAssembler(), for: ParticleAssemblerProtocol.self)
+        let performanceParams = PerformanceParams(
+            maxConcurrentOperations: ProcessInfo.processInfo.activeProcessorCount,
+            useSIMD: true,
+            enableCaching: true,
+            cacheSizeLimit: 100
+        )
+        container.register(DefaultImageAnalyzer(config: performanceParams), for: ImageAnalyzerProtocol.self)
+        container.register(DefaultPixelSampler(config: config), for: PixelSamplerProtocol.self)
+        container.register(DefaultParticleAssembler(config: config), for: ParticleAssemblerProtocol.self)
         container.register(DefaultCacheManager(), for: CacheManagerProtocol.self)
         container.register(OperationManager(), for: OperationManagerProtocol.self)
         container.register(MemoryManager(), for: MemoryManagerProtocol.self)

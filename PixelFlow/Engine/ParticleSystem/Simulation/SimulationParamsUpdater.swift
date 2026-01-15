@@ -10,15 +10,14 @@ import MetalKit
 
 final class SimulationParamsUpdater {
     
-    weak var particleSystem: ParticleSystem?
-    
     func fill(
         buffer: MTLBuffer,
         state: SimulationState,
         clock: SimulationClockProtocol,
         screenSize: CGSize,
         particleCount: Int,
-        config: ParticleGenerationConfig
+        config: ParticleGenerationConfig,
+        enableIdleChaotic: Bool = false
     ) {
         var p = SimulationParams()
         
@@ -44,10 +43,10 @@ final class SimulationParamsUpdater {
         p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
         
         // === ПОДДЕРЖКА ХАОТИЧНОГО ДВИЖЕНИЯ В IDLE ===
-        if case .idle = state {
-            p.idleChaoticMotion = (particleSystem?.enableIdleChaotic ?? false) ? 1 : 0
+        if case .idle = state, enableIdleChaotic {
+            p.idleChaoticMotion = 1 // Enabled
         } else {
-            p.idleChaoticMotion = 0
+            p.idleChaoticMotion = 0 // Disabled
         }
         
         buffer.contents()

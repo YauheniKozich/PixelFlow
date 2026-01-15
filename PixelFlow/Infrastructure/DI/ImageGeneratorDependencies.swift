@@ -162,32 +162,32 @@ final class ConfigurationValidator: ConfigurationValidatorProtocol {
 
     func validate(_ config: ParticleGenerationConfig) throws {
         guard config.targetParticleCount >= minParticleCount else {
-            throw ValidationError.invalidParticleCount("Too few particles: \(config.targetParticleCount)")
+            throw ValidationError.validationInvalidParticleCount("Too few particles: \(config.targetParticleCount)")
         }
 
         guard config.targetParticleCount <= maxParticleCount else {
-            throw ValidationError.invalidParticleCount("Too many particles: \(config.targetParticleCount)")
+            throw ValidationError.validationInvalidParticleCount("Too many particles: \(config.targetParticleCount)")
         }
     }
 
     func validate(image: CGImage) throws {
         guard image.width > 0 && image.height > 0 else {
-            throw ValidationError.invalidImage("Image has zero size")
+            throw ValidationError.validationInvalidImage("Image has zero size")
         }
 
         guard image.width <= Int(maxImageSize.width) &&
               image.height <= Int(maxImageSize.height) else {
-            throw ValidationError.invalidImage("Image too large: \(image.width)x\(image.height)")
+            throw ValidationError.validationInvalidImage("Image too large: \(image.width)x\(image.height)")
         }
     }
 
     func validate(particleCount: Int) throws {
         guard particleCount >= minParticleCount else {
-            throw ValidationError.invalidParticleCount("Too few particles")
+            throw ValidationError.validationInvalidParticleCount("Too few particles")
         }
 
         guard particleCount <= maxParticleCount else {
-            throw ValidationError.invalidParticleCount("Too many particles")
+            throw ValidationError.validationInvalidParticleCount("Too many particles")
         }
     }
 
@@ -249,18 +249,4 @@ final class ResourceTracker: ResourceTrackerProtocol {
     }
 }
 
-// MARK: - Errors
 
-enum ValidationError: Error {
-    case invalidParticleCount(String)
-    case invalidScreenSize(String)
-    case invalidImage(String)
-
-    var localizedDescription: String {
-        switch self {
-        case .invalidParticleCount(let message): return "Particle count validation failed: \(message)"
-        case .invalidScreenSize(let message): return "Screen size validation failed: \(message)"
-        case .invalidImage(let message): return "Image validation failed: \(message)"
-        }
-    }
-}

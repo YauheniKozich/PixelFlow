@@ -42,10 +42,18 @@ final class ParticleSystemDependencies {
     }
 
     private static func registerSimulationComponents(in container: DIContainer) {
-        container.register(DefaultStateManager(), for: ParticleSystemStateManagerProtocol.self)
+        container.register(DefaultStateManager(), for: StateManagerProtocol.self)
         container.register(DefaultSimulationClock(), for: SimulationClockProtocol.self)
-        let simulationEngine = SimulationEngine()
-        Logger.shared.info("SimulationEngine created once in DI")
+
+        // Resolve dependencies for SimulationEngine
+        guard let stateManager = resolve(StateManagerProtocol.self),
+              let clock = resolve(SimulationClockProtocol.self),
+              let logger = resolve(LoggerProtocol.self) else {
+            fatalError("Failed to resolve simulation dependencies")
+        }
+
+        let simulationEngine = SimulationEngine(stateManager: stateManager, clock: clock, logger: logger)
+        Logger.shared.info("SimulationEngine created with resolved dependencies")
         container.register(simulationEngine, for: SimulationEngineProtocol.self)
         container.register(simulationEngine, for: PhysicsEngineProtocol.self)
         Logger.shared.info("Same SimulationEngine registered for both protocols")

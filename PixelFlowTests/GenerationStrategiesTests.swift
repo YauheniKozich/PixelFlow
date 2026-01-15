@@ -6,100 +6,101 @@
 //  Unit тесты для стратегий генерации
 //
 
-import XCTest
+import Testing
 @testable import PixelFlow
 
-final class GenerationStrategiesTests: XCTestCase {
+struct GenerationStrategiesTests {
 
     // MARK: - SequentialStrategy Tests
 
-    func testSequentialStrategyExecutionOrder() {
+    @Test func testSequentialStrategyExecutionOrder() {
         let strategy = SequentialStrategy()
 
-        XCTAssertEqual(strategy.executionOrder, [.analysis, .sampling, .assembly, .caching])
+        #expect(strategy.executionOrder == [.analysis, .sampling, .assembly, .caching])
     }
 
-    func testSequentialStrategyCannotParallelize() {
+    @Test func testSequentialStrategyCannotParallelize() {
         let strategy = SequentialStrategy()
 
-        XCTAssertFalse(strategy.canParallelize(.analysis))
-        XCTAssertFalse(strategy.canParallelize(.sampling))
-        XCTAssertFalse(strategy.canParallelize(.assembly))
-        XCTAssertFalse(strategy.canParallelize(.caching))
+        #expect(!strategy.canParallelize(.analysis))
+        #expect(!strategy.canParallelize(.sampling))
+        #expect(!strategy.canParallelize(.assembly))
+        #expect(!strategy.canParallelize(.caching))
     }
 
-    func testSequentialStrategyDependencies() {
+    @Test func testSequentialStrategyDependencies() {
         let strategy = SequentialStrategy()
 
-        XCTAssertEqual(strategy.dependencies(for: .analysis), [])
-        XCTAssertEqual(strategy.dependencies(for: .sampling), [.analysis])
-        XCTAssertEqual(strategy.dependencies(for: .assembly), [.sampling])
-        XCTAssertEqual(strategy.dependencies(for: .caching), [.assembly])
+        #expect(strategy.dependencies(for: .analysis) == [])
+        #expect(strategy.dependencies(for: .sampling) == [.analysis])
+        #expect(strategy.dependencies(for: .assembly) == [.sampling])
+        #expect(strategy.dependencies(for: .caching) == [.assembly])
     }
 
-    func testSequentialStrategyPriorities() {
+    @Test func testSequentialStrategyPriorities() {
         let strategy = SequentialStrategy()
 
-        XCTAssertEqual(strategy.priority(for: .analysis), .veryHigh)
-        XCTAssertEqual(strategy.priority(for: .sampling), .high)
-        XCTAssertEqual(strategy.priority(for: .assembly), .normal)
-        XCTAssertEqual(strategy.priority(for: .caching), .low)
+        #expect(strategy.priority(for: .analysis) == .veryHigh)
+        #expect(strategy.priority(for: .sampling) == .high)
+        #expect(strategy.priority(for: .assembly) == .normal)
+        #expect(strategy.priority(for: .caching) == .low)
     }
 
-    func testSequentialStrategyValidation() {
+    @Test func testSequentialStrategyValidation() throws {
         let strategy = SequentialStrategy()
         let config = ParticleGenerationConfig.standard
 
-        XCTAssertNoThrow(try strategy.validate(config: config))
+        #expect(throws: Never.self) {
+            try strategy.validate(config: config)
+        }
     }
 
-    func testSequentialStrategyOptimalForSmallConfigs() {
+    @Test func testSequentialStrategyOptimalForSmallConfigs() {
         let strategy = SequentialStrategy()
 
         // Маленькая конфигурация - должна быть оптимальной
         let smallConfig = ParticleGenerationConfig.draft
-        XCTAssertTrue(strategy.isOptimal(for: smallConfig))
+        #expect(strategy.isOptimal(for: smallConfig))
 
         // Большая конфигурация - может быть не оптимальной
         var largeConfig = ParticleGenerationConfig.ultra
         largeConfig.targetParticleCount = 50000
-        XCTAssertFalse(strategy.isOptimal(for: largeConfig))
+        #expect(!strategy.isOptimal(for: largeConfig))
     }
 
     // MARK: - ParallelStrategy Tests
 
-    func testParallelStrategyCanParallelizeAnalysisAndSampling() {
+    @Test func testParallelStrategyCanParallelizeAnalysisAndSampling() {
         let strategy = ParallelStrategy(maxConcurrentOperations: 4)
 
-        XCTAssertTrue(strategy.canParallelize(.analysis))
-        XCTAssertTrue(strategy.canParallelize(.sampling))
-        XCTAssertFalse(strategy.canParallelize(.assembly))
-        XCTAssertFalse(strategy.canParallelize(.caching))
+        #expect(strategy.canParallelize(.analysis))
+        #expect(strategy.canParallelize(.sampling))
+        #expect(!strategy.canParallelize(.assembly))
+        #expect(!strategy.canParallelize(.caching))
     }
 
-    func testParallelStrategyValidationRequiresConcurrency() {
+    @Test func testParallelStrategyValidationRequiresConcurrency() throws {
         let strategy = ParallelStrategy(maxConcurrentOperations: 1)
         let config = ParticleGenerationConfig.standard
 
-        XCTAssertThrowsError(try strategy.validate(config: config)) { error in
-            XCTAssertEqual(error as? ParallelStrategyError, .insufficientConcurrency)
-        }
+        let error = try #require(try? strategy.validate(config: config)) as? ParallelStrategyError
+        #expect(error == .insufficientConcurrency)
     }
 
-    func testParallelStrategyOptimalForLargeConfigs() {
+    @Test func testParallelStrategyOptimalForLargeConfigs() {
         let strategy = ParallelStrategy(maxConcurrentOperations: 4)
 
         // Большая конфигурация - должна быть оптимальной
         var largeConfig = ParticleGenerationConfig.ultra
         largeConfig.targetParticleCount = 50000
-        XCTAssertTrue(strategy.isOptimal(for: largeConfig))
+        #expect(strategy.isOptimal(for: largeConfig))
 
         // Маленькая конфигурация - может быть не оптимальной
         let smallConfig = ParticleGenerationConfig.draft
-        XCTAssertFalse(strategy.isOptimal(for: smallConfig))
+        #expect(!strategy.isOptimal(for: smallConfig))
     }
 
-    func testParallelStrategyEstimatesFasterTime() {
+    @Test func testParallelStrategyEstimatesFasterTime() {
         let sequential = SequentialStrategy()
         let parallel = ParallelStrategy(maxConcurrentOperations: 4)
 
@@ -108,12 +109,12 @@ final class GenerationStrategiesTests: XCTestCase {
         let sequentialTime = sequential.estimateExecutionTime(for: config)
         let parallelTime = parallel.estimateExecutionTime(for: config)
 
-        XCTAssertLessThan(parallelTime, sequentialTime)
+        #expect(parallelTime < sequentialTime)
     }
 
     // MARK: - AdaptiveStrategy Tests
 
-    func testAdaptiveStrategyAlwaysOptimal() {
+    @Test func testAdaptiveStrategyAlwaysOptimal() {
         let strategy = AdaptiveStrategy()
 
         let configs = [
@@ -123,11 +124,11 @@ final class GenerationStrategiesTests: XCTestCase {
         ]
 
         for config in configs {
-            XCTAssertTrue(strategy.isOptimal(for: config))
+            #expect(strategy.isOptimal(for: config))
         }
     }
 
-    func testAdaptiveStrategyAdaptsToWorkload() {
+    @Test func testAdaptiveStrategyAdaptsToWorkload() {
         let strategy = AdaptiveStrategy(availableConcurrency: 4)
 
         // Маленький workload
@@ -136,9 +137,9 @@ final class GenerationStrategiesTests: XCTestCase {
 
         switch smallPlan {
         case .sequential:
-            XCTAssert(true, "Small workload should use sequential")
+            #expect(true, "Small workload should use sequential")
         default:
-            XCTFail("Small workload should use sequential strategy")
+            Issue.record("Small workload should use sequential strategy")
         }
 
         // Большой workload
@@ -148,34 +149,34 @@ final class GenerationStrategiesTests: XCTestCase {
 
         switch largePlan {
         case .parallelFull, .parallelLimited:
-            XCTAssert(true, "Large workload should use parallel")
+            #expect(true, "Large workload should use parallel")
         case .sequential:
-            XCTAssert(true, "Large workload may fallback to sequential if no concurrency")
+            #expect(true, "Large workload may fallback to sequential if no concurrency")
         }
     }
 
-    func testAdaptiveStrategyEstimatesTime() {
+    @Test func testAdaptiveStrategyEstimatesTime() {
         let strategy = AdaptiveStrategy()
 
         let config = ParticleGenerationConfig.standard
         let estimatedTime = strategy.estimateExecutionTime(for: config)
 
-        XCTAssertGreaterThan(estimatedTime, 0)
-        XCTAssertLessThan(estimatedTime, 10) // Reasonable upper bound
+        #expect(estimatedTime > 0)
+        #expect(estimatedTime < 10) // Reasonable upper bound
     }
 
     // MARK: - DeviceCapabilities Tests
 
-    func testDeviceCapabilitiesDetection() {
+    @Test func testDeviceCapabilitiesDetection() {
         let capabilities = DeviceCapabilities.current
 
-        XCTAssertGreaterThan(capabilities.coreCount, 0)
-        XCTAssertNotNil(capabilities.performanceClass)
+        #expect(capabilities.coreCount > 0)
+        #expect(capabilities.performanceClass != nil)
     }
 
     // MARK: - Strategy Comparison Tests
 
-    func testStrategiesHaveSameExecutionOrder() {
+    @Test func testStrategiesHaveSameExecutionOrder() {
         let strategies: [GenerationStrategyProtocol] = [
             SequentialStrategy(),
             ParallelStrategy(),
@@ -185,11 +186,11 @@ final class GenerationStrategiesTests: XCTestCase {
         let expectedOrder: [GenerationStage] = [.analysis, .sampling, .assembly, .caching]
 
         for strategy in strategies {
-            XCTAssertEqual(strategy.executionOrder, expectedOrder)
+            #expect(strategy.executionOrder == expectedOrder)
         }
     }
 
-    func testAllStrategiesHaveValidDependencies() {
+    @Test func testAllStrategiesHaveValidDependencies() {
         let strategies: [GenerationStrategyProtocol] = [
             SequentialStrategy(),
             ParallelStrategy(),
@@ -203,7 +204,7 @@ final class GenerationStrategiesTests: XCTestCase {
                 let deps = strategy.dependencies(for: stage)
                 // Зависимости должны быть предыдущими этапами
                 for dep in deps {
-                    XCTAssertTrue(stages.firstIndex(of: dep)! < stages.firstIndex(of: stage)!)
+                    #expect(stages.firstIndex(of: dep)! < stages.firstIndex(of: stage)!)
                 }
             }
         }
@@ -211,18 +212,18 @@ final class GenerationStrategiesTests: XCTestCase {
 
     // MARK: - Performance Tests
 
-    func testStrategySelectionPerformance() {
+    @Test func testStrategySelectionPerformance() {
         let strategy = AdaptiveStrategy()
 
-        measure {
-            for _ in 0..<100 {
-                let config = ParticleGenerationConfig.standard
-                _ = strategy.adaptToConfig(config)
-            }
+        // Simple performance check without timing
+        for _ in 0..<100 {
+            let config = ParticleGenerationConfig.standard
+            _ = strategy.adaptToConfig(config)
         }
+        #expect(true) // Just ensure it doesn't crash
     }
 
-    func testTimeEstimationPerformance() {
+    @Test func testTimeEstimationPerformance() {
         let strategies: [GenerationStrategyProtocol] = [
             SequentialStrategy(),
             ParallelStrategy(),
@@ -231,12 +232,12 @@ final class GenerationStrategiesTests: XCTestCase {
 
         let config = ParticleGenerationConfig.standard
 
-        measure {
-            for strategy in strategies {
-                for _ in 0..<100 {
-                    _ = strategy.estimateExecutionTime(for: config)
-                }
+        // Simple performance check without timing
+        for strategy in strategies {
+            for _ in 0..<100 {
+                _ = strategy.estimateExecutionTime(for: config)
             }
         }
+        #expect(true) // Just ensure it doesn't crash
     }
 }

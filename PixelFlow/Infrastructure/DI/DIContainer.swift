@@ -8,18 +8,6 @@
 
 import Foundation
 
-/// Протокол для контейнера зависимостей
-protocol DIContainerProtocol {
-    /// Регистрирует сервис в контейнере
-    func register<T>(_ service: T, for type: T.Type, name: String?)
-
-    /// Разрешает зависимость из контейнера
-    func resolve<T>(_ type: T.Type, name: String?) -> T?
-
-    /// Проверяет зарегистрирована ли зависимость
-    func isRegistered<T>(_ type: T.Type, name: String?) -> Bool
-}
-
 /// Реализация контейнера зависимостей
 final class DIContainer: DIContainerProtocol {
     private var services = [ServiceKey: Any]()

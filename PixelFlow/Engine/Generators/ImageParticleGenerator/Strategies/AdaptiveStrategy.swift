@@ -210,9 +210,6 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
         case .adaptive: complexity *= 1.3
         case .hybrid: complexity *= 1.5
         case .advanced: complexity *= 1.8
-        case .importance: complexity *= 1.5
-        case .adaptive: complexity *= 2.0
-        case .hybrid: complexity *= 1.8
         }
 
         // Quality preset impact

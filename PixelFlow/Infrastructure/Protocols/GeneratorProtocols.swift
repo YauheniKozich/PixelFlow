@@ -8,6 +8,7 @@
 
 import CoreGraphics
 import Foundation
+import simd
 
 /// Протокол для сервиса генерации частиц
 protocol ParticleGenerationServiceProtocol {
@@ -367,4 +368,51 @@ protocol ConfigurationValidatorProtocol {
 
     /// Минимально допустимое количество частиц
     var minParticleCount: Int { get }
+}
+
+// MARK: - Core Protocols (moved from Core/Protocols.swift)
+
+/// Протокол для анализа изображений (внутренний)
+protocol ImageAnalyzer {
+    func analyze(image: CGImage) throws -> ImageAnalysis
+}
+
+/// Протокол для сэмплинга пикселей (внутренний)
+protocol PixelSampler {
+    func samplePixels(from analysis: ImageAnalysis, targetCount: Int, config: ParticleGenerationConfig, image: CGImage) throws -> [Sample]
+}
+
+/// Протокол для сборки частиц (внутренний)
+protocol ParticleAssembler {
+    func assembleParticles(from samples: [Sample],
+                           config: ParticleGenerationConfig,
+                           screenSize: CGSize,
+                           imageSize: CGSize,
+                           originalImageSize: CGSize) -> [Particle]
+}
+
+/// Протокол для кэширования результатов (внутренний)
+protocol CacheManager: AnyObject {
+    func cache<T: Codable>(_ value: T, for key: String) throws
+    func retrieve<T: Codable>(_ type: T.Type, for key: String) throws -> T?
+    func clear()
+}
+
+/// Протокол для конфигурации генерации (внутренний)
+protocol ParticleGeneratorConfiguration: Codable {
+    var samplingStrategy: SamplingStrategy { get }
+    var qualityPreset: QualityPreset { get }
+    var enableCaching: Bool { get }
+    var maxConcurrentOperations: Int { get }
+}
+
+/// Протокол для расширенной конфигурации генератора с режимом отображения (внутренний)
+protocol ParticleGeneratorConfigurationWithDisplayMode: ParticleGeneratorConfiguration {
+    var imageDisplayMode: ImageDisplayMode { get }
+    var particleLifetime: Float { get }
+    var particleSpeed: Float { get }
+    var particleSizeUltra: ClosedRange<Float>? { get }
+    var particleSizeHigh: ClosedRange<Float>? { get }
+    var particleSizeStandard: ClosedRange<Float>? { get }
+    var particleSizeLow: ClosedRange<Float>? { get }
 }

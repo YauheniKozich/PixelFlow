@@ -55,6 +55,7 @@ final class ParticleSystemAdapter: NSObject {
         // Настраиваем renderer
         renderer.setSimulationEngine(coordinator.simulationEngine)
         renderer.setParticleBuffer(coordinator.particleBuffer)
+        renderer.setEnableIdleChaotic(enableIdleChaotic)
 
         // Настраиваем view
         configureView(mtkView)

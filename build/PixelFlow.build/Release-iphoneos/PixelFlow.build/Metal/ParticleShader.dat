@@ -1,0 +1,16 @@
+dependencies: \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/ParticleShader.metal \
+  /private/var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.3.48.0.MW7EIs/Metal.xctoolchain/usr/metal/32023/lib/clang/32023.850/include/metal/module.modulemap \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Core/Common.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Core/Utils.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Core/../Compute/Simulation.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Compute/Physics.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Core/../Compute/../Core/Common.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Core/../Compute/../Core/Utils.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/Basic.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Core/Utils.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Compute/Simulation.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Effects/Lighting.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Effects/../Core/Common.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Effects/../Core/Utils.h \
+  /Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Shaders/Rendering/../Effects/../Compute/Simulation.h

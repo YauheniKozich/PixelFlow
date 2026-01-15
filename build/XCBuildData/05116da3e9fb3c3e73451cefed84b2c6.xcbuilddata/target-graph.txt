@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'PixelFlowTests' in project 'PixelFlow'
+➜ Explicit dependency on target 'PixelFlow' in project 'PixelFlow'
+Target 'PixelFlow' in project 'PixelFlow' (no dependencies)

@@ -176,14 +176,14 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         var complexity = 1.0
 
         switch config.samplingStrategy {
-        case .uniform, .importance, .adaptive, .hybrid, .advanced:
-            complexity *= 1.0
         case .importance:
             complexity *= 1.8 // Importance сложнее параллелить
         case .adaptive:
             complexity *= 2.2 // Adaptive самый сложный
         case .hybrid:
             complexity *= 2.0
+        default:
+            complexity *= 1.0
         }
 
         switch config.qualityPreset {
@@ -212,15 +212,4 @@ struct OperationGroup {
     }
 }
 
-// MARK: - Errors
 
-enum ParallelStrategyError: Error {
-    case insufficientConcurrency
-
-    var localizedDescription: String {
-        switch self {
-        case .insufficientConcurrency:
-            return "Parallel strategy requires maxConcurrentOperations > 1"
-        }
-    }
-}

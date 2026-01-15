@@ -33,6 +33,7 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
     private var particleCount: Int = 0
     internal var screenSize: CGSize = .zero
     private var currentConfig: ParticleGenerationConfig = .standard
+    private var enableIdleChaotic: Bool = false
 
     private weak var simulationEngine: SimulationEngineProtocol?
     private var paramsUpdater: SimulationParamsUpdater?
@@ -143,7 +144,8 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
             clock: simulationEngine.clock,
             screenSize: screenSize,
             particleCount: particleCount,
-            config: currentConfig
+            config: currentConfig,
+            enableIdleChaotic: enableIdleChaotic
         )
     }
 
@@ -253,6 +255,11 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         logger.debug("Particle count updated to \(count)")
     }
 
+    func setEnableIdleChaotic(_ enabled: Bool) {
+        self.enableIdleChaotic = enabled
+        logger.debug("Idle chaotic motion \(enabled ? "enabled" : "disabled")")
+    }
+
     // MARK: - MTKViewDelegate
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -300,7 +307,12 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         }
 
         // Настраиваем render encoder
-        renderEncoder.setRenderPipelineState(renderPipeline!)
+        guard let renderPipeline = renderPipeline else {
+            logger.error("Render pipeline not available")
+            renderEncoder.endEncoding()
+            return
+        }
+        renderEncoder.setRenderPipelineState(renderPipeline)
         renderEncoder.setVertexBuffer(particleBuffer, offset: 0, index: 0)
         renderEncoder.setVertexBuffer(paramsBuffer, offset: 0, index: 1)
         renderEncoder.setFragmentBuffer(paramsBuffer, offset: 0, index: 1)
@@ -342,24 +354,4 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
     }
 }
 
-// MARK: - Errors
 
-enum MetalError: Error {
-    case libraryCreationFailed
-    case functionNotFound(name: String)
-    case bufferCreationFailed
-    case pipelineCreationFailed
-
-    var localizedDescription: String {
-        switch self {
-        case .libraryCreationFailed:
-            return "Не удалось создать Metal library"
-        case .functionNotFound(let name):
-            return "Функция '\(name)' не найдена в Metal library"
-        case .bufferCreationFailed:
-            return "Не удалось создать Metal буферы"
-        case .pipelineCreationFailed:
-            return "Не удалось создать Metal pipeline"
-        }
-    }
-}

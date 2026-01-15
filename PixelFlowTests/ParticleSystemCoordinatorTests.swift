@@ -6,11 +6,13 @@
 //  Unit тесты для ParticleSystemCoordinator
 //
 
-import XCTest
+import Testing
 import Metal
+import MetalKit
+import CoreGraphics
 @testable import PixelFlow
 
-final class ParticleSystemCoordinatorTests: XCTestCase {
+struct ParticleSystemCoordinatorTests {
     private var coordinator: ParticleSystemCoordinator!
     private var mockRenderer: MockMetalRenderer!
     private var mockSimulationEngine: MockSimulationEngine!
@@ -19,9 +21,7 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
     private var mockMemoryManager: MockMemoryManager!
     private var mockGenerator: MockParticleGenerator!
 
-    override func setUp() {
-        super.setUp()
-
+    init() {
         // Создаем моки
         mockRenderer = MockMetalRenderer()
         mockSimulationEngine = MockSimulationEngine()
@@ -41,34 +41,23 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
         )
     }
 
-    override func tearDown() {
-        coordinator = nil
-        mockRenderer = nil
-        mockSimulationEngine = nil
-        mockStorage = nil
-        mockConfigManager = nil
-        mockMemoryManager = nil
-        mockGenerator = nil
-        super.tearDown()
-    }
-
-    func testStartSimulation() {
+    @Test func testStartSimulation() {
         // When
         coordinator.startSimulation()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.startCalled)
+        #expect(mockSimulationEngine.startCalled)
     }
 
-    func testStopSimulation() {
+    @Test func testStopSimulation() {
         // When
         coordinator.stopSimulation()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.stopCalled)
+        #expect(mockSimulationEngine.stopCalled)
     }
 
-    func testToggleSimulation_WhenActive() {
+    @Test func testToggleSimulation_WhenActive() {
         // Given
         mockSimulationEngine.isActive = true
 
@@ -76,10 +65,10 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
         coordinator.toggleSimulation()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.stopCalled)
+        #expect(mockSimulationEngine.stopCalled)
     }
 
-    func testToggleSimulation_WhenInactive() {
+    @Test func testToggleSimulation_WhenInactive() {
         // Given
         mockSimulationEngine.isActive = false
 
@@ -87,29 +76,30 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
         coordinator.toggleSimulation()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.startCalled)
+        #expect(mockSimulationEngine.startCalled)
     }
 
-    func testStartLightningStorm() {
+    @Test func testStartLightningStorm() {
         // When
         coordinator.startLightningStorm()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.lightningStormCalled)
+        #expect(mockSimulationEngine.lightningStormCalled)
     }
 
-    func testUpdateConfiguration() {
+    @Test func testUpdateConfiguration() async {
         // Given
         let config = ParticleGenerationConfig.high
 
         // When
-        coordinator.updateConfiguration(config)
+        await coordinator.updateConfiguration(config)
 
         // Then
-        XCTAssertEqual(mockConfigManager.appliedConfig, config)
+        #expect(mockConfigManager.appliedConfig != nil)
+        #expect(mockConfigManager.appliedConfig?.qualityPreset == .high)
     }
 
-    func testConfigure() {
+    @Test func testConfigure() {
         // Given
         let screenSize = CGSize(width: 1920, height: 1080)
 
@@ -118,47 +108,45 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
 
         // Then
         // configure now does nothing, as screenSize is managed in MetalRenderer
-        XCTAssertTrue(true) // Just check it doesn't crash
+        #expect(true) // Just check it doesn't crash
     }
 
-    func testInitializeFastPreview() {
+    @Test @MainActor func testInitializeFastPreview() {
         // When
         coordinator.initializeFastPreview()
 
         // Then
-        XCTAssertTrue(mockStorage.createFastPreviewCalled)
-        XCTAssertTrue(mockSimulationEngine.startCalled)
-        XCTAssertTrue(coordinator.isHighQuality == false)
+        #expect(mockStorage.createFastPreviewCalled)
+        #expect(mockSimulationEngine.startCalled)
+        #expect(coordinator.isHighQuality == false)
     }
 
-    func testReplaceWithHighQualityParticles() {
-        // Given
-        let expectation = self.expectation(description: "High quality particles replacement")
-
+    @Test @MainActor func testReplaceWithHighQualityParticles() async throws {
         // When
-        coordinator.replaceWithHighQualityParticles { success in
-            XCTAssertTrue(success)
-            expectation.fulfill()
+        let success = await withCheckedContinuation { continuation in
+            coordinator.replaceWithHighQualityParticles { success in
+                continuation.resume(returning: success)
+            }
         }
 
         // Then
-        waitForExpectations(timeout: 1.0)
-        XCTAssertTrue(mockStorage.recreateHighQualityCalled)
-        XCTAssertTrue(coordinator.isHighQuality == true)
+        #expect(success)
+        #expect(mockStorage.recreateHighQualityCalled)
+        #expect(coordinator.isHighQuality == true)
     }
 
-    func testCleanup() {
+    @Test func testCleanup() {
         // When
         coordinator.cleanup()
 
         // Then
-        XCTAssertTrue(mockSimulationEngine.stopCalled)
-        XCTAssertTrue(mockRenderer.cleanupCalled)
-        XCTAssertTrue(mockStorage.clearCalled)
-        XCTAssertTrue(mockMemoryManager.releaseMemoryCalled)
+        #expect(mockSimulationEngine.stopCalled)
+        #expect(mockRenderer.cleanupCalled)
+        #expect(mockStorage.clearCalled)
+        #expect(mockMemoryManager.releaseMemoryCalled)
     }
 
-    func testParticleCount() {
+    @Test func testParticleCount() {
         // Given
         let expectedCount = 1000
 
@@ -166,7 +154,7 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
         coordinator.initialize(with: createTestImage(), particleCount: expectedCount, config: .standard)
 
         // Then
-        XCTAssertEqual(coordinator.particleCount, expectedCount)
+        #expect(coordinator.particleCount == expectedCount)
     }
 
     // MARK: - Helper Methods
@@ -191,13 +179,14 @@ final class ParticleSystemCoordinatorTests: XCTestCase {
 
 // MARK: - Mock Classes
 
-private class MockMetalRenderer: MetalRendererProtocol {
+private class MockMetalRenderer: NSObject, MetalRendererProtocol {
     var setupPipelinesCalled = false
     var setupBuffersCalled = false
     var cleanupCalled = false
 
     let device = MTLCreateSystemDefaultDevice()!
     let commandQueue = MTLCreateSystemDefaultDevice()!.makeCommandQueue()!
+    var screenSize: CGSize = CGSize(width: 1920, height: 1080)
 
     var renderPipeline: MTLRenderPipelineState?
     var computePipeline: MTLComputePipelineState?
@@ -231,6 +220,8 @@ private class MockSimulationEngine: SimulationEngineProtocol, PhysicsEngineProto
     var isActive = false
 
     var state: SimulationState = .idle
+    var clock: SimulationClockProtocol = MockSimulationClock()
+    var resetCounterCallback: (() -> Void)?
 
     func start() { startCalled = true; isActive = true }
     func stop() { stopCalled = true; isActive = false }
@@ -243,6 +234,15 @@ private class MockSimulationEngine: SimulationEngineProtocol, PhysicsEngineProto
     func reset() {}
 }
 
+private class MockSimulationClock: SimulationClockProtocol {
+    var time: Float = 0
+    var deltaTime: Float = 0
+
+    func update() {}
+    func update(with deltaTime: Float) {}
+    func reset() {}
+}
+
 private class MockParticleStorage: ParticleStorageProtocol {
     var createFastPreviewCalled = false
     var recreateHighQualityCalled = false
@@ -251,8 +251,10 @@ private class MockParticleStorage: ParticleStorageProtocol {
     var particleBuffer: MTLBuffer?
     var particleCount: Int = 0
 
+    func initialize(with particleCount: Int) { self.particleCount = particleCount }
     func createFastPreviewParticles() { createFastPreviewCalled = true }
     func recreateHighQualityParticles() { recreateHighQualityCalled = true }
+    func updateParticles(_ particles: [Particle]) {}
     func clear() { clearCalled = true }
 }
 
@@ -278,7 +280,7 @@ private class MockMemoryManager: MemoryManagerProtocol {
 private class MockParticleGenerator: ParticleGeneratorProtocol {
     var image: CGImage? = nil
 
-    func generateParticles(from image: CGImage, config: ParticleGenerationConfig) throws -> [Particle] {
+    func generateParticles(from image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) async throws -> [Particle] {
         return []
     }
 

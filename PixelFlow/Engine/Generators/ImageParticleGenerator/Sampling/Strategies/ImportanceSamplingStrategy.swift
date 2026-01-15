@@ -234,10 +234,9 @@ enum ImportanceSamplingStrategy {
         candidates.reserveCapacity(estimatedCapacity)
         
         Logger.shared.debug("GatherImportantPixels: strideX=\(strideX), strideY=\(strideY), estimatedCapacity=\(estimatedCapacity)")
-        
-        let edgeMarginX = max(1, Int(Float(width) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
-        let edgeMarginY = max(1, Int(Float(height) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
-        let cornerSize = max(edgeMarginX, edgeMarginY)
+
+        _ = max(1, Int(Float(width) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
+        _ = max(1, Int(Float(height) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
         
         for y in stride(from: 0, to: height, by: strideY) {
             for x in stride(from: 0, to: width, by: strideX) {
@@ -245,14 +244,6 @@ enum ImportanceSamplingStrategy {
                 guard pixel.a > PixelCacheHelper.Constants.alphaThreshold else { continue }
                 
                 // Определяем тип пикселя для усиления
-                let isEdgePixel = x < edgeMarginX || x >= width - edgeMarginX ||
-                                 y < edgeMarginY || y >= height - edgeMarginY
-                
-                let isCornerPixel = (x < cornerSize && y < cornerSize) ||
-                                   (x >= width - cornerSize && y < cornerSize) ||
-                                   (x < cornerSize && y >= height - cornerSize) ||
-                                   (x >= width - cornerSize && y >= height - cornerSize)
-                
                 _ = PixelCacheHelper.getNeighborPixels(atX: x, y: y, from: cache)
 //                var importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
 //                    r: pixel.r, g: pixel.g, b: pixel.b, a: pixel.a,

@@ -6,24 +6,17 @@
 //  Unit тесты для DI контейнера
 //
 
-import XCTest
+import Testing
 @testable import PixelFlow
 
-final class DIContainerTests: XCTestCase {
+struct DIContainerTests {
     private var container: DIContainer!
 
-    override func setUp() {
-        super.setUp()
+    init() {
         container = DIContainer()
     }
 
-    override func tearDown() {
-        container.reset()
-        container = nil
-        super.tearDown()
-    }
-
-    func testRegisterAndResolveService() {
+    @Test func testRegisterAndResolveService() {
         // Given
         let expectedService = MockService(name: "Test Service")
 
@@ -32,19 +25,19 @@ final class DIContainerTests: XCTestCase {
         let resolvedService: MockService? = container.resolve(MockService.self)
 
         // Then
-        XCTAssertNotNil(resolvedService)
-        XCTAssertEqual(resolvedService?.name, expectedService.name)
+        #expect(resolvedService != nil)
+        #expect(resolvedService?.name == expectedService.name)
     }
 
-    func testResolveNonExistentServiceReturnsNil() {
+    @Test func testResolveNonExistentServiceReturnsNil() {
         // When
         let service: MockService? = container.resolve(MockService.self)
 
         // Then
-        XCTAssertNil(service)
+        #expect(service == nil)
     }
 
-    func testRegisterWithNameAndResolve() {
+    @Test func testRegisterWithNameAndResolve() {
         // Given
         let service1 = MockService(name: "Service 1")
         let service2 = MockService(name: "Service 2")
@@ -57,13 +50,13 @@ final class DIContainerTests: XCTestCase {
         let resolved2: MockService? = container.resolve(MockService.self, name: "second")
 
         // Then
-        XCTAssertNotNil(resolved1)
-        XCTAssertNotNil(resolved2)
-        XCTAssertEqual(resolved1?.name, "Service 1")
-        XCTAssertEqual(resolved2?.name, "Service 2")
+        #expect(resolved1 != nil)
+        #expect(resolved2 != nil)
+        #expect(resolved1?.name == "Service 1")
+        #expect(resolved2?.name == "Service 2")
     }
 
-    func testIsRegistered() {
+    @Test func testIsRegistered() {
         // Given
         let service = MockService(name: "Test")
 
@@ -71,11 +64,11 @@ final class DIContainerTests: XCTestCase {
         container.register(service, for: MockService.self)
 
         // Then
-        XCTAssertTrue(container.isRegistered(MockService.self))
-        XCTAssertFalse(container.isRegistered(AnotherMockService.self))
+        #expect(container.isRegistered(MockService.self))
+        #expect(!container.isRegistered(AnotherMockService.self))
     }
 
-    func testResetClearsAllServices() {
+    @Test func testResetClearsAllServices() {
         // Given
         let service = MockService(name: "Test")
         container.register(service, for: MockService.self)
@@ -84,31 +77,27 @@ final class DIContainerTests: XCTestCase {
         container.reset()
 
         // Then
-        XCTAssertFalse(container.isRegistered(MockService.self))
+        #expect(!container.isRegistered(MockService.self))
     }
 
-    func testThreadSafety() {
-        // Given
-        let expectation = self.expectation(description: "All operations completed")
-        expectation.expectedFulfillmentCount = 100
-
+    @Test func testThreadSafety() async throws {
         // When
-        DispatchQueue.concurrentPerform(iterations: 100) { index in
-            let service = MockService(name: "Service \(index)")
-            container.register(service, for: MockService.self, name: "service_\(index)")
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for index in 0..<100 {
+                group.addTask {
+                    let service = MockService(name: "Service \(index)")
+                    self.container.register(service, for: MockService.self, name: "service_\(index)")
 
-            let resolved: MockService? = container.resolve(MockService.self, name: "service_\(index)")
-            XCTAssertNotNil(resolved)
-            XCTAssertEqual(resolved?.name, "Service \(index)")
-
-            expectation.fulfill()
+                    let resolved: MockService? = self.container.resolve(MockService.self, name: "service_\(index)")
+                    #expect(resolved != nil)
+                    #expect(resolved?.name == "Service \(index)")
+                }
+            }
+            try await group.waitForAll()
         }
-
-        // Then
-        waitForExpectations(timeout: 5.0, handler: nil)
     }
 
-    func testGlobalFunctions() {
+    @Test func testGlobalFunctions() {
         // Given
         let service = MockService(name: "Global Test")
 
@@ -117,8 +106,8 @@ final class DIContainerTests: XCTestCase {
         let resolved: MockService? = resolve(MockService.self)
 
         // Then
-        XCTAssertNotNil(resolved)
-        XCTAssertEqual(resolved?.name, "Global Test")
+        #expect(resolved != nil)
+        #expect(resolved?.name == "Global Test")
 
         // Cleanup
         AppContainer.shared.reset()

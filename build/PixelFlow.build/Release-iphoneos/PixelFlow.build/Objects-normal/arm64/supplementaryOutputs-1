@@ -1,0 +1,12 @@
+{
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Assembly/ParticleAssembly.swift" : {
+    "abi-baseline-json" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow.abi.json",
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow-primary.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow-primary.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow-primary.dia",
+    "objc-header" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow-Swift.h",
+    "swiftdoc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow.swiftdoc",
+    "swiftmodule" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow.swiftmodule",
+    "swiftsourceinfo" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlow.build/Objects-normal/arm64/PixelFlow.swiftsourceinfo"
+  }
+}

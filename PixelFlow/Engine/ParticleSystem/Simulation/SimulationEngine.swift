@@ -14,7 +14,7 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     // MARK: - Properties
 
-    private let stateMachine: ParticleSystemStateManagerProtocol
+    private let stateMachine: StateManagerProtocol
     let clock: SimulationClockProtocol
     private let logger: LoggerProtocol
 
@@ -23,15 +23,22 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     // MARK: - Initialization
 
-    init(stateManager: ParticleSystemStateManagerProtocol = DefaultStateManager(),
-         clock: SimulationClockProtocol = DefaultSimulationClock(),
-         logger: LoggerProtocol = Logger.shared) {
+    init(stateManager: StateManagerProtocol,
+         clock: SimulationClockProtocol,
+         logger: LoggerProtocol) {
 
         self.stateMachine = stateManager
         self.clock = clock
         self.logger = logger
 
         logger.info("SimulationEngine initialized")
+    }
+
+    /// Convenience initializer for testing or standalone usage
+    convenience init() {
+        self.init(stateManager: DefaultStateManager(),
+                  clock: DefaultSimulationClock(),
+                  logger: Logger.shared)
     }
 
     // MARK: - SimulationEngineProtocol
@@ -149,23 +156,7 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
     }
 }
 
-// MARK: - Supporting Protocols and Classes
-
-protocol SimulationClockProtocol {
-    var time: Float { get }
-    var deltaTime: Float { get }
-
-    func update()
-    func update(with deltaTime: Float)
-    func reset()
-}
-
-protocol ParticleSystemStateManagerProtocol {
-    var currentState: SimulationState { get }
-
-    func transition(to state: SimulationState)
-    var isActive: Bool { get }
-}
+// MARK: - Default Implementations
 
 // MARK: - Default Implementations
 
@@ -195,7 +186,7 @@ final class DefaultSimulationClock: SimulationClockProtocol {
     }
 }
 
-final class DefaultStateManager: ParticleSystemStateManagerProtocol {
+final class DefaultStateManager: StateManagerProtocol {
     private(set) var currentState: SimulationState = .idle
 
     var isActive: Bool {

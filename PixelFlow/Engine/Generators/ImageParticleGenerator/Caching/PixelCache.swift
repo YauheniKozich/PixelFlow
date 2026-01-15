@@ -34,7 +34,10 @@ public final class PixelCache {
     
     // Доступ к данным
     public var dataPointer: UnsafeMutableRawPointer {
-        return UnsafeMutableRawPointer(mutating: backingData.withUnsafeBytes { $0.baseAddress! })
+        guard let baseAddress = backingData.withUnsafeBytes({ $0.baseAddress }) else {
+            fatalError("PixelCache: unable to access data buffer")
+        }
+        return UnsafeMutableRawPointer(mutating: baseAddress)
     }
     
     // Приватные свойства
@@ -157,8 +160,10 @@ public final class PixelCache {
         // Блокируем доступ для потокобезопасности
         accessLock.lock()
         defer { accessLock.unlock() }
-        
-        let bytes = backingData.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }
+
+        guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
+            return SIMD4<Float>(0, 0, 0, 1)
+        }
         
         // Читаем байты
         let byte0 = Float(bytes[byteIndex]) / 255.0
@@ -194,8 +199,10 @@ public final class PixelCache {
         
         accessLock.lock()
         defer { accessLock.unlock() }
-        
-        let bytes = backingData.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress! }
+
+        guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
+            return nil
+        }
         
         let r = bytes[byteIndex]
         let g = bytes[byteIndex + 1]

@@ -84,7 +84,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
   //      }
 
         #if DEBUG
-        logSampleDistribution(validatedSamples, cacheHeight: cache.height)
+     //   logSampleDistribution(validatedSamples, cacheHeight: cache.height)
         #endif
 
         return validatedSamples
@@ -119,7 +119,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
                 cache: cache,
                 dominantColors: analysis.dominantColors // SIMD3<Float>
             )
-            
+
         case .adaptive:
             let params = SamplingParameters.samplingParams(from: config)
             return try AdaptiveSamplingStrategy.sample(
@@ -147,7 +147,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
             // Конвертируем только здесь, когда действительно необходимо
             let params = SamplingParameters.samplingParams(from: config)
             let dominantColors4 = convertDominantColors(analysis.dominantColors)
-            
+
             return try AdvancedPixelSampler.samplePixels(
                 algorithm: algorithm,
                 cache: cache,
@@ -173,58 +173,38 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
     /// - Parameters:
     ///   - samples: Массив сэмплов для анализа
     ///   - cacheHeight: Высота изображения
-    private func logSampleDistribution(_ samples: [Sample], cacheHeight: Int) {
-        guard !samples.isEmpty else {
-            Logger.shared.debug("No samples to analyze")
-            return
-        }
-        
-        var topCount = 0
-        var bottomCount = 0
-        var minY = Int.max
-        var maxY = Int.min
-        
-        // Один проход для всех метрик
-        for sample in samples {
-            if sample.y < cacheHeight / 2 {
-                topCount += 1
-            } else {
-                bottomCount += 1
-            }
-            minY = min(minY, sample.y)
-            maxY = max(maxY, sample.y)
-        }
-        
-        Logger.shared.debug("Samples from sampler - Total: \(samples.count), Top: \(topCount), Bottom: \(bottomCount)")
-        Logger.shared.debug("Sample Y range: \(minY) - \(maxY) (cache height: \(cacheHeight))")
-        
-        // Предупреждение о дисбалансе
-        let ratio = Float(topCount) / Float(samples.count)
-        if ratio < 0.3 || ratio > 0.7 {
-            Logger.shared.warning("Sample distribution may be unbalanced: \(Int(ratio * 100))% in top half")
-        }
-    }
+//    private func logSampleDistribution(_ samples: [Sample], cacheHeight: Int) {
+//        guard !samples.isEmpty else {
+//            Logger.shared.debug("No samples to analyze")
+//            return
+//        }
+//        
+//        var topCount = 0
+//        var bottomCount = 0
+//        var minY = Int.max
+//        var maxY = Int.min
+//        
+//        // Один проход для всех метрик
+//        for sample in samples {
+//            if sample.y < cacheHeight / 2 {
+//                topCount += 1
+//            } else {
+//                bottomCount += 1
+//            }
+//            minY = min(minY, sample.y)
+//            maxY = max(maxY, sample.y)
+//        }
+//        
+//        Logger.shared.debug("Samples from sampler - Total: \(samples.count), Top: \(topCount), Bottom: \(bottomCount)")
+//        Logger.shared.debug("Sample Y range: \(minY) - \(maxY) (cache height: \(cacheHeight))")
+//        
+//        // Предупреждение о дисбалансе
+//        let ratio = Float(topCount) / Float(samples.count)
+//        if ratio < 0.3 || ratio > 0.7 {
+//            Logger.shared.warning("Sample distribution may be unbalanced: \(Int(ratio * 100))% in top half")
+//        }
+//    }
     #endif
 }
 
-// MARK: - Error Types
 
-enum SamplingError: Error, LocalizedError {
-    case cacheCreationFailed(underlying: Error)
-    case invalidConfiguration
-    case insufficientSamples
-    case invalidImageDimensions
-    
-    var errorDescription: String? {
-        switch self {
-        case .cacheCreationFailed(let error):
-            return "Failed to create pixel cache: \(error.localizedDescription)"
-        case .invalidConfiguration:
-            return "Invalid sampling configuration: targetCount must be positive"
-        case .insufficientSamples:
-            return "Unable to generate sufficient samples from image"
-        case .invalidImageDimensions:
-            return "Invalid image dimensions: width and height must be positive"
-        }
-    }
-}

@@ -116,11 +116,15 @@ final class GenerationPipeline: GenerationPipelineProtocol {
                 throw GenerationPipelineError.invalidInput
             }
 
+            guard let image = context.image else {
+                throw GenerationPipelineError.missingImage
+            }
+
             let samples = try sampler.samplePixels(
                 from: analysis,
                 targetCount: context.config?.targetParticleCount ?? 1000,
                 config: config,
-                image: context.image!
+                image: image
             )
             return .samples(samples)
 
@@ -211,33 +215,7 @@ final class GenerationPipeline: GenerationPipelineProtocol {
     }
 }
 
-// MARK: - Supporting Types
 
-enum GenerationPipelineError: Error {
-    case invalidInput
-    case invalidOutput
-    case invalidContext
-    case invalidConfiguration
-    case missingImage
-    case missingAnalysis
-    case missingSamples
-    case missingParticles
-    case emptyResult
-
-    var localizedDescription: String {
-        switch self {
-        case .invalidInput: return "Invalid input for pipeline stage"
-        case .invalidOutput: return "Invalid output from pipeline stage"
-        case .invalidContext: return "Pipeline context is invalid"
-        case .invalidConfiguration: return "Pipeline configuration is invalid"
-        case .missingImage: return "Image is missing from context"
-        case .missingAnalysis: return "Image analysis is missing from context"
-        case .missingSamples: return "Pixel samples are missing from context"
-        case .missingParticles: return "Particles are missing from context"
-        case .emptyResult: return "Pipeline produced empty result"
-        }
-    }
-}
 
 extension GenerationStage {
     var description: String {

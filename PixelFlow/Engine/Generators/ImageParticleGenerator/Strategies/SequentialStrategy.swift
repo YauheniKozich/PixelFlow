@@ -112,12 +112,6 @@ final class SequentialStrategy: GenerationStrategyProtocol {
         switch config.samplingStrategy {
         case .uniform, .importance, .adaptive, .hybrid, .advanced:
             complexity *= 1.0
-        case .importance:
-            complexity *= 1.5 // Importance sampling сложнее
-        case .adaptive:
-            complexity *= 2.0 // Adaptive самый сложный
-        case .hybrid:
-            complexity *= 1.8
         }
 
         switch config.qualityPreset {

@@ -1,0 +1,46 @@
+{
+  "" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.dia",
+    "emit-module-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary-emit-module.dia",
+    "pch" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests-primary.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/DIContainerTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/DIContainerTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/DIContainerTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/DIContainerTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/GenerationStrategiesTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/GenerationStrategiesTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/GenerationStrategiesTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/GenerationStrategiesTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/ImageGenerationIntegrationTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGenerationIntegrationTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGenerationIntegrationTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGenerationIntegrationTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/ImageGeneratorIntegrationTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGeneratorIntegrationTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGeneratorIntegrationTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ImageGeneratorIntegrationTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/IntegrationTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/IntegrationTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/IntegrationTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/IntegrationTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/ParticleSystemCoordinatorTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ParticleSystemCoordinatorTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ParticleSystemCoordinatorTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/ParticleSystemCoordinatorTests.o"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlowTests/PixelFlowTests.swift" : {
+    "index-unit-output-path" : "/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.o",
+    "llvm-bc" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.bc",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Release-iphoneos/PixelFlowTests.build/Objects-normal/arm64/PixelFlowTests.o"
+  }
+}
