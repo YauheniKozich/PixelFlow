@@ -1,0 +1,37 @@
+{
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/SamplingParameters.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParameters.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParameters.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParameters.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParameters.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParameters.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Models/SamplingParams.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParams.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParams.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParams.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParams.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SamplingParams.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Strategies/SequentialStrategy.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SequentialStrategy.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SequentialStrategy.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SequentialStrategy.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SequentialStrategy.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SequentialStrategy.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/ParticleSystem/Simulation/SimulationClock.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SimulationClock.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SimulationClock.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SimulationClock.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SimulationClock.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SimulationClock.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/UI/SceneDelegate.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SceneDelegate.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SceneDelegate.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SceneDelegate.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SceneDelegate.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/arm64/SceneDelegate.swiftdeps"
+  }
+}

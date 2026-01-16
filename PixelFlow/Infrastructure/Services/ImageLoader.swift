@@ -18,7 +18,7 @@ final class ImageLoader: ImageLoaderProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
     }
 

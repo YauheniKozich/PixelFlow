@@ -14,7 +14,10 @@ final class ImageGeneratorDependencies {
 
     /// Регистрирует все зависимости для генератора изображений
     static func register(in container: DIContainer) {
-        Logger.shared.info("Registering ImageGenerator dependencies")
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+        logger.info("Registering ImageGenerator dependencies")
 
         // Регистрация стратегий
         registerStrategies(in: container)
@@ -29,19 +32,27 @@ final class ImageGeneratorDependencies {
     // MARK: - Private Registration Methods
 
     private static func registerStrategies(in container: DIContainer) {
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+
         // Sequential стратегия - по умолчанию
-        container.register(SequentialStrategy(), for: GenerationStrategyProtocol.self, name: "sequential")
+        container.register(SequentialStrategy(logger: logger), for: GenerationStrategyProtocol.self, name: "sequential")
 
         // Parallel стратегия
-        let parallelStrategy = ParallelStrategy()
+        let parallelStrategy = ParallelStrategy(logger: logger)
         container.register(parallelStrategy, for: GenerationStrategyProtocol.self, name: "parallel")
 
         // Adaptive стратегия - рекомендуемая
-        let adaptiveStrategy = AdaptiveStrategy()
+        let adaptiveStrategy = AdaptiveStrategy(logger: logger)
         container.register(adaptiveStrategy, for: GenerationStrategyProtocol.self)
     }
 
     private static func registerGenerationComponents(in container: DIContainer) {
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+
         // Анализатор изображений
         let performanceParams = PerformanceParams(
             maxConcurrentOperations: ProcessInfo.processInfo.activeProcessorCount,
@@ -59,7 +70,7 @@ final class ImageGeneratorDependencies {
         container.register(DefaultParticleAssembler(config: config), for: ParticleAssemblerProtocol.self)
 
         // Контекст генерации
-        container.register(GenerationContext(), for: GenerationContextProtocol.self)
+        container.register(GenerationContext(logger: logger), for: GenerationContextProtocol.self)
 
         // Pipeline генерации с adaptive стратегией
         let analyzer = container.resolve(ImageAnalyzerProtocol.self)!
@@ -73,27 +84,24 @@ final class ImageGeneratorDependencies {
             sampler: sampler,
             assembler: assembler,
             strategy: strategy,
-            context: context
+            context: context,
+            logger: logger
         )
         container.register(pipeline, for: GenerationPipelineProtocol.self)
 
         // Менеджер операций
-        container.register(OperationManager(), for: OperationManagerProtocol.self)
+        container.register(OperationManager(logger: logger), for: OperationManagerProtocol.self)
 
         // Менеджер памяти
-        container.register(MemoryManager(), for: MemoryManagerProtocol.self)
+        container.register(MemoryManager(logger: logger), for: MemoryManagerProtocol.self)
 
         // Менеджер кэша
         container.register(DefaultCacheManager(cacheSizeLimit: 100 * 1024 * 1024), for: CacheManagerProtocol.self) // 100 MB
-
-        // Logger
-        container.register(Logger.shared, for: LoggerProtocol.self)
 
         // Координатор генерации
         let operationManager = container.resolve(OperationManagerProtocol.self)!
         let memoryManager = container.resolve(MemoryManagerProtocol.self)!
         let cacheManager = container.resolve(CacheManagerProtocol.self)!
-        let logger = container.resolve(LoggerProtocol.self)!
 
         let coordinator = GenerationCoordinator(
             pipeline: pipeline,
@@ -103,6 +111,9 @@ final class ImageGeneratorDependencies {
             logger: logger
         )
         container.register(coordinator, for: GenerationCoordinatorProtocol.self)
+
+        // Адаптер генератора частиц
+        container.register(ImageParticleGeneratorToParticleSystemAdapter(coordinator: coordinator, logger: logger), for: ParticleGeneratorProtocol.self)
     }
 
     private static func registerSupportServices(in container: DIContainer) {
@@ -111,9 +122,6 @@ final class ImageGeneratorDependencies {
 
         // Валидатор конфигурации
         container.register(ConfigurationValidator(), for: ConfigurationValidatorProtocol.self)
-
-        // Resource tracker
-        container.register(ResourceTracker(), for: ResourceTrackerProtocol.self)
     }
 }
 

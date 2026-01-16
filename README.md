@@ -66,11 +66,7 @@ PixelFlow/
 │   ├── Assets.xcassets/       # Иконки и изображения
 │   └── Base.lproj/           # Storyboards и локализация
 │
-└── 📁 Docs/                   # 📚 Документация
-    ├── ShaderUsageGuide.md    # Руководство по шейдерам
-    ├── METAL4_README.md       # Metal 4 возможности
-    ├── Shaders-README.md      # Структура шейдеров
-    └── ImageGenerator-README.md # Генератор частиц
+└── documentation_report.md    # 📚 Отчет о документации
 ```
 
 ### 🔄 Взаимодействие компонентов
@@ -119,23 +115,36 @@ PixelFlow/
 
 ## 📚 Документация
 
-### 🎯 Основные руководства
-- **[Engine README](PixelFlow/Docs/Engine-README.md)** - Архитектура и компоненты Engine
-- **[ImageParticleGenerator](PixelFlow/Docs/ImageParticleGenerator-README.md)** - Детальное руководство по генератору частиц
-- **[Shaders Guide](PixelFlow/Docs/Shaders-README.md)** - Структура Metal шейдеров
-- **[Shader Usage](PixelFlow/Docs/ShaderUsageGuide.md)** - Практическое использование шейдеров
+### 🚀 Быстрый старт
+- **[API Integration Guide](api-integration.md)** - Полное руководство по интеграции PixelFlow в ваше приложение
 
-### 🔧 Специализированная документация
-- **[Metal 4 Features](PixelFlow/Docs/METAL4_README.md)** - Возможности Metal 4
-- **[Image Generator](PixelFlow/Docs/ImageGenerator-README.md)** - Генерация частиц из изображений
+### 🏗️ Архитектура проекта
+- **[Assembly](PixelFlow/Assembly/assembly.md)** - MVVM слой, ParticleAssembly, ViewModel
+- **[UI](PixelFlow/UI/ui.md)** - AppDelegate, SceneDelegate, структура интерфейса
+- **[Infrastructure](PixelFlow/Infrastructure/infrastructure.md)** - DI, протоколы, сервисы
+- **[Errors](PixelFlow/Errors/errors.md)** - Система ошибок PixelFlow
+- **[Resources](PixelFlow/Resources/resources.md)** - Ассеты, локализация, управление ресурсами
 
-### 🏗️ Архитектурная документация
-- **[Core Components](PixelFlow/Docs/Core-README.md)** - Ядро генератора
-- **[Analysis Module](PixelFlow/Docs/Analysis-README.md)** - Анализ изображений
-- **[Sampling Strategies](PixelFlow/Docs/Sampling-README.md)** - Стратегии сэмплинга
-- **[Generation Strategies](PixelFlow/Docs/Strategies-README.md)** - Стратегии генерации
-- **[Assembly Process](PixelFlow/Docs/Assembly-README.md)** - Сборка частиц
-- **[Caching](PixelFlow/Docs/Caching-README.md)** - Система кэширования
+### ⚙️ Engine - Ядро симуляции
+- **[Engine Overview](PixelFlow/Engine/engine.md)** - Архитектура и компоненты Engine
+- **[ParticleSystem Details](PixelFlow/Engine/ParticleSystem/particlesystem.md)** - Детальная документация ParticleSystem
+
+### 🎨 Генерация частиц
+- **[ImageParticleGenerator](PixelFlow/Engine/Generators/ImageParticleGenerator/image-particle-generator.md)** - Детальное руководство по генератору частиц
+- **[Core](PixelFlow/Engine/Generators/ImageParticleGenerator/Core/core.md)** - Ядро генератора
+- **[Analysis](PixelFlow/Engine/Generators/ImageParticleGenerator/Analysis/analysis.md)** - Анализ изображений
+- **[Sampling](PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/sampling.md)** - Стратегии сэмплинга
+- **[Strategies](PixelFlow/Engine/Generators/ImageParticleGenerator/Strategies/strategies.md)** - Стратегии генерации
+- **[Assembly](PixelFlow/Engine/Generators/ImageParticleGenerator/Assembly/assembly.md)** - Сборка частиц
+- **[Caching](PixelFlow/Engine/Generators/ImageParticleGenerator/Caching/caching.md)** - Система кэширования
+
+### ⚡ Metal шейдеры
+- **[Shaders Guide](PixelFlow/Engine/Shaders/shaders.md)** - Структура Metal шейдеров
+- **[Shader Usage](PixelFlow/Engine/Shaders/Shader-Usage-Guide.md)** - Практическое использование шейдеров
+- **[Metal 4 Features](PixelFlow/Engine/Shaders/metal.md)** - Возможности Metal 4
+
+### 📋 Качество документации
+- **[Documentation Report](documentation_report.md)** - Анализ состояния и полноты документации
 
 ## 🛠️ Системные требования
 

@@ -1,0 +1,30 @@
+{
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Assembly/ParticleAssembler.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParticleAssembler.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParticleAssembler.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParticleAssembler.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParticleAssembler.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParticleAssembler.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Configuration/OperationManager.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/OperationManager.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/OperationManager.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/OperationManager.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/OperationManager.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/OperationManager.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Strategies/ParallelStrategy.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParallelStrategy.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParallelStrategy.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParallelStrategy.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParallelStrategy.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ParallelStrategy.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/ParticleSystem/Models/Particle.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/Particle.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/Particle.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/Particle.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/Particle.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/Particle.swiftdeps"
+  }
+}

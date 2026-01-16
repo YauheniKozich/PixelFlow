@@ -32,15 +32,18 @@ final class ParticleViewModel {
 
     private let logger: LoggerProtocol
     private let imageLoader: ImageLoaderProtocol
-    private var currentConfig = ParticleGenerationConfig.draft
+    private var currentConfig = ParticleGenerationConfig.standard
     private var qualityTask: Task<Void, Never>?
     private var memoryWarningObserver: NSObjectProtocol?
     
     // --------------------------------------------------------------------
     // MARK: - Life‑cycle
     
-    public init(logger: LoggerProtocol = Logger.shared,
-                imageLoader: ImageLoaderProtocol = ImageLoader()) {
+    public init() {
+        guard let logger = resolve(LoggerProtocol.self),
+              let imageLoader = resolve(ImageLoaderProtocol.self) else {
+            fatalError("Failed to resolve dependencies for ParticleViewModel")
+        }
         self.logger = logger
         self.imageLoader = imageLoader
         logger.info("ParticleViewModel init")
@@ -195,10 +198,12 @@ final class ParticleViewModel {
     }
     
     /// Отменить фон. задачу, если она запущена.
-    @MainActor private func cancelQualityTask() {
+    private func cancelQualityTask() {
         qualityTask?.cancel()
         qualityTask = nil
-        isGeneratingHighQuality = false
+        DispatchQueue.main.async { [weak self] in
+            self?.isGeneratingHighQuality = false
+        }
     }
     
     // --------------------------------------------------------------------
@@ -223,27 +228,29 @@ final class ParticleViewModel {
     
     private func handleLowMemory() {
         logger.warning("Low‑memory warning received – cleaning up")
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        DispatchQueue.main.async { [weak self] in
             self?.cleanupAllResources()
         }
     }
     
     // --------------------------------------------------------------------
     // MARK: - Full Cleanup
-    
+
     public func cleanupAllResources() {
         logger.info("Performing full resource cleanup")
-        
+
         cancelQualityTask()
-        particleSystem?.cleanup()
-        particleSystem = nil
-        isConfigured = false
-        
+        DispatchQueue.main.async { [weak self] in
+            self?.particleSystem?.cleanup()
+            self?.particleSystem = nil
+            self?.isConfigured = false
+            self?.removeMemoryWarningObserver()
+        }
+
         // Простая очистка кеша – НЕ заменяем глобальный URLCache.
         URLCache.shared.removeAllCachedResponses()
         clearTemporaryDirectory()
-        removeMemoryWarningObserver()
-        
+
         logger.info("All resources released")
     }
     

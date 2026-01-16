@@ -6,26 +6,31 @@
 //  Регистрация зависимостей для системы частиц
 //
 
+import Foundation
 import Metal
+import MetalKit
 
 /// Регистрация зависимостей для системы частиц
 final class ParticleSystemDependencies {
 
     /// Регистрирует все зависимости для системы частиц
     static func register(in container: DIContainer) {
-        Logger.shared.info("Registering ParticleSystem dependencies")
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+        logger.info("Registering ParticleSystem dependencies")
+
+        // Сервисы
+        registerServices(in: container)
 
         // Metal компоненты
         registerMetalComponents(in: container)
 
-        // Компоненты симуляции
-        registerSimulationComponents(in: container)
-
         // Компоненты хранения
         registerStorageComponents(in: container)
 
-        // Сервисы
-        registerServices(in: container)
+        // Компоненты симуляции
+        registerSimulationComponents(in: container)
     }
 
     // MARK: - Private Registration Methods
@@ -38,7 +43,12 @@ final class ParticleSystemDependencies {
         container.register(device as MTLDevice, for: MTLDevice.self)
         container.register(device.makeCommandQueue()! as MTLCommandQueue, for: MTLCommandQueue.self)
 
-        container.register(MetalRenderer(device: device), for: MetalRendererProtocol.self)
+        // Resolve logger for MetalRenderer
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+
+        container.register(MetalRenderer(device: device, logger: logger), for: MetalRendererProtocol.self)
     }
 
     private static func registerSimulationComponents(in container: DIContainer) {
@@ -46,31 +56,34 @@ final class ParticleSystemDependencies {
         container.register(DefaultSimulationClock(), for: SimulationClockProtocol.self)
 
         // Resolve dependencies for SimulationEngine
-        guard let stateManager = resolve(StateManagerProtocol.self),
-              let clock = resolve(SimulationClockProtocol.self),
-              let logger = resolve(LoggerProtocol.self) else {
+        guard let stateManager = container.resolve(StateManagerProtocol.self),
+              let clock = container.resolve(SimulationClockProtocol.self),
+              let logger = container.resolve(LoggerProtocol.self),
+              let particleStorage = container.resolve(ParticleStorageProtocol.self) else {
             fatalError("Failed to resolve simulation dependencies")
         }
 
-        let simulationEngine = SimulationEngine(stateManager: stateManager, clock: clock, logger: logger)
-        Logger.shared.info("SimulationEngine created with resolved dependencies")
+        let simulationEngine = SimulationEngine(stateManager: stateManager, clock: clock, logger: logger, particleStorage: particleStorage)
+        logger.info("SimulationEngine created with resolved dependencies")
         container.register(simulationEngine, for: SimulationEngineProtocol.self)
         container.register(simulationEngine, for: PhysicsEngineProtocol.self)
-        Logger.shared.info("Same SimulationEngine registered for both protocols")
+        logger.info("Same SimulationEngine registered for both protocols")
     }
 
     private static func registerStorageComponents(in container: DIContainer) {
-        guard let device = resolve(MTLDevice.self) else {
-            fatalError("MTLDevice not registered")
+        guard let device = container.resolve(MTLDevice.self),
+              let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Required dependencies not registered")
         }
 
-        container.register(ParticleStorage(device: device), for: ParticleStorageProtocol.self)
+        container.register(ParticleStorage(device: device, logger: logger)!, for: ParticleStorageProtocol.self)
     }
 
     private static func registerServices(in container: DIContainer) {
-        container.register(ConfigurationManager(), for: ConfigurationManagerProtocol.self)
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+        container.register(ConfigurationManager(logger: logger), for: ConfigurationManagerProtocol.self)
         container.register(MemoryManager(), for: MemoryManagerProtocol.self)
-        container.register(ImageParticleGeneratorToParticleSystemAdapter.makeAdapter(), for: ParticleGeneratorProtocol.self)
-        container.register(Logger.shared as LoggerProtocol, for: LoggerProtocol.self)
     }
 }

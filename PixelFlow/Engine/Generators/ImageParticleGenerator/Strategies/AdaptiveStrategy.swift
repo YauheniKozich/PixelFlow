@@ -23,7 +23,7 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
 
     init(availableConcurrency: Int = OperationQueue.defaultMaxConcurrentOperationCount,
          deviceCapabilities: DeviceCapabilities = DeviceCapabilities.current,
-         logger: LoggerProtocol = Logger.shared) {
+         logger: LoggerProtocol) {
 
         self.availableConcurrency = availableConcurrency
         self.deviceCapabilities = deviceCapabilities

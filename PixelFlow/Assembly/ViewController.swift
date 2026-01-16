@@ -9,18 +9,25 @@ import UIKit
 import MetalKit
 
 class ViewController: UIViewController {
-    
+
     // MARK: - Свойства
-    
+
     private var mtkView: MTKView!
     private let viewModel: ParticleViewModel
+    private let device: MTLDevice
     private var qualityUpgradeLabel: UILabel?
     private var isFirstLayout = true
     
     // MARK: - Инициализация
-    
+
     init(viewModel: ParticleViewModel) {
         self.viewModel = viewModel
+
+        guard let device = resolve(MTLDevice.self) else {
+            fatalError("MTLDevice not available in DI container")
+        }
+        self.device = device
+
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -41,10 +48,6 @@ class ViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         mtkView.frame = view.bounds
-        // Установить drawableSize при layout
-        mtkView.drawableSize = mtkView.bounds.size
-        // Вызываем делегат чтобы обновить screenSize в MetalRenderer
-        mtkView.delegate?.mtkView(mtkView, drawableSizeWillChange: mtkView.bounds.size)
         
         // Инициализируем систему частиц только один раз после layout
         guard isFirstLayout else { return }
@@ -78,12 +81,8 @@ class ViewController: UIViewController {
     }
     
     // MARK: - Настройка MetalView
-    
+
     private func setupMetalView() {
-        guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Metal не поддерживается на этом устройстве")
-        }
-        
         mtkView = MTKView(frame: view.bounds, device: device)
         mtkView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)

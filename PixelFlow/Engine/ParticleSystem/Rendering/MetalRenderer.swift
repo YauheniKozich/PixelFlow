@@ -34,6 +34,7 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
     internal var screenSize: CGSize = .zero
     private var currentConfig: ParticleGenerationConfig = .standard
     private var enableIdleChaotic: Bool = false
+    private var displayScale: Float = 1.0
 
     private weak var simulationEngine: SimulationEngineProtocol?
     private var paramsUpdater: SimulationParamsUpdater?
@@ -41,8 +42,8 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
 
     // MARK: - Initialization
 
-    init(device: MTLDevice = MTLCreateSystemDefaultDevice()!,
-         logger: LoggerProtocol = Logger.shared) {
+    init(device: MTLDevice,
+         logger: LoggerProtocol) {
         self.device = device
         self.commandQueue = device.makeCommandQueue()!
         self.logger = logger
@@ -145,7 +146,8 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
             screenSize: screenSize,
             particleCount: particleCount,
             config: currentConfig,
-            enableIdleChaotic: enableIdleChaotic
+            enableIdleChaotic: enableIdleChaotic,
+            displayScale: displayScale
         )
     }
 
@@ -260,11 +262,14 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
         logger.debug("Idle chaotic motion \(enabled ? "enabled" : "disabled")")
     }
 
+
+
     // MARK: - MTKViewDelegate
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         screenSize = size
-        logger.debug("MTKView drawable size changed to: \(size)")
+        displayScale = Float(size.width / view.bounds.width)
+        logger.debug("MTKView drawable size changed to: \(size), displayScale: \(displayScale)")
     }
 
     func draw(in view: MTKView) {
@@ -331,6 +336,11 @@ final class MetalRenderer: NSObject, MetalRendererProtocol, MTKViewDelegate {
                 }
             }
             firstDraw = false
+        } else if particleCount > 0 && (CACurrentMediaTime().truncatingRemainder(dividingBy: 1.0) < 0.1) {  // Логируем раз в секунду
+            if let particles = particleBuffer?.contents().bindMemory(to: Particle.self, capacity: particleCount) {
+                let p = particles[0]
+                logger.info("Particle 0 update: pos(\(p.position.x), \(p.position.y)), vel(\(p.velocity.x), \(p.velocity.y))")
+            }
         }
 
         // Рисуем частицы (point primitives)

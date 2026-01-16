@@ -17,7 +17,8 @@ final class SimulationParamsUpdater {
         screenSize: CGSize,
         particleCount: Int,
         config: ParticleGenerationConfig,
-        enableIdleChaotic: Bool = false
+        enableIdleChaotic: Bool = false,
+        displayScale: Float = 1.0
     ) {
         var p = SimulationParams()
         
@@ -32,8 +33,8 @@ final class SimulationParamsUpdater {
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
-         p.minParticleSize = config.minParticleSize
-         p.maxParticleSize = config.maxParticleSize
+         p.minParticleSize = Float(config.minParticleSize ?? 0.5) * displayScale
+         p.maxParticleSize = Float(config.maxParticleSize ?? 50.0) * displayScale
 
         
         // === Параметры анимации и эффектов ===

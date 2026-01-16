@@ -17,6 +17,7 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
     private let stateMachine: StateManagerProtocol
     let clock: SimulationClockProtocol
     private let logger: LoggerProtocol
+    private let particleStorage: ParticleStorageProtocol
 
     var state: SimulationState { stateMachine.currentState }
     var resetCounterCallback: (() -> Void)?
@@ -25,20 +26,15 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     init(stateManager: StateManagerProtocol,
          clock: SimulationClockProtocol,
-         logger: LoggerProtocol) {
+         logger: LoggerProtocol,
+         particleStorage: ParticleStorageProtocol) {
 
         self.stateMachine = stateManager
         self.clock = clock
         self.logger = logger
+        self.particleStorage = particleStorage
 
         logger.info("SimulationEngine initialized")
-    }
-
-    /// Convenience initializer for testing or standalone usage
-    convenience init() {
-        self.init(stateManager: DefaultStateManager(),
-                  clock: DefaultSimulationClock(),
-                  logger: Logger.shared)
     }
 
     // MARK: - SimulationEngineProtocol
@@ -49,6 +45,10 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     func start() {
         logger.info("Starting simulation")
+        
+        // Создаем fast preview частицы с начальными скоростями
+        particleStorage.createFastPreviewParticles()
+        
         stateMachine.transition(to: .chaotic)
         resetCounterCallback?()
     }
@@ -61,6 +61,10 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
     func startCollecting() {
         logger.info("Starting particle collection")
         startCollectionTracking()
+        
+        // КРИТИЧНО: Создаем целевые high-quality частицы перед началом сборки
+        particleStorage.recreateHighQualityParticles()
+        
         stateMachine.transition(to: .collecting(progress: 0.0))
         resetCounterCallback?()
     }
@@ -86,16 +90,52 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
 
     func update(deltaTime: Float) {
         clock.update(with: deltaTime)
-        // Здесь будет логика обновления физики частиц
+        
+        logger.debug("SimulationEngine.update() deltaTime=\(deltaTime) state=\(stateMachine.currentState)")
+
+        // Применяем силы (если нужно)
+        applyForces()
+
+        // Обновляем частицы в зависимости от текущего состояния
+        switch stateMachine.currentState {
+        case .idle:
+            // В idle ничего не делаем
+            break
+            
+        case .chaotic:
+            // В хаотичном режиме частицы двигаются по своим velocity
+            logger.debug("Updating chaotic particles")
+            particleStorage.updateFastPreview(deltaTime: deltaTime)
+            
+        case .collecting:
+            // В режиме сборки частицы плавно перемещаются к целевым позициям
+            logger.debug("Updating collecting particles")
+            particleStorage.updateHighQualityTransition(deltaTime: deltaTime)
+            
+        case .collected:
+            // В собранном состоянии частицы статичны
+            break
+            
+        case .lightningStorm:
+            // В режиме молний можно добавить специальную логику
+            logger.debug("Updating lightning storm particles")
+            particleStorage.updateFastPreview(deltaTime: deltaTime)
+        }
     }
 
     func applyForces() {
-        // Здесь будет логика применения сил
+        // Здесь можно добавить дополнительные физические силы:
+        // - Гравитацию
+        // - Отталкивание от краев экрана
+        // - Турбулентность
+        // - Притяжение к центру в режиме collecting
+        // Пока оставляем пустым - логика в ParticleStorage
     }
 
     func reset() {
         clock.reset()
         stateMachine.transition(to: .idle)
+        particleStorage.clear()
     }
 
     // MARK: - Public Methods
@@ -117,19 +157,22 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
     private func shouldCompleteCollection(progress: Float) -> Bool {
         let currentTime = ProcessInfo.processInfo.systemUptime
 
-        // 1. Порог готовности достигнут
+        // 1. Порог готовности достигнут (99%)
         if progress >= 0.99 {
+            logger.info("Collection complete: progress threshold reached (\(String(format: "%.3f", progress)))")
             return true
         }
 
         // 2. Общий таймаут (30 секунд)
         if currentTime - collectionStartTime > 30.0 {
+            logger.warning("Collection complete: timeout reached (30s)")
             return true
         }
 
         // 3. Застрявший прогресс (5 секунд без улучшения)
         if progress > 0 && progress == lastProgress &&
            currentTime - lastProgressUpdateTime > 5.0 {
+            logger.warning("Collection complete: progress stalled at \(String(format: "%.3f", progress))")
             return true
         }
 
@@ -153,10 +196,10 @@ final class SimulationEngine: SimulationEngineProtocol, PhysicsEngineProtocol {
         collectionStartTime = currentTime
         lastProgressUpdateTime = currentTime
         lastProgress = 0
+        
+        logger.debug("Collection tracking started at \(currentTime)")
     }
 }
-
-// MARK: - Default Implementations
 
 // MARK: - Default Implementations
 

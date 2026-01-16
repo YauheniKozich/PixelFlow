@@ -209,19 +209,19 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         let imageX = CGFloat(sample.x)
         let imageY = CGFloat(sample.y)
         
-        // Применяем масштаб и смещение трансформации
+        // Применяем масштаб и смещение (в экранных координатах)
         let screenX = transformation.offset.x + imageX * transformation.scaleX
         let screenY = transformation.offset.y + imageY * transformation.scaleY
-        
-        // Граничная валидация и clamping
-        let maxX = max(screenSize.width - 1, 0)
-        let maxY = max(screenSize.height - 1, 0)
-        
-        let clampedX = min(max(screenX, 0), maxX)
-        let clampedY = min(max(screenY, 0), maxY)
-        
-        // Заполняем параметры частицы
-        particle.position = SIMD3<Float>(Float(clampedX), Float(clampedY), 0)
+
+        // Нормализация в диапазон 0…1
+        let nx = screenSize.width > 0 ? screenX / screenSize.width : 0
+        let ny = screenSize.height > 0 ? screenY / screenSize.height : 0
+
+        // Жёсткий clamp уже в нормализованном пространстве
+        let clampedNX = min(max(nx, 0), 1)
+        let clampedNY = min(max(ny, 0), 1)
+
+        particle.position = SIMD3<Float>(Float(clampedNX), Float(clampedNY), 0)
         particle.targetPosition = particle.position
         particle.color = sample.color
         particle.originalColor = sample.color

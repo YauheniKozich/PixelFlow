@@ -1,0 +1,30 @@
+{
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Configuration/CacheManager.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/CacheManager.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/CacheManager.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/CacheManager.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/CacheManager.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/CacheManager.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/ArtifactPreventionHelper.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ArtifactPreventionHelper.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ArtifactPreventionHelper.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ArtifactPreventionHelper.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ArtifactPreventionHelper.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ArtifactPreventionHelper.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Engine/ParticleSystem/Storage/ConfigManager.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ConfigManager.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ConfigManager.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ConfigManager.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ConfigManager.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/ConfigManager.swiftdeps"
+  },
+  "/Users/yauhenikozich/Develop/PixelFlow/PixelFlow/Infrastructure/DI/AssemblyDependencies.swift" : {
+    "const-values" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/AssemblyDependencies.swiftconstvalues",
+    "dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/AssemblyDependencies.d",
+    "diagnostics" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/AssemblyDependencies.dia",
+    "object" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/AssemblyDependencies.o",
+    "swift-dependencies" : "/Users/yauhenikozich/Develop/PixelFlow/build/PixelFlow.build/Debug-iphonesimulator/PixelFlow.build/Objects-normal/x86_64/AssemblyDependencies.swiftdeps"
+  }
+}

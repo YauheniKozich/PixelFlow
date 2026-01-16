@@ -30,7 +30,7 @@ final class GenerationContext: GenerationContextProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
         logger.info("GenerationContext initialized")
     }

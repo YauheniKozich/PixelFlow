@@ -3,338 +3,670 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-		BFD17F3B2F13D603009D62D9 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = BF050D982EAB934400FDF712 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = BF050D9F2EAB934500FDF712;
-			remoteInfo = PixelFlow;
-		};
-/* End PBXContainerItemProxy section */
+/* Begin PBXBuildFile section */
+		05E6F65343E5E3585FC18C25 /* ImageAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */; };
+		11634FF923AD375AA24B8FDB /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36874169CBAB62DAC9E8FBE3 /* Configuration.swift */; };
+		1288B430A1B8A19EA2E661B8 /* PixelFlowErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */; };
+		163517E50D70798094FD2CA3 /* ParallelStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */; };
+		17767C749F65872E8BE73F87 /* MemoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */; };
+		1B837EA52CD8F61DB2BC8073 /* GeneratorProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */; };
+		1BA584FA3941094591F43133 /* ParticleSystemProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */; };
+		23FD6456B14FB1F7DCAD3ED0 /* AdvancedPixelSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B610B4F5075F22E3FBBCD2FA /* AdvancedPixelSampler.swift */; };
+		308B183B72C5FAAF9CA64ABA /* SimulationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD40BB3AA1F21FDBD8F03266 /* SimulationStateMachine.swift */; };
+		34ACF0AC3791A70E6E2A7DD4 /* PixelCacheHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */; };
+		351037CC768E5A491F5BF5DD /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A010E71EE8931CF04EB647D6 /* Logger.swift */; };
+		35CFFC9755489A9A8373678E /* ImageAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */; };
+		37E1BBB8789E45030C938FE3 /* AdaptiveSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C08ADAA0DC22C0A2E812A4 /* AdaptiveSamplingStrategy.swift */; };
+		3B54816179CD99C6F61553C6 /* Supporting.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA12389FB45FC7909E222F75 /* Supporting.swift */; };
+		3C98AD8C464DBF7FCF7D65C5 /* DependencyInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB16AA3FEC09086F2ECB87A /* DependencyInitializer.swift */; };
+		40368AC75C473FCF74B8E2AD /* PixelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84709E0D21F5CD033B857A16 /* PixelCache.swift */; };
+		4D6C2C30A1FAB8C7EB7687ED /* ParticleAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C695F73386FE862879D3015 /* ParticleAssembler.swift */; };
+		4E82B9EF19FA592D624B9E21 /* HybridSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */; };
+		69395CB6598BB485C9854078 /* OperationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6264A8225BF5449CC4D6BCA /* OperationManager.swift */; };
+		693CB28336633F85948A55F2 /* SimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DAAEB8ED020AAA30888AD9 /* SimulationEngine.swift */; };
+		69D411FE31432C762DC6E664 /* SimulationParamsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41CA8DE0CC034F0CB1BA8C67 /* SimulationParamsUpdater.swift */; };
+		6A2BF57DD2ECE5C239065EE6 /* Particle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6440E1FA626464C4089489D6 /* Particle.swift */; };
+		70CF22B859679A01AA9D5D13 /* ParticleSystemAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */; };
+		739CA77B198003AA88F8F800 /* PixelSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9317EC3084FF89D3992EC919 /* PixelSampler.swift */; };
+		7550D0B6D93018150D5D001A /* GenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */; };
+		75D67CF6139BE441A231D054 /* ParticleConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EC33801A9B7D5F624FB11E /* ParticleConstants.swift */; };
+		7A34FCABF4BC3629CBAFD883 /* ParticleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */; };
+		7E135093549CD0CCCB4E1A1D /* ParticleStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D9C846BD51789BC7A6F1FD /* ParticleStorage.swift */; };
+		873047631494E8A3BA222EF9 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B7ABA49AFBE4C66C2455F1 /* ConfigManager.swift */; };
+		8DA08487CCFBF658122FA059 /* SamplingParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90527ACF3A024E0DADC6527D /* SamplingParameters.swift */; };
+		91626DCAFC61FCF4EA230B69 /* GraphicsUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */; };
+		9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93560018522BD7AF9E98529F /* SimulationClock.swift */; };
+		9D1852C3D8ED18EAB85A4438 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B744089D6AB6D4E747083D1E /* AppDelegate.swift */; };
+		9DC6FDCB841C9C51363245E2 /* AdaptiveStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */; };
+		9FFBC24CE0D99C0ED2CE55F4 /* SequentialStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */; };
+		A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 43D107B3D96FF487FE0CF627 /* ParticleShader.metal */; };
+		A1BD68667A39490AAE003F61 /* MetalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */; };
+		AA5E433B7B2F56508ACAED9B /* DIContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE513399080F8D957D309707 /* DIContainer.swift */; };
+		AD68EF778C7FB8EB1ECE95AB /* PixelSampler.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FD361633A6093BC6532961B /* PixelSampler.c */; };
+		ADB08432FF312BEBA828E7EF /* UniformSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */; };
+		AE633C51A2DE14DB269BD134 /* ParticleSystemCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */; };
+		B190B665958E666F621FCFCE /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE96AC27175B66D6BA65564 /* CacheManager.swift */; };
+		B2E51ADCE6460535ECFE5AF8 /* ImageParticleGeneratorToParticleSystemAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */; };
+		B54EEAAC4EABC47662D07085 /* GenerationPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */; };
+		B64726E04585C84AEAFA14F1 /* ArtifactPreventionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */; };
+		B6B0E376C4091E0C46EB6E20 /* AssemblyDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */; };
+		C0095922D3B76D689FB6A643 /* State+ShaderValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */; };
+		C1A384093C7B46F51DA91E9D /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */; };
+		C36F20B4EE6256AF819C177C /* DIProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */; };
+		CAF42A32F72AF656C2AE6590 /* ImportanceSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B0C201FD10D90AB2703E7A /* ImportanceSamplingStrategy.swift */; };
+		D229A60FE90FB21E355924B8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6B49F681B327D71DD1077DD9 /* LaunchScreen.storyboard */; };
+		D54D0DDB319487127D4B3FA2 /* GenerationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2572E34AE78EF64B12E589B /* GenerationContext.swift */; };
+		D6A9019E6C26DB7276BBF37C /* Sample.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDBCF0245D899397C41C22C8 /* Sample.swift */; };
+		DC891265BCEC31F45A872D2B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A806E0723DD47B0F0831AC4E /* Assets.xcassets */; };
+		DCD1F9787764F5C0977A082C /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E89750A6C798E3F458B525C /* SceneDelegate.swift */; };
+		E1D721662F5D92AC0DCCBAA6 /* MetalProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */; };
+		E3896EA44F81DE1870D07CCB /* ImageGeneratorDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = C948BD59E5CE741FD022624C /* ImageGeneratorDependencies.swift */; };
+		E46A5A099721543A3A8FAA5E /* SamplingParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */; };
+		EA88C5A7BFFA5AFED5969956 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7D7BC45FB33D10147667E5 /* ViewController.swift */; };
+		F203ED034757530176AE847C /* ParticleAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */; };
+		FAFD7840A754AF4FD1286612 /* ParticleSystemDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE721DEB60539A3B153341B /* ParticleSystemDependencies.swift */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BF050DA02EAB934500FDF712 /* PixelFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PixelFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BFD17F372F13D603009D62D9 /* PixelFlowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PixelFlowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniformSamplingStrategy.swift; sourceTree = "<group>"; };
+		0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactPreventionHelper.swift; sourceTree = "<group>"; };
+		1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "State+ShaderValue.swift"; sourceTree = "<group>"; };
+		1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelStrategy.swift; sourceTree = "<group>"; };
+		1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalysis.swift; sourceTree = "<group>"; };
+		230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalyzer.swift; sourceTree = "<group>"; };
+		275F97449BA3619B084370CE /* PixelFlow-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PixelFlow-Bridging-Header.h"; sourceTree = "<group>"; };
+		2A511145A0288CC12E69CF32 /* PixelFlow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PixelFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD361633A6093BC6532961B /* PixelSampler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PixelSampler.c; sourceTree = "<group>"; };
+		3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequentialStrategy.swift; sourceTree = "<group>"; };
+		35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveStrategy.swift; sourceTree = "<group>"; };
+		36874169CBAB62DAC9E8FBE3 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		3C695F73386FE862879D3015 /* ParticleAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleAssembler.swift; sourceTree = "<group>"; };
+		41CA8DE0CC034F0CB1BA8C67 /* SimulationParamsUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationParamsUpdater.swift; sourceTree = "<group>"; };
+		43D107B3D96FF487FE0CF627 /* ParticleShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ParticleShader.metal; sourceTree = "<group>"; };
+		43EC33801A9B7D5F624FB11E /* ParticleConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleConstants.swift; sourceTree = "<group>"; };
+		45FC84EA36A25B5DE6C9BC76 /* Physics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Physics.h; sourceTree = "<group>"; };
+		49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleAssembly.swift; sourceTree = "<group>"; };
+		50C08ADAA0DC22C0A2E812A4 /* AdaptiveSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveSamplingStrategy.swift; sourceTree = "<group>"; };
+		50D9C846BD51789BC7A6F1FD /* ParticleStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleStorage.swift; sourceTree = "<group>"; };
+		52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		59B0C201FD10D90AB2703E7A /* ImportanceSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportanceSamplingStrategy.swift; sourceTree = "<group>"; };
+		5BE721DEB60539A3B153341B /* ParticleSystemDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemDependencies.swift; sourceTree = "<group>"; };
+		5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalRenderer.swift; sourceTree = "<group>"; };
+		6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
+		633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryManager.swift; sourceTree = "<group>"; };
+		634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIProtocols.swift; sourceTree = "<group>"; };
+		6440E1FA626464C4089489D6 /* Particle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Particle.swift; sourceTree = "<group>"; };
+		68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleViewModel.swift; sourceTree = "<group>"; };
+		6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemCoordinator.swift; sourceTree = "<group>"; };
+		6E89750A6C798E3F458B525C /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemProtocols.swift; sourceTree = "<group>"; };
+		78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelCacheHelper.swift; sourceTree = "<group>"; };
+		7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamplingParams.swift; sourceTree = "<group>"; };
+		84709E0D21F5CD033B857A16 /* PixelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelCache.swift; sourceTree = "<group>"; };
+		85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyDependencies.swift; sourceTree = "<group>"; };
+		8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationPipeline.swift; sourceTree = "<group>"; };
+		8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageParticleGeneratorToParticleSystemAdapter.swift; sourceTree = "<group>"; };
+		90527ACF3A024E0DADC6527D /* SamplingParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamplingParameters.swift; sourceTree = "<group>"; };
+		9317EC3084FF89D3992EC919 /* PixelSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelSampler.swift; sourceTree = "<group>"; };
+		93560018522BD7AF9E98529F /* SimulationClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationClock.swift; sourceTree = "<group>"; };
+		97C5CBCA1AF9BCDF5FAA8845 /* Simulation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Simulation.h; sourceTree = "<group>"; };
+		A010E71EE8931CF04EB647D6 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		A806E0723DD47B0F0831AC4E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AAE96AC27175B66D6BA65564 /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheManager.swift; sourceTree = "<group>"; };
+		ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFlowErrors.swift; sourceTree = "<group>"; };
+		AD7D7BC45FB33D10147667E5 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemAdapter.swift; sourceTree = "<group>"; };
+		B2572E34AE78EF64B12E589B /* GenerationContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationContext.swift; sourceTree = "<group>"; };
+		B3DAAEB8ED020AAA30888AD9 /* SimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationEngine.swift; sourceTree = "<group>"; };
+		B5ECE8C77F933F8B27401ED8 /* Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
+		B610B4F5075F22E3FBBCD2FA /* AdvancedPixelSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedPixelSampler.swift; sourceTree = "<group>"; };
+		B744089D6AB6D4E747083D1E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProtocols.swift; sourceTree = "<group>"; };
+		BA12389FB45FC7909E222F75 /* Supporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Supporting.swift; sourceTree = "<group>"; };
+		BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsUtils.swift; sourceTree = "<group>"; };
+		C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HybridSamplingStrategy.swift; sourceTree = "<group>"; };
+		C6B78784CEF0C867B06BD275 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C948BD59E5CE741FD022624C /* ImageGeneratorDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGeneratorDependencies.swift; sourceTree = "<group>"; };
+		CDBCF0245D899397C41C22C8 /* Sample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sample.swift; sourceTree = "<group>"; };
+		D54B7B8005AEB18085725079 /* Utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
+		DAB16AA3FEC09086F2ECB87A /* DependencyInitializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyInitializer.swift; sourceTree = "<group>"; };
+		DDB5833E2A3CCDDBAD9C061D /* PixelSampler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PixelSampler.h; sourceTree = "<group>"; };
+		DE9E581EDF5F2B61867E99DB /* .xcodeignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .xcodeignore; sourceTree = "<group>"; };
+		E6264A8225BF5449CC4D6BCA /* OperationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationManager.swift; sourceTree = "<group>"; };
+		E9B7ABA49AFBE4C66C2455F1 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
+		ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratorProtocols.swift; sourceTree = "<group>"; };
+		F3B535A558AB5408B3395900 /* Lighting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Lighting.h; sourceTree = "<group>"; };
+		FCCDCF1F318BE9D13CB38913 /* Basic.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Basic.h; sourceTree = "<group>"; };
+		FD40BB3AA1F21FDBD8F03266 /* SimulationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationStateMachine.swift; sourceTree = "<group>"; };
+		FE513399080F8D957D309707 /* DIContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIContainer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		BFC2CD272EB636E100E2651F /* PixelFlow */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
+/* Begin PBXGroup section */
+		0435BAE28BB54A3BE5C568F5 /* Rendering */ = {
+			isa = PBXGroup;
+			children = (
+				5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */,
+			);
+			path = Rendering;
+			sourceTree = "<group>";
+		};
+		0A7D1952024CB087520846AA /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */,
+				6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		12491D5DE21F55470F3F2CE8 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */,
+				ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */,
+				B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */,
+				71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		18AF5ECA9E7D55162C5BAFF5 /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				AAE96AC27175B66D6BA65564 /* CacheManager.swift */,
+				36874169CBAB62DAC9E8FBE3 /* Configuration.swift */,
+				E6264A8225BF5449CC4D6BCA /* OperationManager.swift */,
+			);
+			path = Configuration;
+			sourceTree = "<group>";
+		};
+		29266C8890D4BA1D16F78ACE /* Simulation */ = {
+			isa = PBXGroup;
+			children = (
+				93560018522BD7AF9E98529F /* SimulationClock.swift */,
+				B3DAAEB8ED020AAA30888AD9 /* SimulationEngine.swift */,
+				41CA8DE0CC034F0CB1BA8C67 /* SimulationParamsUpdater.swift */,
+				FD40BB3AA1F21FDBD8F03266 /* SimulationStateMachine.swift */,
+			);
+			path = Simulation;
+			sourceTree = "<group>";
+		};
+		295E148330EE623EA6912CB1 /* Particles */ = {
+			isa = PBXGroup;
+			children = (
+				43EC33801A9B7D5F624FB11E /* ParticleConstants.swift */,
+			);
+			path = Particles;
+			sourceTree = "<group>";
+		};
+		31226D4497D9B7C752E68019 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */,
+				275F97449BA3619B084370CE /* PixelFlow-Bridging-Header.h */,
+				2FD361633A6093BC6532961B /* PixelSampler.c */,
+				DDB5833E2A3CCDDBAD9C061D /* PixelSampler.h */,
+				90527ACF3A024E0DADC6527D /* SamplingParameters.swift */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		3E2D30BDF09A5937217EF8D4 /* Assembly */ = {
+			isa = PBXGroup;
+			children = (
+				49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */,
+				68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */,
+				AD7D7BC45FB33D10147667E5 /* ViewController.swift */,
+			);
+			path = Assembly;
+			sourceTree = "<group>";
+		};
+		3FAC34C854F42E1386E9FECE /* Advanced */ = {
+			isa = PBXGroup;
+			children = (
+				B610B4F5075F22E3FBBCD2FA /* AdvancedPixelSampler.swift */,
+			);
+			path = Advanced;
+			sourceTree = "<group>";
+		};
+		428AF6C46734B0AF2D0AC07C /* Shaders */ = {
+			isa = PBXGroup;
+			children = (
+				43D107B3D96FF487FE0CF627 /* ParticleShader.metal */,
+				4B9D0CFC0FA85C543C59E858 /* Compute */,
+				C0EC9E0F7611CA8C020822FB /* Core */,
+				602447ED9601592B36A1D568 /* Effects */,
+				76AC60EA7F3EE74FBBAD6876 /* Rendering */,
+			);
+			path = Shaders;
+			sourceTree = "<group>";
+		};
+		4B9D0CFC0FA85C543C59E858 /* Compute */ = {
+			isa = PBXGroup;
+			children = (
+				45FC84EA36A25B5DE6C9BC76 /* Physics.h */,
+				97C5CBCA1AF9BCDF5FAA8845 /* Simulation.h */,
+			);
+			path = Compute;
+			sourceTree = "<group>";
+		};
+		5040A429F2EA3FF158F4E003 /* Assembly */ = {
+			isa = PBXGroup;
+			children = (
+				3C695F73386FE862879D3015 /* ParticleAssembler.swift */,
+				BA12389FB45FC7909E222F75 /* Supporting.swift */,
+			);
+			path = Assembly;
+			sourceTree = "<group>";
+		};
+		5A93EB177E4A61D7D95428EC /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				B2572E34AE78EF64B12E589B /* GenerationContext.swift */,
+				6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */,
+				8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */,
+				8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		5E7E119635F2D1E94C3D5116 /* DI */ = {
+			isa = PBXGroup;
+			children = (
+				85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */,
+				DAB16AA3FEC09086F2ECB87A /* DependencyInitializer.swift */,
+				FE513399080F8D957D309707 /* DIContainer.swift */,
+				C948BD59E5CE741FD022624C /* ImageGeneratorDependencies.swift */,
+				5BE721DEB60539A3B153341B /* ParticleSystemDependencies.swift */,
+			);
+			path = DI;
+			sourceTree = "<group>";
+		};
+		602447ED9601592B36A1D568 /* Effects */ = {
+			isa = PBXGroup;
+			children = (
+				F3B535A558AB5408B3395900 /* Lighting.h */,
+			);
+			path = Effects;
+			sourceTree = "<group>";
+		};
+		6336BEEDE34B91752A3BAD61 /* Generators */ = {
+			isa = PBXGroup;
+			children = (
+				EBB576E93CB9A59BFF5F8941 /* ImageParticleGenerator */,
+			);
+			path = Generators;
+			sourceTree = "<group>";
+		};
+		649E182EA088375F2ABF1B24 /* PixelFlow */ = {
+			isa = PBXGroup;
+			children = (
+				DE9E581EDF5F2B61867E99DB /* .xcodeignore */,
+				3E2D30BDF09A5937217EF8D4 /* Assembly */,
+				B9CA163B58583F3EC91BB6F0 /* Engine */,
+				66DF41616B17D85887B2CF99 /* Errors */,
+				D62E07A0EBA8D47F1C722EE0 /* Infrastructure */,
+				6D127987796C9397452AD90E /* Resources */,
+				7DDBF4E315F4D063C23514A1 /* UI */,
+			);
 			path = PixelFlow;
 			sourceTree = "<group>";
 		};
-		BFD17F382F13D603009D62D9 /* PixelFlowTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PixelFlowTests;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		BF050D9D2EAB934500FDF712 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BFD17F342F13D603009D62D9 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		BF050D972EAB934400FDF712 = {
+		64E149131E2695F21E969FC1 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
-				BFC2CD272EB636E100E2651F /* PixelFlow */,
-				BFD17F382F13D603009D62D9 /* PixelFlowTests */,
-				BF050DA12EAB934500FDF712 /* Products */,
+				A010E71EE8931CF04EB647D6 /* Logger.swift */,
+				633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */,
+				1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		658CE28E51E516DA22B8ED7C /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		66DF41616B17D85887B2CF99 /* Errors */ = {
+			isa = PBXGroup;
+			children = (
+				ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */,
+			);
+			path = Errors;
+			sourceTree = "<group>";
+		};
+		6D127987796C9397452AD90E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A806E0723DD47B0F0831AC4E /* Assets.xcassets */,
+				6B49F681B327D71DD1077DD9 /* LaunchScreen.storyboard */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		718B1B46C65070CA57D92EC7 = {
+			isa = PBXGroup;
+			children = (
+				649E182EA088375F2ABF1B24 /* PixelFlow */,
+				7AF7288DA1071A2BC8A92D22 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		BF050DA12EAB934500FDF712 /* Products */ = {
+		71BFDFE5566FDC5E60026114 /* Strategies */ = {
 			isa = PBXGroup;
 			children = (
-				BF050DA02EAB934500FDF712 /* PixelFlow.app */,
-				BFD17F372F13D603009D62D9 /* PixelFlowTests.xctest */,
+				50C08ADAA0DC22C0A2E812A4 /* AdaptiveSamplingStrategy.swift */,
+				C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */,
+				59B0C201FD10D90AB2703E7A /* ImportanceSamplingStrategy.swift */,
+				0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */,
+				3FAC34C854F42E1386E9FECE /* Advanced */,
+			);
+			path = Strategies;
+			sourceTree = "<group>";
+		};
+		76AC60EA7F3EE74FBBAD6876 /* Rendering */ = {
+			isa = PBXGroup;
+			children = (
+				FCCDCF1F318BE9D13CB38913 /* Basic.h */,
+			);
+			path = Rendering;
+			sourceTree = "<group>";
+		};
+		7AF7288DA1071A2BC8A92D22 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2A511145A0288CC12E69CF32 /* PixelFlow.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7DDBF4E315F4D063C23514A1 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B744089D6AB6D4E747083D1E /* AppDelegate.swift */,
+				6E89750A6C798E3F458B525C /* SceneDelegate.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		8595B5D6BE57D9E2F43E780F /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				E9B7ABA49AFBE4C66C2455F1 /* ConfigManager.swift */,
+				50D9C846BD51789BC7A6F1FD /* ParticleStorage.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		92A608172A9F7C944021A3F8 /* ParticleSystem */ = {
+			isa = PBXGroup;
+			children = (
+				0A7D1952024CB087520846AA /* Core */,
+				D729624B43A42597869F1C3A /* Models */,
+				295E148330EE623EA6912CB1 /* Particles */,
+				0435BAE28BB54A3BE5C568F5 /* Rendering */,
+				29266C8890D4BA1D16F78ACE /* Simulation */,
+				8595B5D6BE57D9E2F43E780F /* Storage */,
+				64E149131E2695F21E969FC1 /* Utils */,
+			);
+			path = ParticleSystem;
+			sourceTree = "<group>";
+		};
+		B9CA163B58583F3EC91BB6F0 /* Engine */ = {
+			isa = PBXGroup;
+			children = (
+				BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */,
+				6336BEEDE34B91752A3BAD61 /* Generators */,
+				92A608172A9F7C944021A3F8 /* ParticleSystem */,
+				428AF6C46734B0AF2D0AC07C /* Shaders */,
+			);
+			path = Engine;
+			sourceTree = "<group>";
+		};
+		C0EC9E0F7611CA8C020822FB /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				B5ECE8C77F933F8B27401ED8 /* Common.h */,
+				D54B7B8005AEB18085725079 /* Utils.h */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		D62E07A0EBA8D47F1C722EE0 /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (
+				5E7E119635F2D1E94C3D5116 /* DI */,
+				12491D5DE21F55470F3F2CE8 /* Protocols */,
+				658CE28E51E516DA22B8ED7C /* Services */,
+			);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		D729624B43A42597869F1C3A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				6440E1FA626464C4089489D6 /* Particle.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		DD45D84A4374F3FA928C73CB /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */,
+				230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
+		E594E01D7B2D5F4CB3B519ED /* Strategies */ = {
+			isa = PBXGroup;
+			children = (
+				35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */,
+				1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */,
+				3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */,
+			);
+			path = Strategies;
+			sourceTree = "<group>";
+		};
+		EB5B2AC1DFE890718A7957B8 /* Sampling */ = {
+			isa = PBXGroup;
+			children = (
+				9317EC3084FF89D3992EC919 /* PixelSampler.swift */,
+				31226D4497D9B7C752E68019 /* Helpers */,
+				FB989AEE228527B923C79F38 /* Models */,
+				71BFDFE5566FDC5E60026114 /* Strategies */,
+			);
+			path = Sampling;
+			sourceTree = "<group>";
+		};
+		EBB576E93CB9A59BFF5F8941 /* ImageParticleGenerator */ = {
+			isa = PBXGroup;
+			children = (
+				DD45D84A4374F3FA928C73CB /* Analysis */,
+				5040A429F2EA3FF158F4E003 /* Assembly */,
+				EBBA5C8B01BE959B56C685D4 /* Caching */,
+				18AF5ECA9E7D55162C5BAFF5 /* Configuration */,
+				5A93EB177E4A61D7D95428EC /* Core */,
+				EB5B2AC1DFE890718A7957B8 /* Sampling */,
+				E594E01D7B2D5F4CB3B519ED /* Strategies */,
+			);
+			path = ImageParticleGenerator;
+			sourceTree = "<group>";
+		};
+		EBBA5C8B01BE959B56C685D4 /* Caching */ = {
+			isa = PBXGroup;
+			children = (
+				84709E0D21F5CD033B857A16 /* PixelCache.swift */,
+				78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */,
+			);
+			path = Caching;
+			sourceTree = "<group>";
+		};
+		FB989AEE228527B923C79F38 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				CDBCF0245D899397C41C22C8 /* Sample.swift */,
+				7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BF050D9F2EAB934500FDF712 /* PixelFlow */ = {
+		1A33AE9A801C9C4C7B0DA455 /* PixelFlow */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BF050DB32EAB934500FDF712 /* Build configuration list for PBXNativeTarget "PixelFlow" */;
+			buildConfigurationList = A728AE78254080D5B6A9F721 /* Build configuration list for PBXNativeTarget "PixelFlow" */;
 			buildPhases = (
-				BF050D9C2EAB934500FDF712 /* Sources */,
-				BF050D9D2EAB934500FDF712 /* Frameworks */,
-				BF050D9E2EAB934500FDF712 /* Resources */,
+				2EF1F94FDA02228411E60B92 /* Sources */,
+				B4D70C45FD8E74B83601FC2C /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				BFC2CD272EB636E100E2651F /* PixelFlow */,
 			);
 			name = PixelFlow;
 			packageProductDependencies = (
 			);
 			productName = PixelFlow;
-			productReference = BF050DA02EAB934500FDF712 /* PixelFlow.app */;
+			productReference = 2A511145A0288CC12E69CF32 /* PixelFlow.app */;
 			productType = "com.apple.product-type.application";
-		};
-		BFD17F362F13D603009D62D9 /* PixelFlowTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = BFD17F3D2F13D603009D62D9 /* Build configuration list for PBXNativeTarget "PixelFlowTests" */;
-			buildPhases = (
-				BFD17F332F13D603009D62D9 /* Sources */,
-				BFD17F342F13D603009D62D9 /* Frameworks */,
-				BFD17F352F13D603009D62D9 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				BFD17F3C2F13D603009D62D9 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				BFD17F382F13D603009D62D9 /* PixelFlowTests */,
-			);
-			name = PixelFlowTests;
-			packageProductDependencies = (
-			);
-			productName = PixelFlowTests;
-			productReference = BFD17F372F13D603009D62D9 /* PixelFlowTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		BF050D982EAB934400FDF712 /* Project object */ = {
+		2699156E8AD3C218B52B846C /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2620;
-				LastUpgradeCheck = 2620;
-				TargetAttributes = {
-					BF050D9F2EAB934500FDF712 = {
-						CreatedOnToolsVersion = 26.0.1;
-						LastSwiftMigration = 2620;
-					};
-					BFD17F362F13D603009D62D9 = {
-						CreatedOnToolsVersion = 26.2;
-						TestTargetID = BF050D9F2EAB934500FDF712;
-					};
-				};
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 			};
-			buildConfigurationList = BF050D9B2EAB934400FDF712 /* Build configuration list for PBXProject "PixelFlow" */;
+			buildConfigurationList = 90C2B0CD3AD7F02DB91E7DA7 /* Build configuration list for PBXProject "PixelFlow" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 			);
-			mainGroup = BF050D972EAB934400FDF712;
+			mainGroup = 718B1B46C65070CA57D92EC7;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = BF050DA12EAB934500FDF712 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BF050D9F2EAB934500FDF712 /* PixelFlow */,
-				BFD17F362F13D603009D62D9 /* PixelFlowTests */,
+				1A33AE9A801C9C4C7B0DA455 /* PixelFlow */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		BF050D9E2EAB934500FDF712 /* Resources */ = {
+		B4D70C45FD8E74B83601FC2C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BFD17F352F13D603009D62D9 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				DC891265BCEC31F45A872D2B /* Assets.xcassets in Resources */,
+				D229A60FE90FB21E355924B8 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		BF050D9C2EAB934500FDF712 /* Sources */ = {
+		2EF1F94FDA02228411E60B92 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BFD17F332F13D603009D62D9 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				37E1BBB8789E45030C938FE3 /* AdaptiveSamplingStrategy.swift in Sources */,
+				9DC6FDCB841C9C51363245E2 /* AdaptiveStrategy.swift in Sources */,
+				23FD6456B14FB1F7DCAD3ED0 /* AdvancedPixelSampler.swift in Sources */,
+				9D1852C3D8ED18EAB85A4438 /* AppDelegate.swift in Sources */,
+				B64726E04585C84AEAFA14F1 /* ArtifactPreventionHelper.swift in Sources */,
+				B6B0E376C4091E0C46EB6E20 /* AssemblyDependencies.swift in Sources */,
+				B190B665958E666F621FCFCE /* CacheManager.swift in Sources */,
+				873047631494E8A3BA222EF9 /* ConfigManager.swift in Sources */,
+				11634FF923AD375AA24B8FDB /* Configuration.swift in Sources */,
+				AA5E433B7B2F56508ACAED9B /* DIContainer.swift in Sources */,
+				C36F20B4EE6256AF819C177C /* DIProtocols.swift in Sources */,
+				3C98AD8C464DBF7FCF7D65C5 /* DependencyInitializer.swift in Sources */,
+				D54D0DDB319487127D4B3FA2 /* GenerationContext.swift in Sources */,
+				7550D0B6D93018150D5D001A /* GenerationCoordinator.swift in Sources */,
+				B54EEAAC4EABC47662D07085 /* GenerationPipeline.swift in Sources */,
+				1B837EA52CD8F61DB2BC8073 /* GeneratorProtocols.swift in Sources */,
+				91626DCAFC61FCF4EA230B69 /* GraphicsUtils.swift in Sources */,
+				4E82B9EF19FA592D624B9E21 /* HybridSamplingStrategy.swift in Sources */,
+				05E6F65343E5E3585FC18C25 /* ImageAnalysis.swift in Sources */,
+				35CFFC9755489A9A8373678E /* ImageAnalyzer.swift in Sources */,
+				E3896EA44F81DE1870D07CCB /* ImageGeneratorDependencies.swift in Sources */,
+				C1A384093C7B46F51DA91E9D /* ImageLoader.swift in Sources */,
+				B2E51ADCE6460535ECFE5AF8 /* ImageParticleGeneratorToParticleSystemAdapter.swift in Sources */,
+				CAF42A32F72AF656C2AE6590 /* ImportanceSamplingStrategy.swift in Sources */,
+				351037CC768E5A491F5BF5DD /* Logger.swift in Sources */,
+				17767C749F65872E8BE73F87 /* MemoryManager.swift in Sources */,
+				E1D721662F5D92AC0DCCBAA6 /* MetalProtocols.swift in Sources */,
+				A1BD68667A39490AAE003F61 /* MetalRenderer.swift in Sources */,
+				69395CB6598BB485C9854078 /* OperationManager.swift in Sources */,
+				163517E50D70798094FD2CA3 /* ParallelStrategy.swift in Sources */,
+				6A2BF57DD2ECE5C239065EE6 /* Particle.swift in Sources */,
+				4D6C2C30A1FAB8C7EB7687ED /* ParticleAssembler.swift in Sources */,
+				F203ED034757530176AE847C /* ParticleAssembly.swift in Sources */,
+				75D67CF6139BE441A231D054 /* ParticleConstants.swift in Sources */,
+				A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */,
+				7E135093549CD0CCCB4E1A1D /* ParticleStorage.swift in Sources */,
+				70CF22B859679A01AA9D5D13 /* ParticleSystemAdapter.swift in Sources */,
+				AE633C51A2DE14DB269BD134 /* ParticleSystemCoordinator.swift in Sources */,
+				FAFD7840A754AF4FD1286612 /* ParticleSystemDependencies.swift in Sources */,
+				1BA584FA3941094591F43133 /* ParticleSystemProtocols.swift in Sources */,
+				7A34FCABF4BC3629CBAFD883 /* ParticleViewModel.swift in Sources */,
+				40368AC75C473FCF74B8E2AD /* PixelCache.swift in Sources */,
+				34ACF0AC3791A70E6E2A7DD4 /* PixelCacheHelper.swift in Sources */,
+				1288B430A1B8A19EA2E661B8 /* PixelFlowErrors.swift in Sources */,
+				AD68EF778C7FB8EB1ECE95AB /* PixelSampler.c in Sources */,
+				739CA77B198003AA88F8F800 /* PixelSampler.swift in Sources */,
+				D6A9019E6C26DB7276BBF37C /* Sample.swift in Sources */,
+				8DA08487CCFBF658122FA059 /* SamplingParameters.swift in Sources */,
+				E46A5A099721543A3A8FAA5E /* SamplingParams.swift in Sources */,
+				DCD1F9787764F5C0977A082C /* SceneDelegate.swift in Sources */,
+				9FFBC24CE0D99C0ED2CE55F4 /* SequentialStrategy.swift in Sources */,
+				9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */,
+				693CB28336633F85948A55F2 /* SimulationEngine.swift in Sources */,
+				69D411FE31432C762DC6E664 /* SimulationParamsUpdater.swift in Sources */,
+				308B183B72C5FAAF9CA64ABA /* SimulationStateMachine.swift in Sources */,
+				C0095922D3B76D689FB6A643 /* State+ShaderValue.swift in Sources */,
+				3B54816179CD99C6F61553C6 /* Supporting.swift in Sources */,
+				ADB08432FF312BEBA828E7EF /* UniformSamplingStrategy.swift in Sources */,
+				EA88C5A7BFFA5AFED5969956 /* ViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXTargetDependency section */
-		BFD17F3C2F13D603009D62D9 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = BF050D9F2EAB934500FDF712 /* PixelFlow */;
-			targetProxy = BFD17F3B2F13D603009D62D9 /* PBXContainerItemProxy */;
+/* Begin PBXVariantGroup section */
+		6B49F681B327D71DD1077DD9 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				C6B78784CEF0C867B06BD275 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
 		};
-/* End PBXTargetDependency section */
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		BF050DB42EAB934500FDF712 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TLP4S46XK2;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PixelFlow;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlow;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/PixelFlow-Bridging-Header.h";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		BF050DB52EAB934500FDF712 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TLP4S46XK2;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PixelFlow;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlow;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/PixelFlow-Bridging-Header.h";
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		BF050DB62EAB934500FDF712 /* Debug */ = {
+		404CDF42D14B7A3B3C95116F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = TLP4S46XK2;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		BF050DB72EAB934500FDF712 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -362,11 +694,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = TLP4S46XK2;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -374,92 +704,138 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		BFD17F3E2F13D603009D62D9 /* Debug */ = {
+		4CCC2D3BF6FBBF4E8C4AF216 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TLP4S46XK2;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlowTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlow;
+				PRODUCT_NAME = PixelFlow;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/PixelFlow-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PixelFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PixelFlow";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		9E90856C448C43E34F8120D4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlow;
+				PRODUCT_NAME = PixelFlow;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/PixelFlow-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
-		BFD17F3F2F13D603009D62D9 /* Release */ = {
+		F8DED466A589BEB3144C43EF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TLP4S46XK2;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = qwerty.PixelFlowTests;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PixelFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PixelFlow";
 			};
-			name = Release;
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		BF050D9B2EAB934400FDF712 /* Build configuration list for PBXProject "PixelFlow" */ = {
+		90C2B0CD3AD7F02DB91E7DA7 /* Build configuration list for PBXProject "PixelFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BF050DB62EAB934500FDF712 /* Debug */,
-				BF050DB72EAB934500FDF712 /* Release */,
+				F8DED466A589BEB3144C43EF /* Debug */,
+				404CDF42D14B7A3B3C95116F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		BF050DB32EAB934500FDF712 /* Build configuration list for PBXNativeTarget "PixelFlow" */ = {
+		A728AE78254080D5B6A9F721 /* Build configuration list for PBXNativeTarget "PixelFlow" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BF050DB42EAB934500FDF712 /* Debug */,
-				BF050DB52EAB934500FDF712 /* Release */,
+				9E90856C448C43E34F8120D4 /* Debug */,
+				4CCC2D3BF6FBBF4E8C4AF216 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		BFD17F3D2F13D603009D62D9 /* Build configuration list for PBXNativeTarget "PixelFlowTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				BFD17F3E2F13D603009D62D9 /* Debug */,
-				BFD17F3F2F13D603009D62D9 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = BF050D982EAB934400FDF712 /* Project object */;
+	rootObject = 2699156E8AD3C218B52B846C /* Project object */;
 }

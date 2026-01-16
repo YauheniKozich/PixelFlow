@@ -1,0 +1,29 @@
+name: PixelFlow
+options:
+  bundleIdPrefix: qwerty
+targets:
+  PixelFlow:
+    type: application
+    platform: iOS
+    sources:
+      - path: PixelFlow
+        excludes:
+          - "**/README.md"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleIdentifier: qwerty.PixelFlow
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchStoryboardName: LaunchScreen
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+    settings:
+      PRODUCT_NAME: PixelFlow
+      SWIFT_VERSION: 5.0
+      TARGETED_DEVICE_FAMILY: 1
+      SWIFT_OBJC_BRIDGING_HEADER: PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/Helpers/PixelFlow-Bridging-Header.h

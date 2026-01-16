@@ -212,10 +212,11 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
     // MARK: - Render Loop Integration
 
     /// Вызывается в render loop для обновления симуляции
-    func updateSimulation() {
+    func updateSimulation(deltaTime: Float) {
+        logger.debug("Coordinator.updateSimulation() deltaTime=\(deltaTime)")
+
+        simulationEngine.update(deltaTime: deltaTime)
         renderer.updateSimulationParams()
-        simulationEngine.updateProgress(0.0) // Обновить прогресс если нужно
-        logger.debug("Coordinator.updateSimulation() called on thread: \(Thread.isMainThread ? "MAIN" : "BACKGROUND") at \(Date().timeIntervalSince1970)")
     }
 
     /// Вызывается в render loop для проверки завершения сбора
@@ -228,12 +229,6 @@ final class ParticleSystemCoordinator: NSObject, ParticleSystemCoordinatorProtoc
 
 enum ParticleSystemFactory {
     static func makeCoordinator() -> ParticleSystemCoordinator {
-        // Регистрируем зависимости если не зарегистрированы
-        if !AppContainer.shared.isRegistered(MetalRendererProtocol.self) {
-            ImageGeneratorDependencies.register(in: AppContainer.shared)
-            ParticleSystemDependencies.register(in: AppContainer.shared)
-        }
-
         // Получить зависимости из DI контейнера
         guard let metalRenderer = resolve(MetalRendererProtocol.self),
               let simulationEngine = resolve(SimulationEngineProtocol.self),

@@ -29,6 +29,9 @@ protocol ParticleSystemCoordinatorProtocol: AnyObject {
     /// Устанавливает размер экрана
     func configure(screenSize: CGSize)
 
+    /// Обновляет симуляцию с учётом времени
+    func updateSimulation(deltaTime: Float)
+
     /// Выполняет замену частиц на высококачественные асинхронно
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
 
@@ -122,6 +125,9 @@ protocol SimulationEngineProtocol: AnyObject {
     /// Обновляет прогресс сбора
     func updateProgress(_ progress: Float)
 
+    /// Обновляет симуляцию с учётом времени
+    func update(deltaTime: Float)
+
     /// Текущее состояние симуляции
     var state: SimulationState { get }
 
@@ -181,6 +187,10 @@ protocol ParticleStorageProtocol: AnyObject {
 
     /// Очищает хранилище
     func clear()
+    
+    func updateFastPreview(deltaTime: Float)
+    
+    func updateHighQualityTransition(deltaTime: Float)
 }
 
 /// Протокол для генератора частиц

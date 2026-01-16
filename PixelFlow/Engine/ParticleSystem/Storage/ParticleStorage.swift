@@ -8,21 +8,40 @@
 
 import Metal
 
+// MARK: - Pixel Struct
+
+/// Структура исходного пикселя для сборки частиц
+struct Pixel {
+    var x: Int
+    var y: Int
+    var r: UInt8
+    var g: UInt8
+    var b: UInt8
+    var a: UInt8
+}
+
 /// Хранилище частиц
 final class ParticleStorage: ParticleStorageProtocol {
-
+   
+    
     // MARK: - Properties
 
     var particleBuffer: MTLBuffer?
-    private(set) var particleCount: Int = 0
+    public private(set) var particleCount: Int = 0
 
     private let device: MTLDevice
     private let logger: LoggerProtocol
 
+    // Хранит исходные пиксели для сборки частиц
+    private var sourcePixels: [Pixel] = []
+    
+    // Хранит целевые высококачественные частицы для плавного перехода
+    private var highQualityParticles: [Particle] = []
+
     // MARK: - Initialization
 
-    init(device: MTLDevice = MTLCreateSystemDefaultDevice()!,
-         logger: LoggerProtocol = Logger.shared) {
+    init?(device: MTLDevice,
+          logger: LoggerProtocol) {
         self.device = device
         self.logger = logger
         logger.info("ParticleStorage initialized")
@@ -30,47 +49,218 @@ final class ParticleStorage: ParticleStorageProtocol {
 
     // MARK: - ParticleStorageProtocol
 
+    public func recreateHighQualityParticles() {
+        guard let particleBuffer = particleBuffer else {
+            logger.warning("Cannot recreate high quality particles - buffer is nil")
+            return
+        }
+        
+        let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
+        highQualityParticles = []
+        highQualityParticles.reserveCapacity(particleCount)
+        
+        for i in 0..<particleCount {
+            highQualityParticles.append(bufferPointer[i])
+        }
+        
+        // Мгновенная замена частиц на высококачественные
+        for i in 0..<particleCount {
+            bufferPointer[i] = highQualityParticles[i]
+        }
+        
+        logger.info("Recreated high quality particles: \(particleCount)")
+    }
+
     func createFastPreviewParticles() {
-        logger.debug("Creating fast preview particles")
+        logger.debug("Creating fast preview particles with initial velocities")
 
         guard particleCount > 0, particleBuffer != nil else {
             logger.warning("Cannot create preview particles - storage not initialized")
             return
         }
 
-        // Создаем быстрые превью частицы (упрощенные)
-        let particles = createPreviewParticles(count: particleCount)
+        var particles: [Particle] = []
+        particles.reserveCapacity(particleCount)
 
-        // Копируем в буфер
-        copyParticlesToBuffer(particles)
+        if !sourcePixels.isEmpty {
+            let count = min(particleCount, sourcePixels.count)
+            for i in 0..<count {
+                let px = sourcePixels[i]
+                
+                // Слегка разбросать позиции вокруг исходных пикселей
+                let jitterX = Float.random(in: -50.0...50.0)  // Больше разброс
+                let jitterY = Float.random(in: -50.0...50.0)
+                let pos = SIMD3<Float>(Float(px.x) + jitterX, Float(px.y) + jitterY, 0)
+                
+                // Генерируем начальную скорость
+                let vx = Float.random(in: -0.1...0.1)
+                let vy = Float.random(in: -0.1...0.1)
+                let vel = SIMD3<Float>(vx, vy, 0)
+                
+                let color = SIMD4<Float>(
+                    Float(px.r)/255.0,
+                    Float(px.g)/255.0,
+                    Float(px.b)/255.0,
+                    Float(px.a)/255.0
+                )
+                
+                let particle = Particle(
+                    position: pos,
+                    velocity: vel,
+                    targetPosition: pos,
+                    color: color,
+                    originalColor: color,
+                    size: 1.0,
+                    baseSize: 1.0,
+                    life: 0.0,
+                    idleChaoticMotion: 0
+                )
+                particles.append(particle)
+            }
+            
+            // Заполнение оставшихся частиц
+            if particleCount > sourcePixels.count {
+                let remaining = particleCount - sourcePixels.count
+                let xRange: ClosedRange<Float>
+                let yRange: ClosedRange<Float>
+                let xs = sourcePixels.map { Float($0.x) }
+                let ys = sourcePixels.map { Float($0.y) }
+                if let minX = xs.min(), let maxX = xs.max(), let minY = ys.min(), let maxY = ys.max() {
+                    xRange = minX...maxX
+                    yRange = minY...maxY
+                } else {
+                    xRange = 0.0...1.0
+                    yRange = 0.0...1.0
+                }
+                
+                for _ in 0..<remaining {
+                    let x = Float.random(in: xRange)
+                    let y = Float.random(in: yRange)
+                    let pos = SIMD3<Float>(x, y, 0)
+                    
+                    let vx = Float.random(in: -0.1...0.1)
+                    let vy = Float.random(in: -0.1...0.1)
+                    let vel = SIMD3<Float>(vx, vy, 0)
+                    
+                    let particle = Particle(
+                        position: pos,
+                        velocity: vel,
+                        targetPosition: pos,
+                        color: SIMD4<Float>(1, 1, 1, 1),
+                        originalColor: SIMD4<Float>(1, 1, 1, 1),
+                        size: 1.0,
+                        baseSize: 1.0,
+                        life: 0.0,
+                        idleChaoticMotion: 0
+                    )
+                    particles.append(particle)
+                }
+            }
+        } else {
+            // Если sourcePixels нет, создаем случайные частицы
+            for _ in 0..<particleCount {
+                let x = Float.random(in: 0.0...1.0)
+                let y = Float.random(in: 0.0...1.0)
+                let pos = SIMD3<Float>(x, y, 0)
+                
+                let vx = Float.random(in: -0.1...0.1)
+                let vy = Float.random(in: -0.1...0.1)
+                let vel = SIMD3<Float>(vx, vy, 0)
+                
+                let particle = Particle(
+                    position: pos,
+                    velocity: vel,
+                    targetPosition: pos,
+                    color: SIMD4<Float>(1, 1, 1, 1),
+                    originalColor: SIMD4<Float>(1, 1, 1, 1),
+                    size: 1.0,
+                    baseSize: 1.0,
+                    life: 0.0,
+                    idleChaoticMotion: 0
+                )
+                particles.append(particle)
+            }
+        }
+
+        precondition(particles.count == particleCount)
+
+        // Сохраняем частицы в буфер
+        updateParticles(particles)
 
         logger.info("Fast preview particles created: \(particles.count)")
     }
+    
+    /// Обновляет позиции fast preview частиц с учетом deltaTime
+    func updateFastPreview(deltaTime: Float) {
+        logger.debug("Updating fast preview particles with deltaTime \(deltaTime)")
+        integrateVelocities(deltaTime: deltaTime)
+    }
 
-    func recreateHighQualityParticles() {
-        logger.debug("Recreating high-quality particles")
-
-        guard particleCount > 0, particleBuffer != nil else {
-            logger.warning("Cannot create high-quality particles - storage not initialized")
+    func integrateVelocities(deltaTime: Float) {
+        guard particleCount > 0, let particleBuffer = particleBuffer else {
+            logger.warning("Cannot integrate velocities - invalid state")
             return
         }
 
-        // Здесь будет получение высококачественных частиц от генератора
-        // Пока создаем заглушки
-        let particles = createHighQualityParticles(count: particleCount)
+        let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
 
-        // Копируем в буфер
-        copyParticlesToBuffer(particles)
+        for i in 0..<particleCount {
+            var particle = bufferPointer[i]
+            // Velocity уже хранится в структуре Particle
+            particle.position += particle.velocity * deltaTime
+            bufferPointer[i] = particle
+        }
 
-        logger.info("High-quality particles created: \(particles.count)")
+        logger.debug("Integrated velocities for \(particleCount) particles with deltaTime \(deltaTime)")
+    }
+
+    /// Плавное обновление позиций частиц для перехода к высококачественной сборке
+    func updateHighQualityTransition(deltaTime: Float) {
+        logger.debug("Updating high quality transition with deltaTime \(deltaTime)")
+
+        let count = min(particleCount, highQualityParticles.count)
+        guard count > 0, let particleBuffer = particleBuffer else {
+            logger.warning("No high quality particles or buffer for transition")
+            return
+        }
+        
+        let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
+        
+        // Скорость интерполяции: 2.0 = 50% в секунду (полный переход за ~2 секунды)
+        let lerpSpeed: Float = 2.0
+        let lerpFactor = min(1.0, lerpSpeed * deltaTime)
+        
+        for i in 0..<count {
+            let target = highQualityParticles[i]
+            var current = bufferPointer[i]
+            
+            // Интерполяция всех полей
+            current.position += (target.position - current.position) * lerpFactor
+            current.velocity += (target.velocity - current.velocity) * lerpFactor
+            current.targetPosition += (target.targetPosition - current.targetPosition) * lerpFactor
+            current.color += (target.color - current.color) * lerpFactor
+            current.originalColor += (target.originalColor - current.originalColor) * lerpFactor
+            current.size += (target.size - current.size) * lerpFactor
+            current.baseSize += (target.baseSize - current.baseSize) * lerpFactor
+            current.life += (target.life - current.life) * lerpFactor
+            // idleChaoticMotion - uint, не интерполируется, берем из target
+            if lerpFactor >= 0.9 {
+                current.idleChaoticMotion = target.idleChaoticMotion
+            }
+            
+            bufferPointer[i] = current
+        }
+        
+        logger.debug("High quality transition updated for \(count) particles")
     }
 
     func clear() {
         logger.debug("Clearing particle storage")
 
-        // Очищаем буфер (в Metal буферы автоматически управляются)
         particleBuffer = nil
         particleCount = 0
+        sourcePixels.removeAll()
+        highQualityParticles.removeAll()
 
         logger.info("Particle storage cleared")
     }
@@ -86,13 +276,21 @@ final class ParticleStorage: ParticleStorageProtocol {
         let bufferSize = MemoryLayout<Particle>.stride * particleCount
         particleBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)
 
-        if particleBuffer == nil {
-            logger.error("Failed to create particle buffer")
+        if let buffer = particleBuffer {
+            memset(buffer.contents(), 0, bufferSize)
+            logger.info("Particle buffer created and zero-initialized: \(bufferSize) bytes")
         } else {
-            logger.info("Particle buffer created: \(bufferSize) bytes")
+            logger.error("Failed to create particle buffer")
         }
     }
 
+    /// Устанавливает исходные пиксели для сборки частиц
+    func setSourcePixels(_ pixels: [Pixel]) {
+        logger.debug("Setting \(pixels.count) source pixels")
+        self.sourcePixels = pixels
+    }
+
+    /// Полное обновление GPU буфера частиц
     func updateParticles(_ particles: [Particle]) {
         guard particles.count == particleCount, particleBuffer != nil else {
             logger.warning("Cannot update particles - invalid state")
@@ -102,84 +300,24 @@ final class ParticleStorage: ParticleStorageProtocol {
         copyParticlesToBuffer(particles)
     }
 
+    /// Инкрементальное обновление части GPU буфера частиц, начиная с startIndex
+    func updateParticles(_ particles: [Particle], startIndex: Int) {
+        guard let particleBuffer = particleBuffer else {
+            logger.error("Particle buffer is nil")
+            return
+        }
+        guard startIndex >= 0, startIndex + particles.count <= particleCount else {
+            logger.warning("Invalid startIndex or particles count for updateParticles")
+            return
+        }
+        let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
+        for (i, particle) in particles.enumerated() {
+            bufferPointer[startIndex + i] = particle
+        }
+        logger.debug("Updated \(particles.count) particles in buffer at startIndex \(startIndex)")
+    }
+
     // MARK: - Private Methods
-
-    private func createPreviewParticles(count: Int) -> [Particle] {
-        var particles = [Particle]()
-
-        for i in 0..<count {
-            var particle = Particle()
-
-            // Создаем простое превью распределение
-            let angle = Float(i) / Float(count) * 2 * .pi
-            let radius: Float = 100.0 + Float.random(in: 0...200)
-
-            particle.position = SIMD3<Float>(
-                cos(angle) * radius,
-                sin(angle) * radius,
-                0
-            )
-
-            particle.velocity = SIMD3<Float>(
-                cos(angle + .pi/2) * 50,
-                sin(angle + .pi/2) * 50,
-                0
-            )
-
-            particle.color = SIMD4<Float>(
-                Float.random(in: 0.5...1.0), // R
-                Float.random(in: 0.5...1.0), // G
-                Float.random(in: 0.5...1.0), // B
-                1.0 // A
-            )
-
-            particle.size = Float.random(in: 2.0...8.0)
-
-            particles.append(particle)
-        }
-
-        return particles
-    }
-
-    private func createHighQualityParticles(count: Int) -> [Particle] {
-        // Заглушка для высококачественных частиц
-        // В реальности здесь будут частицы от генератора изображений
-        var particles = [Particle]()
-
-        for i in 0..<count {
-            var particle = Particle()
-
-            // Создаем более сложное распределение для "высокого качества"
-            let angle = Float(i) / Float(count) * 2 * .pi
-            let radius: Float = 50.0 + Float(i % 10) * 20.0
-
-            particle.position = SIMD3<Float>(
-                cos(angle) * radius,
-                sin(angle) * radius,
-                0
-            )
-
-            particle.velocity = SIMD3<Float>(
-                cos(angle + .pi/4) * 30,
-                sin(angle + .pi/4) * 30,
-                0
-            )
-
-            // Более насыщенные цвета для "высокого качества"
-            particle.color = SIMD4<Float>(
-                Float.random(in: 0.7...1.0),
-                Float.random(in: 0.7...1.0),
-                Float.random(in: 0.7...1.0),
-                1.0
-            )
-
-            particle.size = Float.random(in: 3.0...12.0)
-
-            particles.append(particle)
-        }
-
-        return particles
-    }
 
     private func copyParticlesToBuffer(_ particles: [Particle]) {
         guard let particleBuffer = particleBuffer else {

@@ -21,7 +21,7 @@ final class ParallelStrategy: GenerationStrategyProtocol {
     // MARK: - Initialization
 
     init(maxConcurrentOperations: Int = OperationQueue.defaultMaxConcurrentOperationCount,
-         logger: LoggerProtocol = Logger.shared) {
+         logger: LoggerProtocol) {
         self.maxConcurrentOperations = maxConcurrentOperations
         self.logger = logger
     }

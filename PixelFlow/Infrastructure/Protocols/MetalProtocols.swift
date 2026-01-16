@@ -266,5 +266,3 @@ protocol MetalViewProtocol: MTKView {
     /// Multisample color текстура
     var multisampleColorTexture: MTLTexture? { get }
 }
-
-// Note: Metal framework types already conform to their respective protocols via the framework definitions

@@ -22,7 +22,7 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
 
     // MARK: - Initialization
 
-    init(coordinator: GenerationCoordinator, logger: LoggerProtocol = Logger.shared) {
+    init(coordinator: GenerationCoordinator, logger: LoggerProtocol) {
         self.coordinator = coordinator
         self.logger = logger
         logger.info("ImageParticleGeneratorToParticleSystemAdapter initialized")
@@ -58,14 +58,5 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
         coordinator.cancelGeneration()
         // Очистка кэша генератора
         coordinator.clearCache()
-    }
-}
-
-// MARK: - Factory
-
-extension ImageParticleGeneratorToParticleSystemAdapter {
-    static func makeAdapter() -> ImageParticleGeneratorToParticleSystemAdapter {
-        let coordinator = GenerationCoordinatorFactory.makeCoordinator()
-        return ImageParticleGeneratorToParticleSystemAdapter(coordinator: coordinator)
     }
 }

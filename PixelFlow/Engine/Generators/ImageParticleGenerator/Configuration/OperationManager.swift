@@ -21,7 +21,7 @@ final class OperationManager: OperationManagerProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
 
         self.operationQueue = OperationQueue()

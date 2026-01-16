@@ -135,13 +135,13 @@ static inline float2 calculateChaoticMovement(
     // float2 chaoticMovement = fractalChaos(p.position.xy, params[0].time, id);
     
     // Применяем движение с коэффициентом скорости
-    p.velocity.xy += chaoticMovement * 3.0;  // Настройте множитель по вкусу
-    
-    // Затухание скорости (сохраняем из оригинала)
-    float velocityDamping = CHAOTIC_VELOCITY_DAMPING;
+    p.velocity.xy += chaoticMovement * 15.0;  // Увеличено для заметного движения
+
+    // Затухание скорости (уменьшено для сохранения движения)
+    float velocityDamping = 0.96;  // Уменьшено с 0.92
     float speed = length(p.velocity.xy);
     if (speed > CHAOTIC_HIGH_SPEED_THRESHOLD) {
-        velocityDamping = CHAOTIC_HIGH_SPEED_DAMPING;
+        velocityDamping = 0.94;  // Уменьшено с 0.85
     }
     p.velocity.xy *= velocityDamping;
 
@@ -207,21 +207,22 @@ static inline float calculateParticleSize(
 // ============================================================================
 
 static inline void applyBoundaryConditionsForPhysics(thread Particle& p, float2 screenSize) {
-    float safeWidth = max(screenSize.x, MIN_SCREEN_SIZE);
-    float safeHeight = max(screenSize.y, MIN_SCREEN_SIZE);
+    // Position is normalized 0-1, so clamp to 0-1 range
+    const float maxPos = 1.0;
+    const float minPos = 0.0;
 
-    if (!isFloatSafe(p.position.x)) p.position.x = 0.0;
-    if (!isFloatSafe(p.position.y)) p.position.y = 0.0;
+    if (!isFloatSafe(p.position.x)) p.position.x = 0.5;
+    if (!isFloatSafe(p.position.y)) p.position.y = 0.5;
 
-    if (p.position.x < 0.0 || p.position.x > safeWidth) {
+    if (p.position.x < minPos || p.position.x > maxPos) {
         p.velocity.x = -p.velocity.x * BOUNDARY_BOUNCE_DAMPING;
     }
-    if (p.position.y < 0.0 || p.position.y > safeHeight) {
+    if (p.position.y < minPos || p.position.y > maxPos) {
         p.velocity.y = -p.velocity.y * BOUNDARY_BOUNCE_DAMPING;
     }
 
-    p.position.x = clamp(p.position.x, 0.0, safeWidth);
-    p.position.y = clamp(p.position.y, 0.0, safeHeight);
+    p.position.x = clamp(p.position.x, minPos, maxPos);
+    p.position.y = clamp(p.position.y, minPos, maxPos);
 }
 
 static inline void integrateParticleForPhysics(

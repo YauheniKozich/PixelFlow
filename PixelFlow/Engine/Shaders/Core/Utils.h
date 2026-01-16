@@ -48,9 +48,9 @@ static inline float2 randomChaoticMotion(float2 position, float time, uint parti
     float noise4 = hash(seed + 31.1);
     
     // Комбинируем разные частоты движения
-    float lowFreq = sin(time * 0.3 + noise1 * TWO_PI) * 0.7;
-    float midFreq = cos(time * 1.2 + noise2 * TWO_PI) * 0.3;
-    float highFreq = sin(time * 4.0 + noise3 * TWO_PI) * 0.1;
+    float lowFreq = sin(time * 0.3 + noise1 * TWO_PI) * 2.0;
+    float midFreq = cos(time * 1.2 + noise2 * TWO_PI) * 0.8;
+    float highFreq = sin(time * 4.0 + noise3 * TWO_PI) * 0.3;
     
     // Добавляем импульсные движения (редкие, но сильные)
     float impulse = (hash(noise4 + time * 0.1) > 0.95) ?

@@ -22,7 +22,7 @@ final class ParticleSystemAdapter: NSObject {
 
     // MARK: - Public Properties (для совместимости)
 
-    var enableIdleChaotic: Bool = false
+    var enableIdleChaotic: Bool = true
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     let particleCount: Int
@@ -60,6 +60,9 @@ final class ParticleSystemAdapter: NSObject {
         // Настраиваем view
         configureView(mtkView)
 
+        // Настраиваем display link
+        setupDisplayLink()
+
         do {
             try renderer.setupPipelines()
             try renderer.setupBuffers(particleCount: particleCount)
@@ -77,6 +80,7 @@ final class ParticleSystemAdapter: NSObject {
 
     func startSimulation() {
         coordinator.startSimulation()
+        startDisplayLink()
     }
 
     func startLightningStorm() {
@@ -92,6 +96,7 @@ final class ParticleSystemAdapter: NSObject {
 
     func initializeWithFastPreview() {
         coordinator.initializeFastPreview()
+        startDisplayLink()
     }
 
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void) {
@@ -123,7 +128,7 @@ final class ParticleSystemAdapter: NSObject {
     private func setupDisplayLink() {
         guard displayLink == nil else { return }
 
-        displayLink = CADisplayLink(target: self, selector: #selector(renderLoop))
+        displayLink = CADisplayLink(target: self, selector: #selector(renderLoop(displayLink:)))
         displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         displayLink?.add(to: .main, forMode: .common)
         displayLink?.isPaused = true
@@ -143,12 +148,18 @@ final class ParticleSystemAdapter: NSObject {
         mtkView?.isPaused = true
     }
 
-    @objc private func renderLoop() {
-        // Обновляем симуляцию
-        coordinator.updateSimulation()
+    @objc private func renderLoop(displayLink: CADisplayLink) {
+        let deltaTime = Float(displayLink.targetTimestamp - displayLink.timestamp)
 
-        // Запрашиваем перерисовку
-        mtkView?.setNeedsDisplay()
+        // Обновляем симуляцию в фоне
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.coordinator.updateSimulation(deltaTime: deltaTime)
+
+            // Запрашиваем перерисовку на main thread
+            DispatchQueue.main.async {
+                self?.mtkView?.setNeedsDisplay()
+            }
+        }
     }
 
     // MARK: - Deinit

@@ -133,20 +133,15 @@ vertex VertexOut vertexParticle(
     float2 screenPos = p.position.xy;
 
     // ============================================================================
-    // ПРЕОБРАЗОВАНИЕ КООРДИНАТ: МИР → ЭКРАН → CLIP SPACE
+    // ПРЕОБРАЗОВАНИЕ КООРДИНАТ: [0…1] → CLIP SPACE (-1…1)
     // ============================================================================
 
-    // Пункт 9: Координатная нормализацию - деления на screenSize.x / y, нет деления на 0 (защита MIN_SCREEN_SIZE)
-    // Защита от деления на ноль (экран не может быть нулевым)
-    float invWidth = params[0].screenSize.x > MIN_SCREEN_SIZE ? 1.0 / params[0].screenSize.x : 0.0;
-    float invHeight = params[0].screenSize.y > MIN_SCREEN_SIZE ? 1.0 / params[0].screenSize.y : 0.0;
-
-    // Преобразование в Normalized Device Coordinates (NDC)
-    // Экран: (0,0) в левом верхнем углу → (width,height) в правом нижнем
-    // NDC: (-1,-1) в левом нижнем углу → (1,1) в правом верхнем
+    // Particle.position уже нормализована (0…1)
+    // Преобразуем в пиксели, затем в clip space
+    float2 pixelPos = p.position.xy * params[0].screenSize;
     float2 ndc = float2(
-        screenPos.x * invWidth * 2.0 - 1.0,      // X: масштабируем и сдвигаем
-        1.0 - screenPos.y * invHeight * 2.0      // Y: инвертируем и масштабируем
+        (pixelPos.x / params[0].screenSize.x) * 2.0 - 1.0,
+        1.0 - (pixelPos.y / params[0].screenSize.y) * 2.0
     );
 
     // ============================================================================
@@ -191,7 +186,8 @@ vertex VertexOut vertexParticle(
     // Передаем параметры для fragment шейдера
     out.brightnessBoost = params[0].brightnessBoost;
     out.collectionSpeed = params[0].collectionSpeed;
-    out.screenPos = screenPos;  // Для расчетов освещения
+    // screenPos в пикселях нужен только для освещения
+    out.screenPos = p.position.xy * params[0].screenSize;
 
     return out;
 }

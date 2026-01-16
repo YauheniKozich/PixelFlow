@@ -22,6 +22,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         Logger.shared.info("SceneDelegate: сцена подключается")
 
+        // Инициализация зависимостей
+        DependencyInitializer.initialize()
+
         let window = UIWindow(windowScene: windowScene)
         let rootVC = ParticleAssembly.assemble()
 

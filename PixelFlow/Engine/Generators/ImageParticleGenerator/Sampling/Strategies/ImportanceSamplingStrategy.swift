@@ -63,6 +63,15 @@ enum ImportanceSamplingStrategy {
             params: params,
             dominantColors: colorCache
         )
+
+        // Логирование метрик importance для калибровки шкалы
+        let importanceValues = candidates.map { $0.importance }
+        if !importanceValues.isEmpty {
+            let minImp = importanceValues.min() ?? 0
+            let maxImp = importanceValues.max() ?? 0
+            let meanImp = importanceValues.reduce(0, +) / Float(importanceValues.count)
+            Logger.shared.debug("Importance metrics: min=\(String(format: "%.3f", minImp)), max=\(String(format: "%.3f", maxImp)), mean=\(String(format: "%.3f", meanImp)), count=\(importanceValues.count)")
+        }
         
         Logger.shared.debug("Найдено \(candidates.count) важных пикселей")
         
@@ -244,13 +253,13 @@ enum ImportanceSamplingStrategy {
                 guard pixel.a > PixelCacheHelper.Constants.alphaThreshold else { continue }
                 
                 // Определяем тип пикселя для усиления
-                _ = PixelCacheHelper.getNeighborPixels(atX: x, y: y, from: cache)
-//                var importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
-//                    r: pixel.r, g: pixel.g, b: pixel.b, a: pixel.a,
-//                    neighbors: neighbors,
-//                    params: params,
-//                    dominantColors: dominantColors
-//                )
+                let neighbors = PixelCacheHelper.getNeighborPixels(atX: x, y: y, from: cache)
+                var importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
+                    r: pixel.r, g: pixel.g, b: pixel.b, a: pixel.a,
+                    neighbors: neighbors,
+                    params: params,
+                    dominantColors: dominantColors
+                )
 //                
                 // Минимальное усиление краёв
 //                if isCornerPixel {
@@ -261,25 +270,25 @@ enum ImportanceSamplingStrategy {
                 
                 let brightness = (pixel.r + pixel.g + pixel.b) / 3.0
                 if brightness > 0.8 {
-            //        importance *= 1.1
+            importance *= 1.1
                 }
                 
-//                // Пропускаем только совсем незначительные
-//                if importance > ArtifactPreventionHelper.Constants.noiseThreshold * 0.5 {
-//                    candidates.append((
-//                        x: x,
-//                        y: y,
-//                        color: SIMD4<Float>(pixel.r, pixel.g, pixel.b, pixel.a),
-//                        importance: importance
-//                    ))
-//              //      Logger.shared.trace("Added candidate pixel: x=\(x), y=\(y), importance=\(importance)")
-//                }
+                // Пропускаем только совсем незначительные
+                if importance > ArtifactPreventionHelper.Constants.noiseThreshold * 0.5 {
+                    candidates.append((
+                        x: x,
+                        y: y,
+                        color: SIMD4<Float>(pixel.r, pixel.g, pixel.b, pixel.a),
+                        importance: importance
+                    ))
+                    Logger.shared.trace("Added candidate pixel: x=\(x), y=\(y), importance=\(importance)")
+                }
             }
         }
         
         // Анти-кластеризация контролируется флагом в params
         if params.applyAntiClustering {
-         //   candidates = ArtifactPreventionHelper.applyAntiClusteringForCandidates(candidates: candidates)
+            candidates = ArtifactPreventionHelper.applyAntiClusteringForCandidates(candidates: candidates)
             Logger.shared.debug("After anti-clustering: candidates.count=\(candidates.count)")
         }
         

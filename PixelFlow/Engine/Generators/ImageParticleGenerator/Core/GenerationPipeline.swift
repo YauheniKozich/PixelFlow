@@ -27,8 +27,8 @@ final class GenerationPipeline: GenerationPipelineProtocol {
          sampler: PixelSamplerProtocol,
          assembler: ParticleAssemblerProtocol,
          strategy: GenerationStrategyProtocol = SequentialGenerationStrategy(),
-         context: GenerationContextProtocol = GenerationContext(),
-         logger: LoggerProtocol = Logger.shared) {
+         context: GenerationContextProtocol,
+         logger: LoggerProtocol) {
 
         self.analyzer = analyzer
         self.sampler = sampler

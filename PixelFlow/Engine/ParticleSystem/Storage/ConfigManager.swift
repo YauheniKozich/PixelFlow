@@ -19,7 +19,7 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
         logger.info("ConfigurationManager initialized")
     }

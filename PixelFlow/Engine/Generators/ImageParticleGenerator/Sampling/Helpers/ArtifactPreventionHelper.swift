@@ -17,15 +17,18 @@ enum ArtifactPreventionHelper {
     struct Constants {
         /// Минимальное покрытие изображения сэмплами (0-1)
         static let minCoverageRatio: Float = 0.85
-        
+
         /// Расстояние для обнаружения кластеризации
         static let clusteringDistance: Int = 2
-        
+
         /// Отступ от углов для проверки покрытия
         static let cornerMarginRatio: Float = 0.1
-        
+
         /// Множитель максимальных попыток для случайного выбора
         static let maxAttemptsMultiplier: Int = 15
+
+        /// Порог шума для фильтрации незначительных пикселей
+        static let noiseThreshold: Float = 0.05
     }
     
     // MARK: - Публичные методы
@@ -228,6 +231,29 @@ enum ArtifactPreventionHelper {
 
         let imageHeight = samples.map { $0.y }.max() ?? 1
         return stratifiedSample(samples: samples, targetCount: samples.count, imageHeight: imageHeight, bands: bands)
+    }
+
+    /// Устраняет кластеризацию кандидатов через стратифицированную выборку
+    static func applyAntiClusteringForCandidates(
+        candidates: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)]
+    ) -> [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)] {
+        guard !candidates.isEmpty else { return [] }
+
+        // Конвертируем в Sample
+        let samples = candidates.map { Sample(x: $0.x, y: $0.y, color: $0.color) }
+
+        // Применяем anti-clustering
+        let antiClusteredSamples = applyAntiClustering(samples: samples)
+
+        // Конвертируем обратно, сохраняя importance из оригинала
+        return antiClusteredSamples.map { sample in
+            if let original = candidates.first(where: { $0.x == sample.x && $0.y == sample.y }) {
+                return original
+            } else {
+                // Не должно случаться, но на всякий случай
+                return (x: sample.x, y: sample.y, color: sample.color, importance: 0.1)
+            }
+        }
     }
     
     /// Добавляет сэмплы в углы изображения
@@ -434,17 +460,41 @@ enum ArtifactPreventionHelper {
         dominantColors: [SIMD3<Float>]
     ) -> Float {
         guard !dominantColors.isEmpty else { return 1.0 }
-        
+
         var minDistance = Float.greatestFiniteMagnitude
         let currentColor = SIMD3<Float>(r, g, b)
-        
+
         for dominantColor in dominantColors {
             let distance = simd_distance(currentColor, dominantColor)
             if distance < minDistance { minDistance = distance }
             if minDistance < 0.001 { break }
         }
-        
+
         return min(minDistance, 1.0)
+    }
+
+    /// Расчет расширенной важности пикселя на основе контраста, насыщенности и уникальности
+    static func calculateEnhancedPixelImportance(
+        r: Float, g: Float, b: Float, a: Float,
+        neighbors: [(r: Float, g: Float, b: Float, a: Float)],
+        params: SamplingParams,
+        dominantColors: [SIMD3<Float>]
+    ) -> Float {
+        let contrast = calculateLocalContrast(r: r, g: g, b: b, neighbors: neighbors)
+        let saturation = calculateSaturation(r: r, g: g, b: b)
+        let uniqueness = calculateUniqueness(r: r, g: g, b: b, dominantColors: dominantColors)
+
+        // Комбинируем веса из параметров
+        var importance = params.contrastWeight * contrast +
+                        params.saturationWeight * saturation +
+                        0.3 * uniqueness
+
+        // Нормализация importance в [0,1] для корректного порога
+        // Эмпирический scaling factor на основе анализа логов (importance ≈ 0.03–0.07, порог 0.3)
+        let scalingFactor: Float = 4.0  // importance * 4.0 дает ~0.12–0.28, что ближе к порогу 0.3
+        importance = min(1.0, importance * scalingFactor)
+
+        return importance
     }
 }
 
@@ -467,8 +517,9 @@ extension ArtifactPreventionHelper {
                     a: s.color.w)
         }
 
-        // Выходной массив для C
-        var outCSamples = [SampleC](repeating: SampleC(x:0, y:0, r:0, g:0, b:0, a:0), count: targetCount)
+        // Выходной массив SampleC
+        var outCSamples = [SampleC](repeating: SampleC(x: 0, y: 0, r: 0, g: 0, b: 0, a: 0),
+                                    count: targetCount)
 
         // Вызов C-функции
         stratifiedSampleC(&cSamples,
@@ -478,11 +529,11 @@ extension ArtifactPreventionHelper {
                           Int32(bands),
                           &outCSamples)
 
-        // Преобразуем обратно в Swift Sample
-        return outCSamples.map { s in
-            Sample(x: Int(s.x),
-                   y: Int(s.y),
-                   color: SIMD4<Float>(s.r, s.g, s.b, s.a))
+        // Конвертируем обратно в Swift Sample
+        return outCSamples.map { c in
+            Sample(x: Int(c.x),
+                   y: Int(c.y),
+                   color: SIMD4<Float>(c.r, c.g, c.b, c.a))
         }
     }
 }
@@ -551,13 +602,14 @@ extension ArtifactPreventionHelper {
 
         // Восстанавливаем PixelData с сохранением оригинальной важности
         return outCSamples.map { c in
-            if let original = pixels.first(where: { $0.x == Int(c.x) && $0.y == Int(c.y) }) {
+            let x = Int(c.x)
+            let y = Int(c.y)
+            if let original = pixels.first(where: { $0.x == x && $0.y == y }) {
                 return original
             } else {
-                return PixelData(x: Int(c.x),
-                                 y: Int(c.y),
-                                 color: SIMD4<Float>(c.r, c.g, c.b, c.a),
-                                 importance: c.a * (c.r + c.g + c.b)/3.0)
+                let color = SIMD4<Float>(c.r, c.g, c.b, c.a)
+                let importance = c.a * (c.r + c.g + c.b) / 3.0
+                return PixelData(x: x, y: y, color: color, importance: importance)
             }
         }
     }

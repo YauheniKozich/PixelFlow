@@ -19,7 +19,7 @@ final class SequentialStrategy: GenerationStrategyProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
     }
 
