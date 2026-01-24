@@ -61,7 +61,8 @@ enum ImportanceSamplingStrategy {
             strideX: scanStrideX,
             strideY: scanStrideY,
             params: params,
-            dominantColors: colorCache
+            dominantColors: colorCache,
+            targetCount: targetCount
         )
 
         // Логирование метрик importance для калибровки шкалы
@@ -230,7 +231,8 @@ enum ImportanceSamplingStrategy {
         strideX: Int,
         strideY: Int,
         params: SamplingParams,
-        dominantColors: [SIMD3<Float>]
+        dominantColors: [SIMD3<Float>],
+        targetCount: Int
     ) -> [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)] {
         
         // ИСПРАВЛЕНИЕ: Более безопасная резервация памяти с лимитом
@@ -247,7 +249,7 @@ enum ImportanceSamplingStrategy {
         _ = max(1, Int(Float(width) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
         _ = max(1, Int(Float(height) * ArtifactPreventionHelper.Constants.cornerMarginRatio))
         
-        for y in stride(from: 0, to: height, by: strideY) {
+        outer: for y in stride(from: 0, to: height, by: strideY) {
             for x in stride(from: 0, to: width, by: strideX) {
                 guard let pixel = PixelCacheHelper.getPixelData(atX: x, y: y, from: cache) else { continue }
                 guard pixel.a > PixelCacheHelper.Constants.alphaThreshold else { continue }
@@ -268,11 +270,22 @@ enum ImportanceSamplingStrategy {
 //                    importance *= 1.05
 //                }
                 
-                let brightness = (pixel.r + pixel.g + pixel.b) / 3.0
-                if brightness > 0.8 {
-            importance *= 1.1
+                // Корректировка яркости для premultiplied alpha: unpremultiply для полупрозрачных пикселей
+                let alpha = pixel.a
+                let r_unpremult = alpha > 0 ? pixel.r / alpha : 0
+                let g_unpremult = alpha > 0 ? pixel.g / alpha : 0
+                let b_unpremult = alpha > 0 ? pixel.b / alpha : 0
+
+                let brightness = (r_unpremult + g_unpremult + b_unpremult) / 3.0
+                let maxC = max(r_unpremult, g_unpremult, b_unpremult)
+                let minC = min(r_unpremult, g_unpremult, b_unpremult)
+                let saturation = maxC - minC
+
+                // Фильтр белого фона: если пиксель слишком яркий и низкая насыщенность - пропускаем
+                if brightness > 0.95 && saturation < 0.05 {
+                    continue
                 }
-                
+
                 // Пропускаем только совсем незначительные
                 if importance > ArtifactPreventionHelper.Constants.noiseThreshold * 0.5 {
                     candidates.append((
@@ -281,7 +294,11 @@ enum ImportanceSamplingStrategy {
                         color: SIMD4<Float>(pixel.r, pixel.g, pixel.b, pixel.a),
                         importance: importance
                     ))
-                    Logger.shared.trace("Added candidate pixel: x=\(x), y=\(y), importance=\(importance)")
+
+                    // Ранний выход, если кандидатов слишком много
+                    if candidates.count >= targetCount * 2 {
+                        break outer
+                    }
                 }
             }
         }

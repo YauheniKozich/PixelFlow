@@ -480,19 +480,37 @@ enum ArtifactPreventionHelper {
         params: SamplingParams,
         dominantColors: [SIMD3<Float>]
     ) -> Float {
-        let contrast = calculateLocalContrast(r: r, g: g, b: b, neighbors: neighbors)
-        let saturation = calculateSaturation(r: r, g: g, b: b)
-        let uniqueness = calculateUniqueness(r: r, g: g, b: b, dominantColors: dominantColors)
+        // Корректировка для premultiplied alpha: unpremultiply для анализа
+        let r_unpremult = a > 0 ? r / a : 0
+        let g_unpremult = a > 0 ? g / a : 0
+        let b_unpremult = a > 0 ? b / a : 0
 
-        // Комбинируем веса из параметров
+        // Также unpremultiply neighbors
+        let neighborsUnpremult = neighbors.map { n in
+            let na = n.a
+            return (r: na > 0 ? n.r / na : 0,
+                    g: na > 0 ? n.g / na : 0,
+                    b: na > 0 ? n.b / na : 0,
+                    a: na)
+        }
+
+        let brightness = (r_unpremult + g_unpremult + b_unpremult) / 3.0
+        let contrast = calculateLocalContrast(r: r_unpremult, g: g_unpremult, b: b_unpremult, neighbors: neighborsUnpremult)
+        let saturation = calculateSaturation(r: r_unpremult, g: g_unpremult, b: b_unpremult)
+        let uniqueness = calculateUniqueness(r: r_unpremult, g: g_unpremult, b: b_unpremult, dominantColors: dominantColors)
+
+        // Penalty для белого фона: яркие ненасыщенные пиксели получают низкую важность
+        let backgroundPenalty = brightness > 0.8 && saturation < 0.2 ? (brightness - 0.8) / 0.2 * (1 - saturation) : 0
+
+        // Комбинируем веса: edge/contrast доминируют, белый фон штрафуется
         var importance = params.contrastWeight * contrast +
                         params.saturationWeight * saturation +
-                        0.3 * uniqueness
+                        0.3 * uniqueness -
+                        backgroundPenalty * 2.0
 
-        // Нормализация importance в [0,1] для корректного порога
-        // Эмпирический scaling factor на основе анализа логов (importance ≈ 0.03–0.07, порог 0.3)
-        let scalingFactor: Float = 4.0  // importance * 4.0 дает ~0.12–0.28, что ближе к порогу 0.3
-        importance = min(1.0, importance * scalingFactor)
+        // Нормализация importance в [0,1]
+        let scalingFactor: Float = 3.0  // Уменьшен для лучшего распределения
+        importance = max(0.0, min(1.0, importance * scalingFactor))
 
         return importance
     }

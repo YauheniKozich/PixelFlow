@@ -102,7 +102,7 @@ struct Particle: Codable {
 }
 
 // КРИТИЧНО: Должен точно соответствовать SimulationParams в Common.h (Shaders/Core/Common.h) по порядку полей, типам и выравниванию
-// Общий размер ДОЛЖЕН быть точно 256 байт для выравнивания Metal буфера - НЕ МЕНЯЙТЕ ПОРЯДОК ПОЛЕЙ ИЛИ ТИПЫ
+// Общий размер (stride) составляет 272 байта из-за выравнивания компилятора - НЕ МЕНЯЙТЕ ПОРЯДОК ПОЛЕЙ ИЛИ ТИПЫ
 struct SimulationParams {
     // ---- 0 .. 15 (скаляры)
     var state: UInt32 = 0                    // 4
@@ -120,22 +120,23 @@ struct SimulationParams {
     var screenSize: SIMD2<Float> = .zero      // 8
     var _pad3: SIMD2<Float> = .zero            // 8
 
-    // ---- 48 .. 63 (критические параметры шейдера)
+    // ---- 48 .. 67 (критические параметры шейдера)
     var minParticleSize: Float = 1            // 4 - USED by shader
     var maxParticleSize: Float = 6            // 4 - USED by shader
     var time: Float = 0                       // 4 - USED by shader
     var particleCount: UInt32 = 0             // 4 - USED by shader
     var idleChaoticMotion: UInt32 = 0         // 4 - флаг для хаотичного движения в idle
-    var padding: UInt32 = 0         // Добавляем для выравнивания
-    // ---- 64 .. 255 (padding для достижения 256 байт)
+    var threadsPerThreadgroup: UInt32 = 256   // 4 - размер threadgroup для compute shader
+    var padding: UInt32 = 0                   // 4 - padding для выравнивания
+    // ---- 68 .. 255 (padding для достижения 256 байт)
     // Разбивка структуры:
     // - uint fields (0-15): 4*4 = 16 bytes
     // - float fields (16-31): 4*4 = 16 bytes
     // - float2 fields (32-47): 2*8 = 16 bytes
-    // - particle params (48-63): 6 fields = 24 bytes (4 float + 2 uint)
-    // - reserved array (64-239): 11*16 = 176 bytes
-    // - padding (240-255): 8 bytes to align to 256
-    // Total: 16+16+16+24+176+8 = 256 bytes exactly
+    // - particle params (48-67): 7 fields = 28 bytes (4 float + 3 uint)
+    // - reserved array (68-243): 11*16 = 176 bytes
+    // - final padding (244-255): 4 bytes to align to 256
+    // Total: 16+16+16+28+176+4 = 256 bytes exactly
     var _reserved: (
            SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
            SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
@@ -147,5 +148,6 @@ struct SimulationParams {
            .zero, .zero, .zero,
            .zero, .zero
        )
+    var finalPadding: UInt32 = 0  // 4 bytes for 256-byte alignment
     // Общий размер: 256 байт (проверяется assert в ParticleSystem+MetalSetup.swift)
 }

@@ -91,6 +91,58 @@ constant int SIMULATION_STATE_LIGHTNING_STORM = 4;
 */
 
 // ============================================================================
+// ДЕФОЛТНЫЕ ПАРАМЕТРЫ - "ФАБРИЧНЫЕ НАСТРОЙКИ"
+// ============================================================================
+
+/*
+    Эти значения используются когда параметры не заданы явно.
+    Они подобраны для стабильной и красивой работы.
+*/
+
+// ВРЕМЕННЫЕ ИНТЕРВАЛЫ - ритм симуляции
+constant float DEFAULT_DELTA_TIME = 0.016666667;    // 60 FPS (1/60 секунды)
+constant float MIN_DELTA_TIME = 0.0001;             // Минимальный шаг (защита от деления на 0)
+constant float MAX_DELTA_TIME = 0.1;                // Максимальный шаг (защита от "телепортации")
+
+// Алиасы для обратной совместимости (старый код использует эти имена)
+#define DEFAULT_DT DEFAULT_DELTA_TIME
+#define MIN_DT MIN_DELTA_TIME
+#define MAX_DT MAX_DELTA_TIME
+
+// ВРЕМЕННЫЕ МАСШТАБЫ ДЛЯ СОСТОЯНИЙ - как время течет в разных режимах
+constant float TIME_SCALE_IDLE = 0.2;               // Idle: медленное время (сонное состояние)
+constant float TIME_SCALE_CHAOTIC = 1.0;            // Chaotic: нормальное время
+constant float TIME_SCALE_COLLECTING = 0.8;         // Collecting: чуть медленнее для плавности
+constant float TIME_SCALE_COLLECTED = 0.0;          // Collected: остановлено (заморозка)
+constant float TIME_SCALE_STORM = 1.0;              // Storm: нормальное время (как в chaotic)
+
+// ПАРАМЕТРЫ СБОРА - как частицы находят свои места
+constant float COLLECTION_SPEED_BASE = 0.005;       // Базовая скорость движения к цели
+constant float COLLECTION_THRESHOLD_DEFAULT = 0.99; // 99% частиц должны быть собраны
+
+// ФИЗИЧЕСКИЕ КОНСТАНТЫ - реализм движения
+constant float BOUNCE_DAMPING_DEFAULT = 0.8;        // Потеря скорости при отскоке
+constant float VELOCITY_DAMPING_DEFAULT = 0.95;     // Общее замедление скорости
+
+// РАЗМЕРЫ ЧАСТИЦ - от точки до звездочки
+constant float MIN_PARTICLE_SIZE_DEFAULT = 1.5;     // Минимальный размер (пиксели)
+constant float MAX_PARTICLE_SIZE_DEFAULT = 8.0;     // Максимальный размер (пиксели)
+
+// МАТЕМАТИЧЕСКИЕ КОНСТАНТЫ - основа тригонометрии
+constant float PI = 3.141592654;           // Пи (π)
+constant float TWO_PI = 6.283185307;       // 2π (полный круг)
+constant float HALF_PI = 1.570796327;      // π/2 (90 градусов)
+
+// ЗАЩИТНЫЕ КОНСТАНТЫ - от катастроф
+#define MIN_VECTOR_LENGTH 0.0001     // Минимальная длина вектора (защита от 0)
+#define MAX_FLOAT_VALUE 1e10         // Максимальное значение float
+#define MIN_SCREEN_SIZE 0.0001       // Минимальный размер экрана
+
+// ЖИЗНЕННЫЙ ЦИКЛ ЧАСТИЦ - флаги состояний
+#define PARTICLE_ALIVE 0.0           // Частица жива и активна
+#define PARTICLE_COLLECTED -1.0      // Частица собрана и заморожена
+
+// ============================================================================
 // ПОМОЩНИКИ ДЛЯ АНАЛИЗА СОСТОЯНИЙ - "ПСИХОЛОГИЯ" СИСТЕМЫ
 // ============================================================================
 
@@ -142,62 +194,19 @@ static inline bool isCollectionState(int state) {
 static inline float getStateTimeScale(int state) {
     switch (state) {
         case SIMULATION_STATE_IDLE:
-            return 0.2;    // Замедленное время (сон)
+            return TIME_SCALE_IDLE;            // Замедленное время (сон)
         case SIMULATION_STATE_CHAOTIC:
-            return 1.0;    // Нормальное время
+            return TIME_SCALE_CHAOTIC;         // Нормальное время
         case SIMULATION_STATE_COLLECTING:
-            return 0.8;    // Чуть медленнее для контроля
+            return TIME_SCALE_COLLECTING;      // Чуть медленнее для контроля
         case SIMULATION_STATE_COLLECTED:
-            return 0.0;    // Остановлено (заморозка)
+            return TIME_SCALE_COLLECTED;       // Остановлено (заморозка)
+        case SIMULATION_STATE_LIGHTNING_STORM:
+            return TIME_SCALE_STORM;           // Нормальное время как в chaotic
         default:
-            return 1.0;    // По умолчанию - нормальная скорость
+            return TIME_SCALE_CHAOTIC;         // По умолчанию - нормальная скорость
     }
 }
-
-// ============================================================================
-// ДЕФОЛТНЫЕ ПАРАМЕТРЫ - "ФАБРИЧНЫЕ НАСТРОЙКИ"
-// ============================================================================
-
-/*
-    Эти значения используются когда параметры не заданы явно.
-    Они подобраны для стабильной и красивой работы.
-*/
-
-// ВРЕМЕННЫЕ ИНТЕРВАЛЫ - ритм симуляции
-constant float DEFAULT_DELTA_TIME = 0.016666667;    // 60 FPS (1/60 секунды)
-constant float MIN_DELTA_TIME = 0.0001;             // Минимальный шаг (защита от деления на 0)
-constant float MAX_DELTA_TIME = 0.1;                // Максимальный шаг (защита от "телепортации")
-
-// Алиасы для обратной совместимости (старый код использует эти имена)
-#define DEFAULT_DT DEFAULT_DELTA_TIME
-#define MIN_DT MIN_DELTA_TIME
-#define MAX_DT MAX_DELTA_TIME
-
-// ПАРАМЕТРЫ СБОРА - как частицы находят свои места
-constant float COLLECTION_SPEED_BASE = 0.005;       // Базовая скорость движения к цели
-constant float COLLECTION_THRESHOLD_DEFAULT = 0.99; // 99% частиц должны быть собраны
-
-// ФИЗИЧЕСКИЕ КОНСТАНТЫ - реализм движения
-constant float BOUNCE_DAMPING_DEFAULT = 0.8;        // Потеря скорости при отскоке
-constant float VELOCITY_DAMPING_DEFAULT = 0.95;     // Общее замедление скорости
-
-// РАЗМЕРЫ ЧАСТИЦ - от точки до звездочки
-constant float MIN_PARTICLE_SIZE_DEFAULT = 1.5;     // Минимальный размер (пиксели)
-constant float MAX_PARTICLE_SIZE_DEFAULT = 8.0;     // Максимальный размер (пиксели)
-
-// МАТЕМАТИЧЕСКИЕ КОНСТАНТЫ - основа тригонометрии
-constant float PI = 3.141592654;           // Пи (π)
-constant float TWO_PI = 6.283185307;       // 2π (полный круг)
-constant float HALF_PI = 1.570796327;      // π/2 (90 градусов)
-
-// ЗАЩИТНЫЕ КОНСТАНТЫ - от катастроф
-#define MIN_VECTOR_LENGTH 0.0001     // Минимальная длина вектора (защита от 0)
-#define MAX_FLOAT_VALUE 1e10         // Максимальное значение float
-#define MIN_SCREEN_SIZE 0.0001       // Минимальный размер экрана
-
-// ЖИЗНЕННЫЙ ЦИКЛ ЧАСТИЦ - флаги состояний
-#define PARTICLE_ALIVE 0.0           // Частица жива и активна
-#define PARTICLE_COLLECTED -1.0      // Частица собрана и заморожена
 
 // ============================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ - ИНСТРУМЕНТЫ РАЗРАБОТЧИКА

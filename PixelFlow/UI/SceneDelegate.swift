@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import MetalKit
 
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
@@ -17,24 +18,27 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene,
                willConnectTo session: UISceneSession,
                options connectionOptions: UIScene.ConnectionOptions) {
-
+        
         guard let windowScene = scene as? UIWindowScene else { return }
-
-        Logger.shared.info("SceneDelegate: сцена подключается")
-
-        // Инициализация зависимостей
-        DependencyInitializer.initialize()
-
+        
         let window = UIWindow(windowScene: windowScene)
-        let rootVC = ParticleAssembly.assemble()
+        self.window = window
+
+        let dummyMTKView = MTKView(frame: window.bounds, device: MTLCreateSystemDefaultDevice())
+        DependencyInitializer.initialize(metalView: dummyMTKView)
+
+        let rootVC = ParticleAssembly.assemble(withDI: AppContainer.shared)
+
+        if let particleVC = rootVC as? ViewController {
+            DependencyInitializer.initialize(metalView: particleVC.mtkView)
+        }
 
         window.rootViewController = rootVC
         window.makeKeyAndVisible()
-        self.window = window
 
-        Logger.shared.info("SceneDelegate настроен, окно создано")
+        Logger.shared.info("SceneDelegate: окно создано и зависимости инициализированы")
     }
-
+    
     // MARK: - Life‑cycle callbacks
 
     func sceneDidDisconnect(_ scene: UIScene) {

@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import MetalKit
 
 /// Централизованный инициализатор зависимостей
 /// Гарантирует однократную регистрацию всех зависимостей приложения
@@ -17,7 +18,7 @@ final class DependencyInitializer {
 
     /// Инициализирует все зависимости приложения
     /// Thread-safe и идемпотентный метод
-    static func initialize() {
+    @MainActor static func initialize(metalView: MTKView) {
         lock.lock()
         defer { lock.unlock() }
 
@@ -31,6 +32,8 @@ final class DependencyInitializer {
         registerLogger(in: AppContainer.shared)
 
         guard let logger = AppContainer.shared.resolve(LoggerProtocol.self) else {
+            // ErrorHandler еще не зарегистрирован, используем прямой доступ к логгеру
+            Logger.shared.error("Critical: Failed to resolve logger after registration")
             fatalError("Failed to resolve logger after registration")
         }
 
@@ -39,7 +42,7 @@ final class DependencyInitializer {
         // Регистрация зависимостей в правильном порядке
         AssemblyDependencies.register(in: AppContainer.shared)
         ImageGeneratorDependencies.register(in: AppContainer.shared)
-        ParticleSystemDependencies.register(in: AppContainer.shared)
+        ParticleSystemDependencies.register(in: AppContainer.shared, metalView: metalView)
 
         isInitialized = true
         logger.info("All dependencies initialized successfully")

@@ -19,6 +19,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
     private let memoryManager: MemoryManagerProtocol
     private let cacheManager: CacheManagerProtocol
     private let logger: LoggerProtocol
+    private let errorHandler: ErrorHandlerProtocol
 
     // MARK: - State
 
@@ -35,13 +36,15 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
          operationManager: OperationManagerProtocol,
          memoryManager: MemoryManagerProtocol,
          cacheManager: CacheManagerProtocol,
-         logger: LoggerProtocol = Logger.shared) {
+         logger: LoggerProtocol = Logger.shared,
+         errorHandler: ErrorHandlerProtocol) {
 
         self.pipeline = pipeline
         self.operationManager = operationManager
         self.memoryManager = memoryManager
         self.cacheManager = cacheManager
         self.logger = logger
+        self.errorHandler = errorHandler
 
         super.init()
 
@@ -137,7 +140,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
                 return particles
 
             } catch {
-                self.logger.error("Generation failed: \(error)")
+                self.errorHandler.handle(error, context: "Generation pipeline execution", recovery: .showToast("Не удалось сгенерировать частицы"))
                 throw error
             }
         }
@@ -215,7 +218,8 @@ enum GenerationCoordinatorFactory {
               let operationManager = resolve(OperationManagerProtocol.self),
               let memoryManager = resolve(MemoryManagerProtocol.self),
               let cacheManager = resolve(CacheManagerProtocol.self),
-              let logger = resolve(LoggerProtocol.self) else {
+              let logger = resolve(LoggerProtocol.self),
+              let errorHandler = resolve(ErrorHandlerProtocol.self) else {
             fatalError("Failed to resolve GenerationCoordinator dependencies")
         }
 
@@ -224,7 +228,8 @@ enum GenerationCoordinatorFactory {
             operationManager: operationManager,
             memoryManager: memoryManager,
             cacheManager: cacheManager,
-            logger: logger
+            logger: logger,
+            errorHandler: errorHandler
         )
     }
 }

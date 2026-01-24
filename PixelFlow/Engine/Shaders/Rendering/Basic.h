@@ -72,6 +72,9 @@ using namespace metal;
 #define LIGHTING_QUALITY_MEDIUM 1          // Свечение + эффекты состояний
 #define LIGHTING_QUALITY_HIGH 2            // Полное освещение с блумом
 
+// КООРДИНАТНАЯ СИСТЕМА
+#define NDC_COORDINATE_SYSTEM 1            // Частицы используют NDC [-1, 1], а не экранные [0, 1]
+
 // ============================================================================
 // VERTEX ШЕЙДЕР - РАЗМЕЩЕНИЕ ЧАСТИЦ В ПРОСТРАНСТВЕ
 // ============================================================================
@@ -130,28 +133,25 @@ vertex VertexOut vertexParticle(
 ) {
     // Читаем частицу из буфера
     Particle p = particles[vid];
-    float2 screenPos = p.position.xy;
+   // float2 screenPos = p.position.xy;
 
     // ============================================================================
-    // ПРЕОБРАЗОВАНИЕ КООРДИНАТ: [0…1] → CLIP SPACE (-1…1)
+    // ИСПОЛЬЗОВАНИЕ КООРДИНАТ NDC
     // ============================================================================
 
-    // Particle.position уже нормализована (0…1)
-    // Преобразуем в пиксели, затем в clip space
-    float2 pixelPos = p.position.xy * params[0].screenSize;
-    float2 ndc = float2(
-        (pixelPos.x / params[0].screenSize.x) * 2.0 - 1.0,
-        1.0 - (pixelPos.y / params[0].screenSize.y) * 2.0
-    );
+    // Particle.position УЖЕ хранится в нормализованных координатах NDC [-1…1].
+    // Это стандартное пространство Normalized Device Coordinates для Metal/GPU.
+    float2 ndc = p.position.xy;
 
     // ============================================================================
-    // ПОДГОТОВКА ВЫХОДНОЙ СТРУКТУРЫ
+    // ПОДГОТОВКА ВЫХОДНОЙ СТРУКТУРЫ (КООРДИНАТЫ УЖЕ В CLIP SPACE)
     // ============================================================================
 
     VertexOut out;
 
-    // Добавляем субпиксельное смещение для плавности
+    // Добавляем субпиксельное смещение для плавности в NDC space
     float2 subpixelOffset = getSubpixelOffset(vid, params[0].screenSize, params[0].pixelSizeMode);
+    // ndc уже в clip space [-1, 1], просто добавляем смещение и выводим
     out.position = float4(ndc + subpixelOffset, 0.0, 1.0);
 
     // ============================================================================
@@ -168,8 +168,19 @@ vertex VertexOut vertexParticle(
         safeMaxSize *= STORM_SIZE_MULTIPLIER_MAX;
     }
 
-    // Финальный размер с ограничениями
-    out.pointSize = clamp(p.size, safeMinSize, safeMaxSize);
+    // Размер частицы В ПИКСЕЛЯХ.
+    // p.size трактуется как размер одного пикселя изображения после всех трансформаций.
+    float pixelSize = max(p.size, safeMinSize);
+
+    // В режиме бури частицы визуально увеличиваются
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
+        pixelSize *= mix(STORM_SIZE_MULTIPLIER_MIN,
+                         STORM_SIZE_MULTIPLIER_MAX,
+                         hash(float(vid)));
+    }
+
+    // pointSize всегда в пикселях
+    out.pointSize = clamp(pixelSize, safeMinSize, safeMaxSize);
 
     // ============================================================================
     // ПОДГОТОВКА ЦВЕТА И ПАРАМЕТРОВ
@@ -187,7 +198,9 @@ vertex VertexOut vertexParticle(
     out.brightnessBoost = params[0].brightnessBoost;
     out.collectionSpeed = params[0].collectionSpeed;
     // screenPos в пикселях нужен только для освещения
-    out.screenPos = p.position.xy * params[0].screenSize;
+    // ВАЖНО: учитываем subpixelOffset, чтобы освещение совпадало с геометрией
+    float2 finalNDC = ndc + subpixelOffset;
+    out.screenPos = (finalNDC * 0.5 + 0.5) * params[0].screenSize;
 
     return out;
 }
@@ -282,88 +295,100 @@ fragment float4 fragmentParticle(
         col *= STORM_BRIGHTNESS_MULTIPLIER;
 
         // ========================================================================
-        // МОЛНИИ - ZIGZAG ЭФФЕКТЫ ⚡
+        // МОЛНИИ - ZIGZAG ЭФФЕКТЫ ⚡ (SCREEN SPACE, КОРРЕКТНО)
         // ========================================================================
 
         float boltTime = fmod(params[0].time * 0.3, LIGHTNING_BOLT_PERIOD);
 
-        // Молния появляется каждые 4 секунды и длится 0.5 секунды
         if (boltTime < LIGHTNING_BOLT_DURATION) {
-            float boltProgress = boltTime * 2.0;  // Нормализуем время
+            float boltProgress = boltTime / LIGHTNING_BOLT_DURATION;
 
-            // Создаем молнию от верха до низа экрана
-            float2 boltStart = float2(hash(params[0].time * 7.389) * 2.0 - 1.0, 0.8);  // Случайная X вверху
-            float2 boltEnd = float2(hash(params[0].time * 13.23) * 2.0 - 1.0, -0.8);    // Случайная X внизу
-            float2 boltDir = normalize(boltEnd - boltStart);  // Направление молнии
+            // screenPos в пикселях → нормализуем в NDC
+            float2 pixelNDC = (in.screenPos / params[0].screenSize) * 2.0 - 1.0;
 
-            // Вычисляем расстояние вдоль и поперек молнии
-            float2 toPixel = uv - boltStart;
-            float alongBolt = dot(toPixel, boltDir);          // Вдоль молнии
-            float acrossBolt = abs(length(toPixel - alongBolt * boltDir));  // Поперек молнии
+            // Глобальная молния в NDC
+            float2 boltStart = float2(
+                hash(floor(params[0].time) * 7.389) * 2.0 - 1.0,
+                1.0
+            );
 
-            // Создаем тонкую форму молнии
-            float boltShape = exp(-acrossBolt / LIGHTNING_BOLT_WIDTH);
-            boltShape *= smoothstep(0.0, 0.2, boltProgress - alongBolt / length(boltEnd - boltStart));
+            float2 boltEnd = float2(
+                hash(floor(params[0].time) * 13.23) * 2.0 - 1.0,
+                -1.0
+            );
 
-            // ZIGZAG ЭФФЕКТ - реалистичность молний
-            float zigzag = sin(alongBolt * LIGHTNING_ZIGZAG_FREQ + params[0].time * 20.0) * LIGHTNING_ZIGZAG_AMOUNT;
-            boltShape *= exp(-abs(zigzag) * 20.0);
+            float2 boltDir = normalize(boltEnd - boltStart);
+            float boltLength = length(boltEnd - boltStart);
 
-            // ДОБАВЛЯЕМ ЯРКУЮ БЕЛУЮ ВСПЫШКУ
+            float2 toPixel = pixelNDC - boltStart;
+            float alongBolt = dot(toPixel, boltDir);
+            float2 closest = boltStart + boltDir * clamp(alongBolt, 0.0, boltLength);
+            float acrossBolt = length(pixelNDC - closest);
+
+            float core = exp(-acrossBolt / LIGHTNING_BOLT_WIDTH);
+
+            float zigzag = sin(alongBolt * LIGHTNING_ZIGZAG_FREQ
+                               + params[0].time * 20.0)
+                           * LIGHTNING_ZIGZAG_AMOUNT;
+
+            float zigzagMask = exp(-abs(zigzag) * 25.0);
+
+            float timeMask = smoothstep(0.0, 0.15, boltProgress) *
+                             smoothstep(1.0, 0.7, boltProgress);
+
+            float boltShape = core * zigzagMask * timeMask;
+
             col += float3(1.0, 1.0, 1.0) * boltShape * LIGHTNING_BOLT_BRIGHTNESS;
         }
 
     } else {
         // ========================================================================
-        // КИНЕМАТОГРАФИЧЕСКОЕ ОСВЕЩЕНИЕ ДЛЯ ВСЕХ ДРУГИХ СОСТОЯНИЙ
+        // ОБРАБОТКА ЦВЕТОВ ДЛЯ ВСЕХ СОСТОЯНИЙ КРОМЕ STORM
         // ========================================================================
 
-        // Адаптируем время под текущее состояние
-        float localTime = params[0].time * getStateTimeScale(params[0].state);
-
-        // ПОЛНОЕ ОСВЕЩЕНИЕ (рекомендуется для < 10k частиц)
-        col = calculateParticle2DLighting(
-            in.color.rgb,           // Базовый цвет частицы
-            in.screenPos,           // Позиция на экране (для градиентов)
-            params[0].screenSize,      // Размеры экрана
-            dist,                   // Расстояние от центра частицы
-            localTime,              // Адаптированное время
-            params[0].state,           // Текущее состояние
-            in.brightnessBoost      // Усиление яркости
-        );
-
-        // ========================================================================
-        // ДОПОЛНИТЕЛЬНЫЕ АКЦЕНТЫ ПО СОСТОЯНИЯМ
-        // ========================================================================
-
-        float stateEnergy = 1.0;    // Энергичность состояния
-        float rimStrength = 0.0;    // Сила rim-свечения
-
-        // Настраиваем параметры для каждого состояния
-        if (params[0].state == SIMULATION_STATE_IDLE) {
-            stateEnergy = 0.6;     // Спокойный режим - приглушено
-        }
-
+        // КРИТИЧНО: В режиме CHAOTIC просто выводим оригинальный цвет с свечением!
         if (params[0].state == SIMULATION_STATE_CHAOTIC) {
-            stateEnergy = 1.2;     // Хаотичный - ярче
-        }
+            // Берём оригинальный цвет БЕЗ каких-либо модификаций
+            col = in.color.rgb;
+            
+            // Только добавляем мягкое свечение
+            float glow = pow(1.0 - dist, 2.5) * 0.2;
+            col += float3(glow);
+        } else {
+            // Для других режимов используем полное освещение
+            float localTime = params[0].time * getStateTimeScale(params[0].state);
+            col = calculateParticle2DLighting(
+                in.color.rgb,           // Базовый цвет частицы
+                in.screenPos,           // Позиция на экране
+                dist,                   // Расстояние от центра
+                localTime,              // Адаптированное время
+                params[0].state,        // Текущее состояние
+                in.brightnessBoost      // Усиление яркости
+            );
 
-        if (params[0].state == SIMULATION_STATE_COLLECTING) {
-            rimStrength = 0.25;    // Сбор - легкое свечение краев
-        }
+            // Дополнительные акценты для других состояний
+            float stateEnergy = 1.0;
+            float rimStrength = 0.0;
 
-        if (params[0].state == SIMULATION_STATE_COLLECTED) {
-            stateEnergy = 1.0;     // Собрано - ярко и с rim
-            rimStrength = 0.45;
-        }
+            if (params[0].state == SIMULATION_STATE_IDLE) {
+                stateEnergy = 0.6;
+            }
 
-        // Применяем энергетический масштаб
-        col *= stateEnergy;
+            if (params[0].state == SIMULATION_STATE_COLLECTING) {
+                rimStrength = 0.25;
+            }
 
-        // Добавляем rim-свечение для финальных состояний
-        if (rimStrength > 0.0) {
-            float rim = pow(1.0 - dist, 2.0);  // Сильнее на краях
-            col += float3(1.0, 0.9, 0.7) * rim * rimStrength;  // Теплый цвет
+            if (params[0].state == SIMULATION_STATE_COLLECTED) {
+                stateEnergy = 1.0;
+                rimStrength = 0.45;
+            }
+
+            col *= stateEnergy;
+
+            if (rimStrength > 0.0) {
+                float rim = pow(1.0 - dist, 2.0);
+                col += float3(1.0, 0.9, 0.7) * rim * rimStrength;
+            }
         }
     }
 
@@ -394,7 +419,17 @@ fragment float4 fragmentParticle(
         case SIMULATION_STATE_CHAOTIC:
         default: {
             // Обычные режимы: стандартное смешивание
-            finalAlpha = alpha * in.color.a;
+            // Усиливаем альфа для видимости ЗДЕСЬ, в рендеринге
+            // Это не искажает исходные данные в PixelCache, только визуальное отображение
+            float pixelAlpha = in.color.a;
+            
+            // Если альфа низкая/средняя, усиливаем её для видимости
+            if (pixelAlpha >= 0.1 && pixelAlpha < 0.8) {
+                // Усиливаем альфа: минимум 60%, максимум 100%
+                pixelAlpha = max(0.6, min(pixelAlpha * 2.0, 1.0));
+            }
+            
+            finalAlpha = alpha * pixelAlpha;
             break;
         }
     }
@@ -451,20 +486,5 @@ fragment float4 fragmentParticlePerformance(
     float finalAlpha = alpha * in.color.a;
     return float4(col, finalAlpha);
 }
-
-/*
-    ВОТ И ВСЕ! 🎨
-
-    Этот файл - мост между математикой и красотой.
-    Цифры становятся цветом, алгоритмы - искусством.
-
-    Каждая частица здесь оживает, каждая строка кода
-    добавляет штрих к общей картине симуляции.
-
-    От простого круга до электрической бури -
-    здесь рождается магия PixelFlow!
-
-    Приятного рендеринга! ✨
-*/
 
 #endif /* Basic_h */

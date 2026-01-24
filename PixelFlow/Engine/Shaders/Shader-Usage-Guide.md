@@ -11,10 +11,10 @@
 ### 1. Простое освещение частиц
 ```metal
 // Используйте calculateParticle2DLighting из Lighting.h
+// Позиция частицы должна быть в NDC [-1, 1]
 float3 litColor = calculateParticle2DLighting(
     baseColor,           // базовый цвет частицы
-    screenPos,           // позиция на экране
-    screenSize,          // размер экрана
+    screenPos,           // позиция в NDC [-1, 1]
     dist,                // расстояние от центра частицы (0-1)
     time,                // время для анимации
     state,               // состояние симуляции
@@ -24,16 +24,17 @@ float3 litColor = calculateParticle2DLighting(
 
 ### 2. Glow эффект
 ```metal
-// Радиальное свечение от центра частицы
-float glow = calculateGlow(dist, 2.5, 0.4); // power, intensity
+// Радиальное свечение от центра частицы с использованием констант GLOW_FALLOFF_POWER и GLOW_BASE_INTENSITY
+float glow = calculateGlow(dist, GLOW_FALLOFF_POWER, GLOW_BASE_INTENSITY);
 float3 glowingColor = baseColor + float3(glow);
 ```
 
 ### 3. State-based освещение
 ```metal
 // Разные эффекты для разных состояний симуляции
+// Позиция частицы должна быть в NDC [-1, 1]
 float3 color = applyStateLighting(
-    baseColor, position, screenSize, dist, time, state
+    baseColor, position, dist, time, state
 );
 // Автоматически выбирает: idle, chaotic, collecting, collected, storm
 ```
@@ -68,7 +69,7 @@ return float4(color, alpha);
 // В Basic.h автоматически применяется в зависимости от состояния:
 
 // IDLE: минимальное ambient освещение
-// CHAOTIC: динамическое освещение с pulsing
+// CHAOTIC: динамическое освещение с pulsing и turbulentMotion — пространственно-коррелированное поле, учитывающее позицию
 // COLLECTING: soft glow + rim highlight
 // COLLECTED: intense energy effect
 // LIGHTNING_STORM: электрические эффекты + молнии
@@ -117,11 +118,11 @@ float3 applyGlobalLight(float3 color, float2 position, float2 screenSize,
 float calculateGlow(float dist, float power, float intensity);
 
 // Полное освещение частиц
-float3 calculateParticle2DLighting(float3 color, float2 position, float2 screenSize,
+float3 calculateParticle2DLighting(float3 color, float2 position,
                                   float dist, float time, int state, float brightnessBoost);
 
 // State-based эффекты
-float3 applyStateLighting(float3 color, float2 position, float2 screenSize,
+float3 applyStateLighting(float3 color, float2 position,
                          float dist, float time, int state);
 ```
 

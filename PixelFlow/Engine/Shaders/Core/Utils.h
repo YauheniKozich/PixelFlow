@@ -20,8 +20,65 @@
 #include "../Compute/Simulation.h"
 using namespace metal;
 
+// ============================================================================
+// HASH & NOISE CONSTANTS
+// ============================================================================
+constant float HASH_MULTIPLIER = 43758.5453123;  // Hash function multiplier
+
+// ============================================================================
+// CHAOTIC MOTION CONSTANTS
+// ============================================================================
+constant float CHAOTIC_PARTICLE_SEED_FACTOR = 13.7;
+constant float CHAOTIC_TIME_SCALE = 0.01;
+constant float CHAOTIC_LOW_FREQ_TIME = 0.3;
+constant float CHAOTIC_LOW_FREQ_AMP = 2.0;
+constant float CHAOTIC_MID_FREQ_TIME = 1.2;
+constant float CHAOTIC_MID_FREQ_AMP = 0.8;
+constant float CHAOTIC_HIGH_FREQ_TIME = 4.0;
+constant float CHAOTIC_HIGH_FREQ_AMP = 0.3;
+constant float CHAOTIC_Y_LOW_FREQ_TIME = 0.7;
+constant float CHAOTIC_Y_LOW_FREQ_AMP = 0.5;
+constant float CHAOTIC_Y_MID_FREQ_TIME = 2.1;
+constant float CHAOTIC_Y_MID_FREQ_AMP = 0.2;
+constant float CHAOTIC_IMPULSE_THRESHOLD = 0.95;
+constant float CHAOTIC_IMPULSE_STRENGTH = 2.0;
+
+// ============================================================================
+// TURBULENT MOTION CONSTANTS
+// ============================================================================
+constant float TURBULENT_SEED_FACTOR = 17.3;
+constant float TURBULENT_LARGE_FREQ_X = 0.2;
+constant float TURBULENT_LARGE_FREQ_Y = 0.15;
+constant float TURBULENT_LARGE_FREQ_Y_MOD = 1.3;
+constant float TURBULENT_LARGE_AMP = 1.5;
+constant float TURBULENT_MID_FREQ_X = 0.8;
+constant float TURBULENT_MID_FREQ_X_MOD = 0.7;
+constant float TURBULENT_MID_FREQ_Y = 1.1;
+constant float TURBULENT_MID_FREQ_Y_MOD = 1.1;
+constant float TURBULENT_MID_AMP = 0.8;
+constant float TURBULENT_SMALL_FREQ_X = 3.0;
+constant float TURBULENT_SMALL_FREQ_X_MOD = 2.0;
+constant float TURBULENT_SMALL_FREQ_Y = 3.5;
+constant float TURBULENT_SMALL_FREQ_Y_MOD = 2.5;
+constant float TURBULENT_SMALL_AMP = 0.3;
+constant float TURBULENT_JUMP_TRIGGER_THRESHOLD = 0.98;
+constant float TURBULENT_JUMP_TIME_SCALE = 0.5;
+constant float TURBULENT_JUMP_STRENGTH = 4.0;
+
+// ============================================================================
+// FRACTAL CHAOS CONSTANTS
+// ============================================================================
+constant float FRACTAL_SEED_TIME_SCALE = 0.01;
+constant uint FRACTAL_OCTAVES = 4;
+constant float FRACTAL_AMPLITUDE_DECAY = 0.5;
+constant float FRACTAL_FREQUENCY_SCALE = 2.3;
+constant float FRACTAL_FREQ_X_TIME = 0.5;
+constant float FRACTAL_FREQ_Y_TIME = 0.7;
+constant float FRACTAL_IMPULSE_THRESHOLD = 0.97;
+constant float FRACTAL_IMPULSE_STRENGTH = 3.0;
+
 static inline float hash(float n) {
-    return fract(sin(n) * 43758.5453123);
+    return fract(sin(n) * HASH_MULTIPLIER);
 }
 
 static inline float noise(float3 p) {
@@ -39,7 +96,7 @@ static inline float noise(float3 p) {
 // Сильно рандомизированное движение
 
 static inline float2 randomChaoticMotion(float2 position, float time, uint particleId) {
-    float seed = float(particleId) * 13.7 + time * 0.01;
+    float seed = float(particleId) * CHAOTIC_PARTICLE_SEED_FACTOR + time * CHAOTIC_TIME_SCALE;
     
     // Генерируем несколько слоев случайности
     float noise1 = hash(seed);
@@ -48,19 +105,19 @@ static inline float2 randomChaoticMotion(float2 position, float time, uint parti
     float noise4 = hash(seed + 31.1);
     
     // Комбинируем разные частоты движения
-    float lowFreq = sin(time * 0.3 + noise1 * TWO_PI) * 2.0;
-    float midFreq = cos(time * 1.2 + noise2 * TWO_PI) * 0.8;
-    float highFreq = sin(time * 4.0 + noise3 * TWO_PI) * 0.3;
+    float lowFreq = sin(time * CHAOTIC_LOW_FREQ_TIME + noise1 * TWO_PI) * CHAOTIC_LOW_FREQ_AMP;
+    float midFreq = cos(time * CHAOTIC_MID_FREQ_TIME + noise2 * TWO_PI) * CHAOTIC_MID_FREQ_AMP;
+    float highFreq = sin(time * CHAOTIC_HIGH_FREQ_TIME + noise3 * TWO_PI) * CHAOTIC_HIGH_FREQ_AMP;
     
     // Добавляем импульсные движения (редкие, но сильные)
-    float impulse = (hash(noise4 + time * 0.1) > 0.95) ?
-        (hash(noise4 * 2.0) - 0.5) * 2.0 : 0.0;
+    float impulse = (hash(noise4 + time * 0.1) > CHAOTIC_IMPULSE_THRESHOLD) ?
+        (hash(noise4 * 2.0) - 0.5) * CHAOTIC_IMPULSE_STRENGTH : 0.0;
     
     // Возвращаем 2D вектор смещения
     return float2(
         lowFreq + midFreq + highFreq + impulse,
-        cos(time * 0.7 + noise1 * TWO_PI) * 0.5 +
-        sin(time * 2.1 + noise2 * TWO_PI) * 0.2 +
+        cos(time * CHAOTIC_Y_LOW_FREQ_TIME + noise1 * TWO_PI) * CHAOTIC_Y_LOW_FREQ_AMP +
+        sin(time * CHAOTIC_Y_MID_FREQ_TIME + noise2 * TWO_PI) * CHAOTIC_Y_MID_FREQ_AMP +
         impulse * 0.5
     );
 }
@@ -68,59 +125,81 @@ static inline float2 randomChaoticMotion(float2 position, float time, uint parti
 // Турбулентное движение
 
 static inline float2 turbulentMotion(float2 position, float time, uint particleId) {
-    // Базовый сид для частицы
-    float baseSeed = float(particleId) * 17.3;
-    
-    // Создаем турбулентность с разными масштабами
-    float2 offset = float2(0.0, 0.0);
-    
-    // Крупномасштабные вихри
-    offset.x += sin(time * 0.2 + baseSeed) * 1.5;
-    offset.y += cos(time * 0.15 + baseSeed * 1.3) * 1.5;
-    
-    // Среднемасштабные колебания
-    offset.x += cos(time * 0.8 + baseSeed * 0.7) * 0.8;
-    offset.y += sin(time * 1.1 + baseSeed * 1.1) * 0.8;
-    
-    // Мелкомасштабная дрожь
-    offset.x += sin(time * 3.0 + baseSeed * 2.0) * 0.3;
-    offset.y += cos(time * 3.5 + baseSeed * 2.5) * 0.3;
-    
-    // Случайные скачки
-    float jumpTrigger = hash(baseSeed + floor(time * 0.5));
-    if (jumpTrigger > 0.98) {
-        offset.x += (hash(baseSeed * time) - 0.5) * 4.0;
-        offset.y += (hash(baseSeed * time * 1.3) - 0.5) * 4.0;
+    // Spatially-correlated turbulent field in NDC space
+
+    float baseSeed = float(particleId) * TURBULENT_SEED_FACTOR;
+
+    // Scale position to control field density
+    float2 fieldPos = position * 2.5;
+
+    float2 offset = float2(0.0);
+
+    // Large-scale vortices (spatial + temporal)
+    offset.x += sin(fieldPos.y * TURBULENT_LARGE_FREQ_X +
+                    time * 0.6 +
+                    baseSeed) * TURBULENT_LARGE_AMP;
+
+    offset.y += cos(fieldPos.x * TURBULENT_LARGE_FREQ_Y +
+                    time * 0.6 +
+                    baseSeed * TURBULENT_LARGE_FREQ_Y_MOD) * TURBULENT_LARGE_AMP;
+
+    // Mid-scale turbulence
+    offset.x += cos(fieldPos.x * TURBULENT_MID_FREQ_X +
+                    time * 1.1 +
+                    baseSeed * TURBULENT_MID_FREQ_X_MOD) * TURBULENT_MID_AMP;
+
+    offset.y += sin(fieldPos.y * TURBULENT_MID_FREQ_Y +
+                    time * 1.1 +
+                    baseSeed * TURBULENT_MID_FREQ_Y_MOD) * TURBULENT_MID_AMP;
+
+    // Small-scale jitter
+    offset.x += sin((fieldPos.x + fieldPos.y) * TURBULENT_SMALL_FREQ_X +
+                    time * 2.0 +
+                    baseSeed * TURBULENT_SMALL_FREQ_X_MOD) * TURBULENT_SMALL_AMP;
+
+    offset.y += cos((fieldPos.y - fieldPos.x) * TURBULENT_SMALL_FREQ_Y +
+                    time * 2.0 +
+                    baseSeed * TURBULENT_SMALL_FREQ_Y_MOD) * TURBULENT_SMALL_AMP;
+
+    // Rare spatial impulses
+    float jumpSeed = hash(floor(fieldPos.x * 3.0) +
+                          floor(fieldPos.y * 3.0) * 17.0 +
+                          floor(time * TURBULENT_JUMP_TIME_SCALE) +
+                          baseSeed);
+
+    if (jumpSeed > TURBULENT_JUMP_TRIGGER_THRESHOLD) {
+        float impulse = (hash(jumpSeed + baseSeed) - 0.5) * TURBULENT_JUMP_STRENGTH;
+        offset += impulse;
     }
-    
+
     return offset;
 }
 
 // Фрактальное хаотичное движение
 
 static inline float2 fractalChaos(float2 position, float time, uint particleId) {
-    float seed = float(particleId) + time * 0.01;
+    float seed = float(particleId) + time * FRACTAL_SEED_TIME_SCALE;
     float2 movement = float2(0.0, 0.0);
     
     float amplitude = 1.0;
     float frequency = 1.0;
     
-    for (int i = 0; i < 4; i++) {
+    for (uint i = 0; i < FRACTAL_OCTAVES; i++) {
         float2 noisePos = float2(
             hash(seed * frequency + float(i) * 13.0),
             hash(seed * frequency * 1.7 + float(i) * 19.0)
         );
         
-        movement.x += sin(time * frequency * 0.5 + noisePos.x * TWO_PI) * amplitude;
-        movement.y += cos(time * frequency * 0.7 + noisePos.y * TWO_PI) * amplitude;
+        movement.x += sin(time * frequency * FRACTAL_FREQ_X_TIME + noisePos.x * TWO_PI) * amplitude;
+        movement.y += cos(time * frequency * FRACTAL_FREQ_Y_TIME + noisePos.y * TWO_PI) * amplitude;
         
-        amplitude *= 0.5;
-        frequency *= 2.3;      
+        amplitude *= FRACTAL_AMPLITUDE_DECAY;
+        frequency *= FRACTAL_FREQUENCY_SCALE;
     }
     
     float impulseChance = hash(seed + floor(time));
-    if (impulseChance > 0.97) {
-        float impulseStrength = hash(seed * time) * 3.0;
+    if (impulseChance > FRACTAL_IMPULSE_THRESHOLD) {
+        float impulseStrength = hash(seed * time) * FRACTAL_IMPULSE_STRENGTH;
         movement.x += (hash(seed * 2.0) - 0.5) * impulseStrength;
         movement.y += (hash(seed * 3.0) - 0.5) * impulseStrength;
     }

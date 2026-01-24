@@ -10,7 +10,13 @@ import Foundation
 import CoreGraphics
 
 /// Менеджер конфигурации системы частиц
+@MainActor
 final class ConfigurationManager: ConfigurationManagerProtocol {
+
+    private enum Constants {
+        static let minParticles = 10_000
+        static let maxParticles = 300_000
+    }
 
     // MARK: - Properties
 
@@ -44,7 +50,7 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
         }
 
         let raw = Int(pixelCount * density)
-        let clamped = max(10_000, min(raw, 300_000))
+        let clamped = max(Constants.minParticles, min(raw, Constants.maxParticles))
 
         logger.debug("Calculated particle count - raw: \(raw), clamped: \(clamped) for preset: \(preset)")
         return clamped

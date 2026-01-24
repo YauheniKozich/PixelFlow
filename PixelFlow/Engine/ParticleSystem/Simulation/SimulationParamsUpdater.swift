@@ -18,8 +18,16 @@ final class SimulationParamsUpdater {
         particleCount: Int,
         config: ParticleGenerationConfig,
         enableIdleChaotic: Bool = false,
-        displayScale: Float = 1.0
+        displayScale: Float = 1.0,
+        collectionSpeed: Float = 5.0,
+        brightnessBoost: Float = 2.0,
+        threadsPerThreadgroup: UInt32 = 256
     ) {
+        guard buffer.length >= MemoryLayout<SimulationParams>.stride else {
+            assertionFailure("Buffer is too small for SimulationParams")
+            return
+        }
+        
         var p = SimulationParams()
         
         // === Основные параметры симуляции ===
@@ -33,13 +41,13 @@ final class SimulationParamsUpdater {
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
-         p.minParticleSize = Float(config.minParticleSize ?? 0.5) * displayScale
-         p.maxParticleSize = Float(config.maxParticleSize ?? 50.0) * displayScale
+        p.minParticleSize = Float(config.minParticleSize) * displayScale
+        p.maxParticleSize = Float(config.maxParticleSize) * displayScale
 
         
         // === Параметры анимации и эффектов ===
-        p.collectionSpeed = 5.0  // Множитель скорости сбора
-        p.brightnessBoost = 0.8  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
+        p.collectionSpeed = collectionSpeed  // Множитель скорости сбора
+        p.brightnessBoost = brightnessBoost  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
         p.pixelSizeMode = 0      // 0 = плавный, 1 = пиксельно-точный (используется вершинным шейдером)
         p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
         
@@ -49,6 +57,9 @@ final class SimulationParamsUpdater {
         } else {
             p.idleChaoticMotion = 0 // Disabled
         }
+
+        // === РАЗМЕР THREADGROUP ДЛЯ COMPUTE SHADER ===
+        p.threadsPerThreadgroup = threadsPerThreadgroup
         
         buffer.contents()
             .assumingMemoryBound(to: SimulationParams.self)

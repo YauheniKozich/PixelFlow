@@ -219,7 +219,7 @@ enum PixelCacheHelper {
             }
         }
 
-        Logger.shared.debug("PixelCache валиден для \(points.count) точек")
+    //    Logger.shared.debug("PixelCache валиден для \(points.count) точек")
         return true
     }
 
@@ -242,12 +242,12 @@ enum PixelCacheHelper {
         }
 
         // cache.color() — правильный» путь
-        let c = cache.color(atX: x, y: y)
-        Logger.shared.debug("cache.color(): R=\(String(format: "%.3f", c.x)), G=\(String(format: "%.3f", c.y)), B=\(String(format: "%.3f", c.z))")
+        _ = cache.color(atX: x, y: y)
+     //   Logger.shared.debug("cache.color(): R=\(String(format: "%.3f", c.x)), G=\(String(format: "%.3f", c.y)), B=\(String(format: "%.3f", c.z))")
 
         // getPixelData() (обёртка над cache.color())
-        if let pd = getPixelData(atX: x, y: y, from: cache) {
-            Logger.shared.debug("getPixelData(): R=\(String(format: "%.3f", pd.r)), G=\(String(format: "%.3f", pd.g)), B=\(String(format: "%.3f", pd.b))")
+        if getPixelData(atX: x, y: y, from: cache) != nil {
+       //     Logger.shared.debug("getPixelData(): R=\(String(format: "%.3f", pd.r)), G=\(String(format: "%.3f", pd.g)), B=\(String(format: "%.3f", pd.b))")
         }
     }
 }

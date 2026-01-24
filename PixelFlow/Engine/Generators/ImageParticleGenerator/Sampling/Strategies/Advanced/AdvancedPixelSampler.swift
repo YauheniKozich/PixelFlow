@@ -630,12 +630,37 @@ final class AdvancedPixelSampler {
     // MARK: - Утилиты
     
     private static func calculateBrightness(for color: SIMD4<Float>) -> Float {
-        return (color.x + color.y + color.z) / 3.0
+        // Корректировка для premultiplied alpha: unpremultiply RGB если alpha < 1
+        let alpha = color.w
+        if alpha >= 1.0 {
+            return (color.x + color.y + color.z) / 3.0
+        } else if alpha > 0 {
+            let r_unpremult = color.x / alpha
+            let g_unpremult = color.y / alpha
+            let b_unpremult = color.z / alpha
+            return (r_unpremult + g_unpremult + b_unpremult) / 3.0
+        } else {
+            return 0
+        }
     }
-    
+
     private static func calculateSaturation(for color: SIMD4<Float>) -> Float {
-        let maxC = max(color.x, max(color.y, color.z))
-        let minC = min(color.x, min(color.y, color.z))
+        // Корректировка для premultiplied alpha: unpremultiply RGB если alpha < 1
+        let alpha = color.w
+        let maxC: Float
+        let minC: Float
+        if alpha >= 1.0 {
+            maxC = max(color.x, max(color.y, color.z))
+            minC = min(color.x, min(color.y, color.z))
+        } else if alpha > 0 {
+            let r_unpremult = color.x / alpha
+            let g_unpremult = color.y / alpha
+            let b_unpremult = color.z / alpha
+            maxC = max(r_unpremult, max(g_unpremult, b_unpremult))
+            minC = min(r_unpremult, min(g_unpremult, b_unpremult))
+        } else {
+            return 0
+        }
         guard maxC != 0 else { return 0 }
         return (maxC - minC) / maxC
     }

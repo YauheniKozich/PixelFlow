@@ -7,6 +7,18 @@
 
 import Foundation
 
+// MARK: - SimulationState
+
+/// Состояние симуляции частиц
+enum SimulationState: Equatable {
+    case idle
+    case chaotic
+    case collecting(progress: Float)
+    case collected(frames: Int)
+    case lightningStorm
+}
+
+
 final class SimulationStateMachine {
 
     private(set) var state: SimulationState = .idle
@@ -83,7 +95,8 @@ final class SimulationStateMachine {
             state = .collected(frames: 0)
         } else {
             // Обновляем время последнего прогресса только если он действительно изменился
-            if progress != lastProgress {
+            let epsilon: Float = 1e-6
+            if abs(progress - lastProgress) > epsilon {
                 lastProgressUpdateTime = currentTime
                 lastProgress = progress
             }
@@ -93,7 +106,9 @@ final class SimulationStateMachine {
     
     func tickCollected() {
         guard case .collected(let frames) = state else { return }
-        state = .collected(frames: frames + 1)
+        let newFrames = frames + 1
+        state = .collected(frames: newFrames)
+        Logger.shared.debug("[StateMachine] tickCollected() → frames=\(newFrames)")
     }
     
     func stop() {

@@ -10,6 +10,7 @@ import MetalKit
 import CoreGraphics
 
 /// Протокол для координатора системы частиц
+@MainActor
 protocol ParticleSystemCoordinatorProtocol: AnyObject {
     /// Начинает симуляцию частиц
     func startSimulation()
@@ -26,9 +27,6 @@ protocol ParticleSystemCoordinatorProtocol: AnyObject {
     /// Обновляет конфигурацию системы частиц
     func updateConfiguration(_ config: ParticleGenerationConfig) async
 
-    /// Устанавливает размер экрана
-    func configure(screenSize: CGSize)
-
     /// Обновляет симуляцию с учётом времени
     func updateSimulation(deltaTime: Float)
 
@@ -44,20 +42,12 @@ protocol ParticleSystemCoordinatorProtocol: AnyObject {
     /// Возвращает текущее состояние симуляции
     var hasActiveSimulation: Bool { get }
 
-    /// Возвращает true если используются высококачественные частицы
-    var isHighQuality: Bool { get }
-
-    /// Возвращает количество частиц
-    var particleCount: Int { get }
-
-    /// Возвращает источник изображения
-    var sourceImage: CGImage? { get }
-
     /// Возвращает буфер частиц для рендерера
     var particleBuffer: MTLBuffer? { get }
 }
 
 /// Протокол для рендерера Metal
+@MainActor
 protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
     /// Настраивает Metal pipelines
     func setupPipelines() throws
@@ -83,6 +73,9 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
     /// Устанавливает буфер частиц извне
     func setParticleBuffer(_ buffer: MTLBuffer?)
 
+    /// Обновляет количество частиц
+    func updateParticleCount(_ count: Int)
+
     /// Устройство Metal
     var device: MTLDevice { get }
 
@@ -106,9 +99,12 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
 
     /// Размер экрана для симуляции
     var screenSize: CGSize { get }
+    
+    func setSimulationEngine(_ engine: SimulationEngineProtocol)
 }
 
 /// Протокол для движка симуляции
+@MainActor
 protocol SimulationEngineProtocol: AnyObject {
     /// Запускает симуляцию
     func start()
@@ -137,6 +133,9 @@ protocol SimulationEngineProtocol: AnyObject {
     /// Часы симуляции
     var clock: SimulationClockProtocol { get }
 
+    /// Обновляет часы симуляции
+    func updateClock()
+
     /// Колбек для сброса счетчика
     var resetCounterCallback: (() -> Void)? { get set }
 }
@@ -154,15 +153,15 @@ protocol StateManagerProtocol: AnyObject {
 }
 
 /// Протокол для физического движка
-protocol PhysicsEngineProtocol: AnyObject {
+protocol PhysicsEngineProtocol: AnyObject{
     /// Обновляет физику частиц
-    func update(deltaTime: Float)
+  //  func update(deltaTime: Float)
 
     /// Применяет силы к частицам
     func applyForces()
 
     /// Сбрасывает физику
-    func reset()
+ //   func reset()
 }
 
 /// Протокол для хранилища частиц
@@ -182,15 +181,29 @@ protocol ParticleStorageProtocol: AnyObject {
     /// Заменяет частицы на высококачественные
     func recreateHighQualityParticles()
 
+    /// Создает разбросанные целевые позиции для разбиения
+    func createScatteredTargets()
+
     /// Обновляет частицы новыми данными
     func updateParticles(_ particles: [Particle])
 
     /// Очищает хранилище
     func clear()
-    
+
     func updateFastPreview(deltaTime: Float)
-    
+
     func updateHighQualityTransition(deltaTime: Float)
+
+    /// Возвращает прогресс перехода для сбора частиц
+    func getTransitionProgress() -> Float
+
+    /// Сохраняет HQ пиксели из сгенерированных частиц
+    func saveHighQualityPixels(from particles: [Particle])
+    
+    func generateHighQualityParticles(completion: @escaping () -> Void)
+    
+    /// ✅ Установка исходных пикселей для fast preview (новое, 2026-01-23)
+    func setSourcePixels(_ pixels: [Pixel])
 }
 
 /// Протокол для генератора частиц
@@ -224,6 +237,7 @@ protocol ImageLoaderProtocol {
 }
 
 /// Протокол для конфигурационного менеджера
+@MainActor
 protocol ConfigurationManagerProtocol {
     /// Текущая конфигурация
     var currentConfig: ParticleGenerationConfig { get set }
@@ -239,7 +253,8 @@ protocol ConfigurationManagerProtocol {
 }
 
 /// Протокол для службы логирования
-protocol LoggerProtocol {
+
+public protocol LoggerProtocol: Sendable {
     /// Логирует информационное сообщение
     func info(_ message: String)
 
@@ -266,26 +281,4 @@ protocol MemoryManagerProtocol: AnyObject {
 
     /// Текущее использование памяти
     var currentUsage: Int64 { get }
-}
-
-// MARK: - Supporting Protocols (moved from SimulationEngine.swift)
-
-protocol SimulationClockProtocol {
-    var time: Float { get }
-    var deltaTime: Float { get }
-
-    func update()
-    func update(with deltaTime: Float)
-    func reset()
-}
-
-// MARK: - SimulationState
-
-/// Состояние симуляции частиц
-enum SimulationState {
-    case idle
-    case chaotic
-    case collecting(progress: Float)
-    case collected(frames: Int)
-    case lightningStorm
 }

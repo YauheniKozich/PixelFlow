@@ -33,20 +33,21 @@ struct Particle {
 // ============================================================================
 // SIMULATION PARAMETERS - CRITICAL STRUCTURE
 // ============================================================================
-// 
+//
 // CRITICAL: Must match SimulationParams in Particle.swift EXACTLY
 // - Field order MUST be identical
-// - Field types MUST be identical  
-// - Total size MUST be exactly 256 bytes for Metal buffer alignment
+// - Field types MUST be identical
+// - Total size MUST be exactly 272 bytes for Metal buffer alignment (stride)
 //
 // Structure layout breakdown:
 // - uint fields (state, pixelSizeMode, colorsLocked, _pad1): 16 bytes
 // - float fields (deltaTime, collectionSpeed, brightnessBoost, _pad2): 16 bytes
 // - float2 fields (screenSize, _pad3): 16 bytes
-// - particle params (minParticleSize, maxParticleSize, time, particleCount, idleChaoticMotion, padding): 24 bytes
+// - particle params (minParticleSize, maxParticleSize, time, particleCount, idleChaoticMotion, threadsPerThreadgroup, padding): 28 bytes
 // - reserved array (11 * float4): 176 bytes
-// - final padding: 8 bytes
-// Total: 16 + 16 + 16 + 24 + 176 + 8 = 256 bytes
+// - final padding: 4 bytes
+// - compiler alignment padding: +12 bytes (to reach 272 stride)
+// Total: 16 + 16 + 16 + 28 + 176 + 4 + 12 = 272 bytes (verified with Swift MemoryLayout)
 //
 // DO NOT modify field order or types without updating Particle.swift!
 // ============================================================================
@@ -68,6 +69,7 @@ struct SimulationParams {
     float time;
     uint particleCount;
     uint idleChaoticMotion;
+    uint threadsPerThreadgroup;
     uint padding;
     float4 _reserved[11];  // 176 bytes (11 * 16)
 };

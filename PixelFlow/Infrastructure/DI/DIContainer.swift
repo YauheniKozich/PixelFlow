@@ -12,50 +12,50 @@ import Foundation
 final class DIContainer: DIContainerProtocol {
     private var services = [ServiceKey: Any]()
     private let lock = NSLock()
-
+    
     private struct ServiceKey: Hashable {
         let type: Any.Type
         let name: String?
-
+        
         func hash(into hasher: inout Hasher) {
             hasher.combine(ObjectIdentifier(type))
             hasher.combine(name)
         }
-
+        
         static func == (lhs: ServiceKey, rhs: ServiceKey) -> Bool {
             return lhs.type == rhs.type && lhs.name == rhs.name
         }
     }
-
+    
     func register<T>(_ service: T, for type: T.Type = T.self, name: String? = nil) {
         lock.lock()
         defer { lock.unlock() }
-
+        
         let key = ServiceKey(type: type, name: name)
         services[key] = service
     }
-
+    
     func resolve<T>(_ type: T.Type = T.self, name: String? = nil) -> T? {
         lock.lock()
         defer { lock.unlock() }
-
+        
         let key = ServiceKey(type: type, name: name)
         return services[key] as? T
     }
-
+    
     func isRegistered<T>(_ type: T.Type = T.self, name: String? = nil) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-
+        
         let key = ServiceKey(type: type, name: name)
         return services[key] != nil
     }
-
+    
     /// Очищает все зарегистрированные сервисы
     func reset() {
         lock.lock()
         defer { lock.unlock() }
-
+        
         services.removeAll()
     }
 }
@@ -63,7 +63,7 @@ final class DIContainer: DIContainerProtocol {
 /// Thread-safe singleton для главного контейнера приложения
 final class AppContainer {
     static let shared = DIContainer()
-
+    
     private init() {}
 }
 

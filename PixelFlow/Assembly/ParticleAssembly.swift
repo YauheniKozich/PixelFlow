@@ -18,8 +18,15 @@ typealias PlatformSceneDelegate = NSObject & NSApplicationDelegate
 class ParticleAssembly {
     // MARK: - Public Methods
 
-    static func assemble() -> PlatformViewController {
-        let viewModel = ParticleViewModel()
+    /// Ассамблирует контроллер с переданным DI-контейнером
+    static func assemble(withDI container: DIContainer) -> PlatformViewController {
+        // Безопасное извлечение зависимостей
+        guard let logger = container.resolve(LoggerProtocol.self),
+              let imageLoader = container.resolve(ImageLoaderProtocol.self) else {
+            fatalError("ParticleAssembly: Dependencies not registered yet in provided container")
+        }
+
+        let viewModel = ParticleViewModel(logger: logger, imageLoader: imageLoader)
 
         #if os(iOS)
         let viewController = ViewController(viewModel: viewModel)

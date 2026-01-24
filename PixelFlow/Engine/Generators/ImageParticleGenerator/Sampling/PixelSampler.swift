@@ -9,10 +9,6 @@ import CoreGraphics
 import Foundation
 import simd
 
-import CoreGraphics
-import Foundation
-import simd
-
 final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
 
     // MARK: - Свойства

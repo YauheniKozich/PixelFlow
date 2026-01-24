@@ -8,42 +8,54 @@
 
 /* Begin PBXBuildFile section */
 		05E6F65343E5E3585FC18C25 /* ImageAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */; };
+		06FDEEE0ACFCFC0BA3322C9E /* strategies.md in Resources */ = {isa = PBXBuildFile; fileRef = 8F7975CE3EFCE4BF396F8D79 /* strategies.md */; };
 		11634FF923AD375AA24B8FDB /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36874169CBAB62DAC9E8FBE3 /* Configuration.swift */; };
 		1288B430A1B8A19EA2E661B8 /* PixelFlowErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */; };
 		163517E50D70798094FD2CA3 /* ParallelStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */; };
 		17767C749F65872E8BE73F87 /* MemoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */; };
 		1B837EA52CD8F61DB2BC8073 /* GeneratorProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */; };
 		1BA584FA3941094591F43133 /* ParticleSystemProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */; };
+		21FBE3C6EBB14D95E3EB06EA /* shaders.md in Resources */ = {isa = PBXBuildFile; fileRef = 6144A5D97CCBDC6563C5DCCA /* shaders.md */; };
 		23FD6456B14FB1F7DCAD3ED0 /* AdvancedPixelSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B610B4F5075F22E3FBBCD2FA /* AdvancedPixelSampler.swift */; };
 		308B183B72C5FAAF9CA64ABA /* SimulationStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD40BB3AA1F21FDBD8F03266 /* SimulationStateMachine.swift */; };
+		30AA849071B147B7797F7D2B /* analysis.md in Resources */ = {isa = PBXBuildFile; fileRef = 219291A4C7E23B964958ACEF /* analysis.md */; };
+		32EAD51DB0238B4B64D512B0 /* metal.md in Resources */ = {isa = PBXBuildFile; fileRef = D39E804803A90EEC5D5D5E77 /* metal.md */; };
 		34ACF0AC3791A70E6E2A7DD4 /* PixelCacheHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */; };
 		351037CC768E5A491F5BF5DD /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A010E71EE8931CF04EB647D6 /* Logger.swift */; };
+		35C20C1DD9EBAA57462C09D8 /* errors.md in Resources */ = {isa = PBXBuildFile; fileRef = 054DBFECE44BB3500097920D /* errors.md */; };
 		35CFFC9755489A9A8373678E /* ImageAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */; };
 		37E1BBB8789E45030C938FE3 /* AdaptiveSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C08ADAA0DC22C0A2E812A4 /* AdaptiveSamplingStrategy.swift */; };
 		3B54816179CD99C6F61553C6 /* Supporting.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA12389FB45FC7909E222F75 /* Supporting.swift */; };
 		3C98AD8C464DBF7FCF7D65C5 /* DependencyInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB16AA3FEC09086F2ECB87A /* DependencyInitializer.swift */; };
 		40368AC75C473FCF74B8E2AD /* PixelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84709E0D21F5CD033B857A16 /* PixelCache.swift */; };
+		414AEDDA37CF9D8A347D4A71 /* resources.md in Resources */ = {isa = PBXBuildFile; fileRef = 3F2B581323EDB41F433EAC8D /* resources.md */; };
 		4D6C2C30A1FAB8C7EB7687ED /* ParticleAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C695F73386FE862879D3015 /* ParticleAssembler.swift */; };
 		4E82B9EF19FA592D624B9E21 /* HybridSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */; };
+		4FB6D7C74E4F5824888E9568 /* particlesystem.md in Resources */ = {isa = PBXBuildFile; fileRef = F37315C3AC16D20A1B95A0B5 /* particlesystem.md */; };
+		5991645D7E9D4EA790D0F003 /* ui.md in Resources */ = {isa = PBXBuildFile; fileRef = 74746CEA8FC94DDCDD52C303 /* ui.md */; };
 		69395CB6598BB485C9854078 /* OperationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6264A8225BF5449CC4D6BCA /* OperationManager.swift */; };
 		693CB28336633F85948A55F2 /* SimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3DAAEB8ED020AAA30888AD9 /* SimulationEngine.swift */; };
 		69D411FE31432C762DC6E664 /* SimulationParamsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41CA8DE0CC034F0CB1BA8C67 /* SimulationParamsUpdater.swift */; };
 		6A2BF57DD2ECE5C239065EE6 /* Particle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6440E1FA626464C4089489D6 /* Particle.swift */; };
-		70CF22B859679A01AA9D5D13 /* ParticleSystemAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */; };
+		723C286802C60D864ECC9244 /* sampling.md in Resources */ = {isa = PBXBuildFile; fileRef = A75360AEEEBEB66BE5955699 /* sampling.md */; };
 		739CA77B198003AA88F8F800 /* PixelSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9317EC3084FF89D3992EC919 /* PixelSampler.swift */; };
 		7550D0B6D93018150D5D001A /* GenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */; };
 		75D67CF6139BE441A231D054 /* ParticleConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43EC33801A9B7D5F624FB11E /* ParticleConstants.swift */; };
 		7A34FCABF4BC3629CBAFD883 /* ParticleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */; };
 		7E135093549CD0CCCB4E1A1D /* ParticleStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D9C846BD51789BC7A6F1FD /* ParticleStorage.swift */; };
+		84AAC22AA97576E7D0368CE2 /* ErrorHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3080514DB09FA01768C2773 /* ErrorHandler.swift */; };
 		873047631494E8A3BA222EF9 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B7ABA49AFBE4C66C2455F1 /* ConfigManager.swift */; };
 		8DA08487CCFBF658122FA059 /* SamplingParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90527ACF3A024E0DADC6527D /* SamplingParameters.swift */; };
 		91626DCAFC61FCF4EA230B69 /* GraphicsUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */; };
 		9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93560018522BD7AF9E98529F /* SimulationClock.swift */; };
+		9A802FCC34C2237DFA0DB11F /* image-particle-generator.md in Resources */ = {isa = PBXBuildFile; fileRef = C804BE34CE7F9388490C2945 /* image-particle-generator.md */; };
 		9D1852C3D8ED18EAB85A4438 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B744089D6AB6D4E747083D1E /* AppDelegate.swift */; };
+		9D76828B60C2E6B54B29020F /* Shader-Usage-Guide.md in Resources */ = {isa = PBXBuildFile; fileRef = 4023B17A28170155CF9BC248 /* Shader-Usage-Guide.md */; };
 		9DC6FDCB841C9C51363245E2 /* AdaptiveStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */; };
 		9FFBC24CE0D99C0ED2CE55F4 /* SequentialStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */; };
 		A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 43D107B3D96FF487FE0CF627 /* ParticleShader.metal */; };
 		A1BD68667A39490AAE003F61 /* MetalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */; };
+		A90FA36C636D757BA38F0867 /* core.md in Resources */ = {isa = PBXBuildFile; fileRef = CA59DCA785AF9DE36BE5597C /* core.md */; };
 		AA5E433B7B2F56508ACAED9B /* DIContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE513399080F8D957D309707 /* DIContainer.swift */; };
 		AD68EF778C7FB8EB1ECE95AB /* PixelSampler.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FD361633A6093BC6532961B /* PixelSampler.c */; };
 		ADB08432FF312BEBA828E7EF /* UniformSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */; };
@@ -51,15 +63,19 @@
 		B190B665958E666F621FCFCE /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE96AC27175B66D6BA65564 /* CacheManager.swift */; };
 		B2E51ADCE6460535ECFE5AF8 /* ImageParticleGeneratorToParticleSystemAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */; };
 		B54EEAAC4EABC47662D07085 /* GenerationPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */; };
+		B587A9C433E13B8643AD846B /* infrastructure.md in Resources */ = {isa = PBXBuildFile; fileRef = 05001C3DBFEEC8963534876B /* infrastructure.md */; };
 		B64726E04585C84AEAFA14F1 /* ArtifactPreventionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */; };
 		B6B0E376C4091E0C46EB6E20 /* AssemblyDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */; };
+		BF4097052F24F98C00350BE4 /* ParticleSystemAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */; };
 		C0095922D3B76D689FB6A643 /* State+ShaderValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */; };
 		C1A384093C7B46F51DA91E9D /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */; };
 		C36F20B4EE6256AF819C177C /* DIProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */; };
+		C9710B1D7290F181A32609AB /* assembly.md in Resources */ = {isa = PBXBuildFile; fileRef = 582D59EE5C1F236E9FC02D06 /* assembly.md */; };
 		CAF42A32F72AF656C2AE6590 /* ImportanceSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59B0C201FD10D90AB2703E7A /* ImportanceSamplingStrategy.swift */; };
 		D229A60FE90FB21E355924B8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6B49F681B327D71DD1077DD9 /* LaunchScreen.storyboard */; };
 		D54D0DDB319487127D4B3FA2 /* GenerationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2572E34AE78EF64B12E589B /* GenerationContext.swift */; };
 		D6A9019E6C26DB7276BBF37C /* Sample.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDBCF0245D899397C41C22C8 /* Sample.swift */; };
+		D78FB5B8EB7CA1FD53F5D96E /* engine.md in Resources */ = {isa = PBXBuildFile; fileRef = 1C1578251EA152FB9A689468 /* engine.md */; };
 		DC891265BCEC31F45A872D2B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A806E0723DD47B0F0831AC4E /* Assets.xcassets */; };
 		DCD1F9787764F5C0977A082C /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E89750A6C798E3F458B525C /* SceneDelegate.swift */; };
 		E1D721662F5D92AC0DCCBAA6 /* MetalProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */; };
@@ -67,23 +83,31 @@
 		E46A5A099721543A3A8FAA5E /* SamplingParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */; };
 		EA88C5A7BFFA5AFED5969956 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD7D7BC45FB33D10147667E5 /* ViewController.swift */; };
 		F203ED034757530176AE847C /* ParticleAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */; };
+		F9DC483ABC8FA9313ED6BF19 /* caching.md in Resources */ = {isa = PBXBuildFile; fileRef = D937FB65D181F60971D44D04 /* caching.md */; };
 		FAFD7840A754AF4FD1286612 /* ParticleSystemDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE721DEB60539A3B153341B /* ParticleSystemDependencies.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniformSamplingStrategy.swift; sourceTree = "<group>"; };
+		05001C3DBFEEC8963534876B /* infrastructure.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = infrastructure.md; sourceTree = "<group>"; };
+		054DBFECE44BB3500097920D /* errors.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = errors.md; sourceTree = "<group>"; };
 		0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactPreventionHelper.swift; sourceTree = "<group>"; };
 		1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "State+ShaderValue.swift"; sourceTree = "<group>"; };
 		1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelStrategy.swift; sourceTree = "<group>"; };
+		1C1578251EA152FB9A689468 /* engine.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = engine.md; sourceTree = "<group>"; };
 		1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalysis.swift; sourceTree = "<group>"; };
+		219291A4C7E23B964958ACEF /* analysis.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = analysis.md; sourceTree = "<group>"; };
 		230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageAnalyzer.swift; sourceTree = "<group>"; };
 		275F97449BA3619B084370CE /* PixelFlow-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PixelFlow-Bridging-Header.h"; sourceTree = "<group>"; };
-		2A511145A0288CC12E69CF32 /* PixelFlow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PixelFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A511145A0288CC12E69CF32 /* PixelFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PixelFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD361633A6093BC6532961B /* PixelSampler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PixelSampler.c; sourceTree = "<group>"; };
 		3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SequentialStrategy.swift; sourceTree = "<group>"; };
 		35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveStrategy.swift; sourceTree = "<group>"; };
 		36874169CBAB62DAC9E8FBE3 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		3C695F73386FE862879D3015 /* ParticleAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleAssembler.swift; sourceTree = "<group>"; };
+		3C70D01338E7A16D54D9F478 /* assembly.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = assembly.md; sourceTree = "<group>"; };
+		3F2B581323EDB41F433EAC8D /* resources.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = resources.md; sourceTree = "<group>"; };
+		4023B17A28170155CF9BC248 /* Shader-Usage-Guide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Shader-Usage-Guide.md"; sourceTree = "<group>"; };
 		41CA8DE0CC034F0CB1BA8C67 /* SimulationParamsUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationParamsUpdater.swift; sourceTree = "<group>"; };
 		43D107B3D96FF487FE0CF627 /* ParticleShader.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = ParticleShader.metal; sourceTree = "<group>"; };
 		43EC33801A9B7D5F624FB11E /* ParticleConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleConstants.swift; sourceTree = "<group>"; };
@@ -92,10 +116,12 @@
 		50C08ADAA0DC22C0A2E812A4 /* AdaptiveSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveSamplingStrategy.swift; sourceTree = "<group>"; };
 		50D9C846BD51789BC7A6F1FD /* ParticleStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleStorage.swift; sourceTree = "<group>"; };
 		52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageLoader.swift; sourceTree = "<group>"; };
+		582D59EE5C1F236E9FC02D06 /* assembly.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = assembly.md; sourceTree = "<group>"; };
 		59B0C201FD10D90AB2703E7A /* ImportanceSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportanceSamplingStrategy.swift; sourceTree = "<group>"; };
 		5BE721DEB60539A3B153341B /* ParticleSystemDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemDependencies.swift; sourceTree = "<group>"; };
 		5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalRenderer.swift; sourceTree = "<group>"; };
 		6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
+		6144A5D97CCBDC6563C5DCCA /* shaders.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = shaders.md; sourceTree = "<group>"; };
 		633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryManager.swift; sourceTree = "<group>"; };
 		634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIProtocols.swift; sourceTree = "<group>"; };
 		6440E1FA626464C4089489D6 /* Particle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Particle.swift; sourceTree = "<group>"; };
@@ -103,22 +129,24 @@
 		6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemCoordinator.swift; sourceTree = "<group>"; };
 		6E89750A6C798E3F458B525C /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemProtocols.swift; sourceTree = "<group>"; };
+		74746CEA8FC94DDCDD52C303 /* ui.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ui.md; sourceTree = "<group>"; };
 		78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelCacheHelper.swift; sourceTree = "<group>"; };
 		7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamplingParams.swift; sourceTree = "<group>"; };
 		84709E0D21F5CD033B857A16 /* PixelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelCache.swift; sourceTree = "<group>"; };
 		85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyDependencies.swift; sourceTree = "<group>"; };
 		8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationPipeline.swift; sourceTree = "<group>"; };
 		8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageParticleGeneratorToParticleSystemAdapter.swift; sourceTree = "<group>"; };
+		8F7975CE3EFCE4BF396F8D79 /* strategies.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = strategies.md; sourceTree = "<group>"; };
 		90527ACF3A024E0DADC6527D /* SamplingParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamplingParameters.swift; sourceTree = "<group>"; };
 		9317EC3084FF89D3992EC919 /* PixelSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelSampler.swift; sourceTree = "<group>"; };
 		93560018522BD7AF9E98529F /* SimulationClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationClock.swift; sourceTree = "<group>"; };
 		97C5CBCA1AF9BCDF5FAA8845 /* Simulation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Simulation.h; sourceTree = "<group>"; };
 		A010E71EE8931CF04EB647D6 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		A75360AEEEBEB66BE5955699 /* sampling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = sampling.md; sourceTree = "<group>"; };
 		A806E0723DD47B0F0831AC4E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AAE96AC27175B66D6BA65564 /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheManager.swift; sourceTree = "<group>"; };
 		ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFlowErrors.swift; sourceTree = "<group>"; };
 		AD7D7BC45FB33D10147667E5 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemAdapter.swift; sourceTree = "<group>"; };
 		B2572E34AE78EF64B12E589B /* GenerationContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationContext.swift; sourceTree = "<group>"; };
 		B3DAAEB8ED020AAA30888AD9 /* SimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationEngine.swift; sourceTree = "<group>"; };
 		B5ECE8C77F933F8B27401ED8 /* Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
@@ -127,17 +155,24 @@
 		B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProtocols.swift; sourceTree = "<group>"; };
 		BA12389FB45FC7909E222F75 /* Supporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Supporting.swift; sourceTree = "<group>"; };
 		BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsUtils.swift; sourceTree = "<group>"; };
+		BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemAssembly.swift; sourceTree = "<group>"; };
 		C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HybridSamplingStrategy.swift; sourceTree = "<group>"; };
 		C6B78784CEF0C867B06BD275 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C804BE34CE7F9388490C2945 /* image-particle-generator.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "image-particle-generator.md"; sourceTree = "<group>"; };
 		C948BD59E5CE741FD022624C /* ImageGeneratorDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGeneratorDependencies.swift; sourceTree = "<group>"; };
+		CA59DCA785AF9DE36BE5597C /* core.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = core.md; sourceTree = "<group>"; };
 		CDBCF0245D899397C41C22C8 /* Sample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sample.swift; sourceTree = "<group>"; };
+		D3080514DB09FA01768C2773 /* ErrorHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorHandler.swift; sourceTree = "<group>"; };
+		D39E804803A90EEC5D5D5E77 /* metal.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = metal.md; sourceTree = "<group>"; };
 		D54B7B8005AEB18085725079 /* Utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
+		D937FB65D181F60971D44D04 /* caching.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = caching.md; sourceTree = "<group>"; };
 		DAB16AA3FEC09086F2ECB87A /* DependencyInitializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyInitializer.swift; sourceTree = "<group>"; };
 		DDB5833E2A3CCDDBAD9C061D /* PixelSampler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PixelSampler.h; sourceTree = "<group>"; };
 		DE9E581EDF5F2B61867E99DB /* .xcodeignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .xcodeignore; sourceTree = "<group>"; };
 		E6264A8225BF5449CC4D6BCA /* OperationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationManager.swift; sourceTree = "<group>"; };
 		E9B7ABA49AFBE4C66C2455F1 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
 		ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratorProtocols.swift; sourceTree = "<group>"; };
+		F37315C3AC16D20A1B95A0B5 /* particlesystem.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = particlesystem.md; sourceTree = "<group>"; };
 		F3B535A558AB5408B3395900 /* Lighting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Lighting.h; sourceTree = "<group>"; };
 		FCCDCF1F318BE9D13CB38913 /* Basic.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Basic.h; sourceTree = "<group>"; };
 		FD40BB3AA1F21FDBD8F03266 /* SimulationStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulationStateMachine.swift; sourceTree = "<group>"; };
@@ -156,7 +191,6 @@
 		0A7D1952024CB087520846AA /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				AF593455962C982AD14585DC /* ParticleSystemAdapter.swift */,
 				6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */,
 			);
 			path = Core;
@@ -217,6 +251,7 @@
 		3E2D30BDF09A5937217EF8D4 /* Assembly */ = {
 			isa = PBXGroup;
 			children = (
+				3C70D01338E7A16D54D9F478 /* assembly.md */,
 				49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */,
 				68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */,
 				AD7D7BC45FB33D10147667E5 /* ViewController.swift */,
@@ -235,7 +270,10 @@
 		428AF6C46734B0AF2D0AC07C /* Shaders */ = {
 			isa = PBXGroup;
 			children = (
+				D39E804803A90EEC5D5D5E77 /* metal.md */,
 				43D107B3D96FF487FE0CF627 /* ParticleShader.metal */,
+				4023B17A28170155CF9BC248 /* Shader-Usage-Guide.md */,
+				6144A5D97CCBDC6563C5DCCA /* shaders.md */,
 				4B9D0CFC0FA85C543C59E858 /* Compute */,
 				C0EC9E0F7611CA8C020822FB /* Core */,
 				602447ED9601592B36A1D568 /* Effects */,
@@ -256,6 +294,7 @@
 		5040A429F2EA3FF158F4E003 /* Assembly */ = {
 			isa = PBXGroup;
 			children = (
+				582D59EE5C1F236E9FC02D06 /* assembly.md */,
 				3C695F73386FE862879D3015 /* ParticleAssembler.swift */,
 				BA12389FB45FC7909E222F75 /* Supporting.swift */,
 			);
@@ -265,6 +304,7 @@
 		5A93EB177E4A61D7D95428EC /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				CA59DCA785AF9DE36BE5597C /* core.md */,
 				B2572E34AE78EF64B12E589B /* GenerationContext.swift */,
 				6091515585237FAC7E0A0BA8 /* GenerationCoordinator.swift */,
 				8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */,
@@ -336,6 +376,8 @@
 		66DF41616B17D85887B2CF99 /* Errors */ = {
 			isa = PBXGroup;
 			children = (
+				D3080514DB09FA01768C2773 /* ErrorHandler.swift */,
+				054DBFECE44BB3500097920D /* errors.md */,
 				ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */,
 			);
 			path = Errors;
@@ -346,6 +388,7 @@
 			children = (
 				A806E0723DD47B0F0831AC4E /* Assets.xcassets */,
 				6B49F681B327D71DD1077DD9 /* LaunchScreen.storyboard */,
+				3F2B581323EDB41F433EAC8D /* resources.md */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -391,6 +434,7 @@
 			children = (
 				B744089D6AB6D4E747083D1E /* AppDelegate.swift */,
 				6E89750A6C798E3F458B525C /* SceneDelegate.swift */,
+				74746CEA8FC94DDCDD52C303 /* ui.md */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -407,6 +451,8 @@
 		92A608172A9F7C944021A3F8 /* ParticleSystem */ = {
 			isa = PBXGroup;
 			children = (
+				F37315C3AC16D20A1B95A0B5 /* particlesystem.md */,
+				BF4097032F24F95A00350BE4 /* ParticleSystemAssembly */,
 				0A7D1952024CB087520846AA /* Core */,
 				D729624B43A42597869F1C3A /* Models */,
 				295E148330EE623EA6912CB1 /* Particles */,
@@ -421,12 +467,21 @@
 		B9CA163B58583F3EC91BB6F0 /* Engine */ = {
 			isa = PBXGroup;
 			children = (
+				1C1578251EA152FB9A689468 /* engine.md */,
 				BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */,
 				6336BEEDE34B91752A3BAD61 /* Generators */,
 				92A608172A9F7C944021A3F8 /* ParticleSystem */,
 				428AF6C46734B0AF2D0AC07C /* Shaders */,
 			);
 			path = Engine;
+			sourceTree = "<group>";
+		};
+		BF4097032F24F95A00350BE4 /* ParticleSystemAssembly */ = {
+			isa = PBXGroup;
+			children = (
+				BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */,
+			);
+			path = ParticleSystemAssembly;
 			sourceTree = "<group>";
 		};
 		C0EC9E0F7611CA8C020822FB /* Core */ = {
@@ -441,6 +496,7 @@
 		D62E07A0EBA8D47F1C722EE0 /* Infrastructure */ = {
 			isa = PBXGroup;
 			children = (
+				05001C3DBFEEC8963534876B /* infrastructure.md */,
 				5E7E119635F2D1E94C3D5116 /* DI */,
 				12491D5DE21F55470F3F2CE8 /* Protocols */,
 				658CE28E51E516DA22B8ED7C /* Services */,
@@ -459,6 +515,7 @@
 		DD45D84A4374F3FA928C73CB /* Analysis */ = {
 			isa = PBXGroup;
 			children = (
+				219291A4C7E23B964958ACEF /* analysis.md */,
 				1F322BD1DA1EE135FEC246C2 /* ImageAnalysis.swift */,
 				230A614CD51F0FB5EA7DD2F1 /* ImageAnalyzer.swift */,
 			);
@@ -471,6 +528,7 @@
 				35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */,
 				1194DDE2AFC2AEC97B4D697E /* ParallelStrategy.swift */,
 				3026BCEE7B500E9B691ADD55 /* SequentialStrategy.swift */,
+				8F7975CE3EFCE4BF396F8D79 /* strategies.md */,
 			);
 			path = Strategies;
 			sourceTree = "<group>";
@@ -479,6 +537,7 @@
 			isa = PBXGroup;
 			children = (
 				9317EC3084FF89D3992EC919 /* PixelSampler.swift */,
+				A75360AEEEBEB66BE5955699 /* sampling.md */,
 				31226D4497D9B7C752E68019 /* Helpers */,
 				FB989AEE228527B923C79F38 /* Models */,
 				71BFDFE5566FDC5E60026114 /* Strategies */,
@@ -489,6 +548,7 @@
 		EBB576E93CB9A59BFF5F8941 /* ImageParticleGenerator */ = {
 			isa = PBXGroup;
 			children = (
+				C804BE34CE7F9388490C2945 /* image-particle-generator.md */,
 				DD45D84A4374F3FA928C73CB /* Analysis */,
 				5040A429F2EA3FF158F4E003 /* Assembly */,
 				EBBA5C8B01BE959B56C685D4 /* Caching */,
@@ -503,6 +563,7 @@
 		EBBA5C8B01BE959B56C685D4 /* Caching */ = {
 			isa = PBXGroup;
 			children = (
+				D937FB65D181F60971D44D04 /* caching.md */,
 				84709E0D21F5CD033B857A16 /* PixelCache.swift */,
 				78BB8517BE314B65F6B7DF68 /* PixelCacheHelper.swift */,
 			);
@@ -546,7 +607,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2620;
 			};
 			buildConfigurationList = 90C2B0CD3AD7F02DB91E7DA7 /* Build configuration list for PBXProject "PixelFlow" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -573,6 +634,22 @@
 			files = (
 				DC891265BCEC31F45A872D2B /* Assets.xcassets in Resources */,
 				D229A60FE90FB21E355924B8 /* LaunchScreen.storyboard in Resources */,
+				9D76828B60C2E6B54B29020F /* Shader-Usage-Guide.md in Resources */,
+				30AA849071B147B7797F7D2B /* analysis.md in Resources */,
+				C9710B1D7290F181A32609AB /* assembly.md in Resources */,
+				F9DC483ABC8FA9313ED6BF19 /* caching.md in Resources */,
+				A90FA36C636D757BA38F0867 /* core.md in Resources */,
+				D78FB5B8EB7CA1FD53F5D96E /* engine.md in Resources */,
+				35C20C1DD9EBAA57462C09D8 /* errors.md in Resources */,
+				9A802FCC34C2237DFA0DB11F /* image-particle-generator.md in Resources */,
+				B587A9C433E13B8643AD846B /* infrastructure.md in Resources */,
+				32EAD51DB0238B4B64D512B0 /* metal.md in Resources */,
+				4FB6D7C74E4F5824888E9568 /* particlesystem.md in Resources */,
+				414AEDDA37CF9D8A347D4A71 /* resources.md in Resources */,
+				723C286802C60D864ECC9244 /* sampling.md in Resources */,
+				21FBE3C6EBB14D95E3EB06EA /* shaders.md in Resources */,
+				06FDEEE0ACFCFC0BA3322C9E /* strategies.md in Resources */,
+				5991645D7E9D4EA790D0F003 /* ui.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -595,6 +672,7 @@
 				AA5E433B7B2F56508ACAED9B /* DIContainer.swift in Sources */,
 				C36F20B4EE6256AF819C177C /* DIProtocols.swift in Sources */,
 				3C98AD8C464DBF7FCF7D65C5 /* DependencyInitializer.swift in Sources */,
+				84AAC22AA97576E7D0368CE2 /* ErrorHandler.swift in Sources */,
 				D54D0DDB319487127D4B3FA2 /* GenerationContext.swift in Sources */,
 				7550D0B6D93018150D5D001A /* GenerationCoordinator.swift in Sources */,
 				B54EEAAC4EABC47662D07085 /* GenerationPipeline.swift in Sources */,
@@ -619,7 +697,6 @@
 				75D67CF6139BE441A231D054 /* ParticleConstants.swift in Sources */,
 				A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */,
 				7E135093549CD0CCCB4E1A1D /* ParticleStorage.swift in Sources */,
-				70CF22B859679A01AA9D5D13 /* ParticleSystemAdapter.swift in Sources */,
 				AE633C51A2DE14DB269BD134 /* ParticleSystemCoordinator.swift in Sources */,
 				FAFD7840A754AF4FD1286612 /* ParticleSystemDependencies.swift in Sources */,
 				1BA584FA3941094591F43133 /* ParticleSystemProtocols.swift in Sources */,
@@ -635,6 +712,7 @@
 				DCD1F9787764F5C0977A082C /* SceneDelegate.swift in Sources */,
 				9FFBC24CE0D99C0ED2CE55F4 /* SequentialStrategy.swift in Sources */,
 				9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */,
+				BF4097052F24F98C00350BE4 /* ParticleSystemAssembly.swift in Sources */,
 				693CB28336633F85948A55F2 /* SimulationEngine.swift in Sources */,
 				69D411FE31432C762DC6E664 /* SimulationParamsUpdater.swift in Sources */,
 				308B183B72C5FAAF9CA64ABA /* SimulationStateMachine.swift in Sources */,
@@ -696,6 +774,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -708,6 +787,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -789,6 +869,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -808,6 +889,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

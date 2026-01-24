@@ -119,26 +119,8 @@ public final class PixelCache {
     // MARK: - Определение порядка байтов
     
     private static func determineByteOrder(from context: CGContext) -> ByteOrder {
-        let bitmapInfo = context.bitmapInfo
-        
-        // Проверяем явные флаги порядка байтов
-        if bitmapInfo.contains(.byteOrder32Little) {
-            return .bgra
-        }
-        if bitmapInfo.contains(.byteOrder32Big) {
-            return .rgba
-        }
-        
-        // Если флаги не установлены, ориентируемся на расположение альфа-канала
-        switch context.alphaInfo {
-        case .premultipliedLast, .last, .noneSkipLast:
-            return .rgba
-        case .premultipliedFirst, .first, .noneSkipFirst:
-            return .bgra
-        default:
-            // По умолчанию для iOS/Mac используем BGRA
-            return .bgra
-        }
+        // Всегда BGRA, поскольку GraphicsUtils.createBitmapContext создает контекст с BGRA порядком
+        return .bgra
     }
     
     // MARK: - Получение цвета пикселя
@@ -172,14 +154,21 @@ public final class PixelCache {
         let byte3 = Float(bytes[byteIndex + 3]) / 255.0
         
         // Преобразуем в зависимости от порядка байтов
+        let result: SIMD4<Float>
         switch byteOrder {
         case .rgba:
-            return SIMD4<Float>(byte0, byte1, byte2, byte3)
+            result = SIMD4<Float>(byte0, byte1, byte2, byte3)
         case .bgra:
-            return SIMD4<Float>(byte2, byte1, byte0, byte3)
+            result = SIMD4<Float>(byte2, byte1, byte0, byte3)
         case .argb:
-            return SIMD4<Float>(byte1, byte2, byte3, byte0)
+            result = SIMD4<Float>(byte1, byte2, byte3, byte0)
         }
+        
+        // ⚠️ NOT усиливаем альфа — это искажает исходные данные пикселя
+        // Правильный подход: использовать реальные значения для сэмплирования,
+        // а прозрачность частиц контролировать в рендеринге через ParticleConstants
+        
+        return result
     }
     
     // MARK: - Получение сырых значений
@@ -188,28 +177,37 @@ public final class PixelCache {
         guard x >= 0 && x < width && y >= 0 && y < height else {
             return nil
         }
-        
+
         let rowOffset = y * bytesPerRow
         let pixelOffset = x * 4
         let byteIndex = rowOffset + pixelOffset
-        
+
         guard byteIndex + 3 < dataCount else {
             return nil
         }
-        
+
         accessLock.lock()
         defer { accessLock.unlock() }
 
         guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
             return nil
         }
-        
-        let r = bytes[byteIndex]
-        let g = bytes[byteIndex + 1]
-        let b = bytes[byteIndex + 2]
-        let a = bytes[byteIndex + 3]
-        
-        return (r, g, b, a)
+
+        // Читаем байты с учетом порядка байтов
+        let byte0 = bytes[byteIndex]
+        let byte1 = bytes[byteIndex + 1]
+        let byte2 = bytes[byteIndex + 2]
+        let byte3 = bytes[byteIndex + 3]
+
+        // Преобразуем в зависимости от порядка байтов
+        switch byteOrder {
+        case .rgba:
+            return (byte0, byte1, byte2, byte3)
+        case .bgra:
+            return (byte2, byte1, byte0, byte3)
+        case .argb:
+            return (byte1, byte2, byte3, byte0)
+        }
     }
     
     // MARK: - Работа с областями
