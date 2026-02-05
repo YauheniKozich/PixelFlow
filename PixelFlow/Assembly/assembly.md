@@ -20,7 +20,17 @@ final class ParticleAssembly {
     // MARK: - Public Methods
 
     static func assemble() -> PlatformViewController {
-        let viewModel = ParticleViewModel()
+        let viewModel = ParticleViewModel(
+            logger: logger,
+            imageLoader: imageLoader,
+            errorHandler: errorHandler,
+            renderViewFactory: { frame in
+                ParticleSystemFactory.makeRenderView(frame: frame)
+            },
+            systemFactory: { view in
+                ParticleSystemFactory.makeController(for: view)
+            }
+        )
 
         #if os(iOS)
         let viewController = ViewController(viewModel: viewModel)
@@ -67,7 +77,7 @@ final class ParticleAssembly {
 @MainActor func applyUltraPreset()
 
 // Жизненный цикл системы
-@MainActor func createSystem(in view: MTKView) async -> Bool
+@MainActor func createSystem(in view: UIView) async -> Bool
 @MainActor func resetParticleSystem()
 @MainActor func toggleSimulation()
 @MainActor func startLightningStorm()
@@ -86,7 +96,7 @@ final class ParticleAssembly {
 **Презентационный слой**
 
 **Функциональность:**
-- Отображение MTKView для рендеринга частиц
+- Отображение render view для рендеринга частиц
 - Обработка пользовательского ввода
 - Отображение прогресса генерации
 - Управление UI состоянием
@@ -95,8 +105,8 @@ final class ParticleAssembly {
 
 ```
 Assembly (MVVM)
-├── ParticleViewModel → ParticleSystemAdapter
-├── ViewController → MTKView
+├── ParticleViewModel → ParticleSystemFactory
+├── ViewController → Render View
 └── Dependency Injection → Logger, ImageLoader
 ```
 
@@ -109,14 +119,14 @@ Assembly (MVVM)
 **Внутренние компоненты:**
 - `ParticleSystemAdapter` - адаптер для совместимости
 - `ParticleGenerationConfig` - конфигурация генерации
-- `MTKView` - Metal view для рендеринга
+- Render view - Metal view для рендеринга
 
 ## Жизненный цикл
 
 1. **Инициализация**: Создание ViewModel с зависимостями
 2. **Сборка**: Assembly создает ViewController с ViewModel
 3. **Конфигурация**: Применение настроек качества
-4. **Создание системы**: Инициализация ParticleSystem в MTKView
+4. **Создание системы**: Инициализация ParticleSystem в render view
 5. **Симуляция**: Запуск и управление анимацией
 6. **Очистка**: Ресурсы освобождаются при деинициализации
 
@@ -136,7 +146,7 @@ await viewController.viewModel?.apply(config)
 
 // Расширенное использование
 if let viewModel = viewController.viewModel {
-    let success = await viewModel.createSystem(in: mtkView)
+    let success = await viewModel.createSystem(in: renderView)
     if success {
         viewModel.startLightningStorm()
     }

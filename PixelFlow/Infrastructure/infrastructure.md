@@ -64,6 +64,18 @@ protocol DIContainerProtocol {
 }
 ```
 
+### LoggingProtocols
+**Протоколы для логирования**
+
+```swift
+public protocol LoggerProtocol: Sendable {
+    func info(_ message: String)
+    func warning(_ message: String)
+    func error(_ message: String)
+    func debug(_ message: String)
+}
+```
+
 ### GeneratorProtocols
 **Протоколы для генераторов частиц**
 
@@ -120,6 +132,16 @@ protocol ParticleSystemAdapterProtocol {
 
 ## Сервисы
 
+### Logger
+**Сервис логирования (Infrastructure/Services/Logger.swift)**
+
+```swift
+public final class Logger {
+    public static let shared = Logger()
+    // ...
+}
+```
+
 ### ImageLoader
 **Сервис загрузки изображений**
 
@@ -163,11 +185,13 @@ Infrastructure слой обеспечивает:
 
 ### Регистрация зависимостей
 ```swift
-// В startup коде
+// В startup коде (AppContainer)
 register(Logger.shared, for: LoggerProtocol.self)
 register(ImageLoader(), for: ImageLoaderProtocol.self)
-register(GenerationCoordinatorFactory.makeCoordinator(),
-         for: GenerationCoordinatorProtocol.self)
+
+// В engine-коде (EngineContainer)
+registerEngine(GenerationCoordinatorFactory.makeCoordinator(),
+               for: GenerationCoordinatorProtocol.self)
 ```
 
 ### Разрешение зависимостей
@@ -196,4 +220,14 @@ let mockLogger = MockLogger()
 register(mockLogger, for: LoggerProtocol.self)
 
 // Тестируемый объект будет использовать mock
-let viewModel = ParticleViewModel()
+let viewModel = ParticleViewModel(
+    logger: logger,
+    imageLoader: imageLoader,
+    errorHandler: errorHandler,
+    renderViewFactory: { frame in
+        ParticleSystemFactory.makeRenderView(frame: frame)
+    },
+    systemFactory: { view in
+        ParticleSystemFactory.makeController(for: view)
+    }
+)

@@ -11,23 +11,35 @@ import Metal
 import MetalKit
 
 /// Регистрация зависимостей для системы частиц
+@MainActor
 final class ParticleSystemDependencies {
     
-    /// Регистрирует все зависимости для системы частиц
-    @MainActor static func register(in container: DIContainer, metalView: MTKView) {
+    /// Регистрирует зависимости, не зависящие от размера или конкретного MTKView
+    static func registerCore(in container: DIContainer) {
         guard let logger = container.resolve(LoggerProtocol.self) else {
             fatalError("Logger not registered")
         }
-        logger.info("Registering ParticleSystem dependencies")
+        logger.info("Registering ParticleSystem core dependencies")
         
         // Сервисы
         registerServices(in: container)
         
         // Metal компоненты
         registerMetalComponents(in: container)
+    }
+    
+    /// Регистрирует зависимости, зависящие от конкретного MTKView (размер, storage, simulation)
+    static func registerViewDependent(in container: DIContainer, metalView: MTKView) {
+        guard let logger = container.resolve(LoggerProtocol.self) else {
+            fatalError("Logger not registered")
+        }
+        logger.info("Registering ParticleSystem view-dependent dependencies")
         
         // Компоненты хранения
-        registerStorageComponents(in: container, viewSize: metalView.bounds.size)
+        let drawableSize = metalView.drawableSize
+        let fallbackSize = metalView.bounds.size
+        let viewSize = (drawableSize.width > 0 && drawableSize.height > 0) ? drawableSize : fallbackSize
+        registerStorageComponents(in: container, viewSize: viewSize)
         
         // Компоненты симуляции
         registerSimulationComponents(in: container)
@@ -35,7 +47,7 @@ final class ParticleSystemDependencies {
     
     // MARK: - Private Registration Methods
     
-    @MainActor private static func registerMetalComponents(in container: DIContainer) {
+    private static func registerMetalComponents(in container: DIContainer) {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Metal device not available")
         }
@@ -56,7 +68,7 @@ final class ParticleSystemDependencies {
         }
     }
     
-    @MainActor private static func registerSimulationComponents(in container: DIContainer) {
+    private static func registerSimulationComponents(in container: DIContainer) {
         let stateManager = SimulationStateMachine()
         container.register(stateManager, for: SimulationStateMachine.self)
         container.register(DefaultSimulationClock(), for: SimulationClockProtocol.self)
@@ -71,7 +83,6 @@ final class ParticleSystemDependencies {
         let simulationEngine = SimulationEngine(stateManager: stateManager, clock: clock, logger: logger, particleStorage: particleStorage)
         logger.info("SimulationEngine created with resolved dependencies")
         container.register(simulationEngine, for: SimulationEngineProtocol.self)
-        //  container.register(simulationEngine, for: PhysicsEngineProtocol.self)
         logger.info("Same SimulationEngine registered for both protocols")
     }
     
@@ -86,11 +97,10 @@ final class ParticleSystemDependencies {
         container.register(particleStorage, for: ParticleStorageProtocol.self)
     }
     
-    @MainActor private static func registerServices(in container: DIContainer) {
+    private static func registerServices(in container: DIContainer) {
         guard let logger = container.resolve(LoggerProtocol.self) else {
             fatalError("Logger not registered")
         }
         container.register(ConfigurationManager(logger: logger), for: ConfigurationManagerProtocol.self)
-        container.register(MemoryManager(), for: MemoryManagerProtocol.self)
     }
 }

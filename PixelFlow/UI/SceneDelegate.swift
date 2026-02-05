@@ -8,6 +8,12 @@
 import UIKit
 import MetalKit
 
+@MainActor
+protocol ParticleSystemLifecycleHandling: AnyObject {
+    func handleWillResignActive()
+    func handleDidBecomeActive()
+}
+
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // MARK: - Properties
@@ -24,14 +30,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let window = UIWindow(windowScene: windowScene)
         self.window = window
 
-        let dummyMTKView = MTKView(frame: window.bounds, device: MTLCreateSystemDefaultDevice())
-        DependencyInitializer.initialize(metalView: dummyMTKView)
+        DependencyInitializer.initializeCore()
 
         let rootVC = ParticleAssembly.assemble(withDI: AppContainer.shared)
-
-        if let particleVC = rootVC as? ViewController {
-            DependencyInitializer.initialize(metalView: particleVC.mtkView)
-        }
 
         window.rootViewController = rootVC
         window.makeKeyAndVisible()
@@ -48,10 +49,14 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         Logger.shared.info("SceneDelegate: сцена стала активной")
+        (window?.rootViewController as? ParticleSystemLifecycleHandling)?
+            .handleDidBecomeActive()
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
         Logger.shared.info("SceneDelegate: сцена будет неактивна")
+        (window?.rootViewController as? ParticleSystemLifecycleHandling)?
+            .handleWillResignActive()
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
@@ -61,7 +66,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         Logger.shared.info("SceneDelegate: сцена перешла в фон")
-      //  viewModel?.cleanupAllResources()
+        if let rootVC = window?.rootViewController as? ParticleSystemLifecycleHandling {
+            rootVC.handleWillResignActive()
+        }
     }
 
     // MARK: - URL handling

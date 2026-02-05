@@ -27,9 +27,12 @@ final class AssemblyDependencies {
     private static func registerServices(in container: DIContainer, logger: LoggerProtocol) {
         // ImageLoader
         container.register(ImageLoader(logger: logger), for: ImageLoaderProtocol.self)
-        
+
         // ErrorHandler - централизованная обработка ошибок
         let errorHandler = ErrorHandler(logger: logger)
         container.register(errorHandler, for: ErrorHandlerProtocol.self)
+
+        // MemoryManager - общий сервис для компонентов
+        container.register(MemoryManager(logger: logger), for: MemoryManagerProtocol.self)
     }
 }

@@ -52,7 +52,6 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
         let raw = Int(pixelCount * density)
         let clamped = max(Constants.minParticles, min(raw, Constants.maxParticles))
 
-        logger.debug("Calculated particle count - raw: \(raw), clamped: \(clamped) for preset: \(preset)")
         return clamped
     }
 

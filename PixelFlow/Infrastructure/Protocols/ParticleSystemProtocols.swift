@@ -9,42 +9,42 @@
 import MetalKit
 import CoreGraphics
 
-/// Протокол для координатора системы частиц
-@MainActor
-protocol ParticleSystemCoordinatorProtocol: AnyObject {
-    /// Начинает симуляцию частиц
-    func startSimulation()
-
-    /// Останавливает симуляцию частиц
-    func stopSimulation()
-
-    /// Переключает состояние симуляции
-    func toggleSimulation()
-
-    /// Запускает специальный эффект "молниеносная буря"
-    func startLightningStorm()
-
-    /// Обновляет конфигурацию системы частиц
-    func updateConfiguration(_ config: ParticleGenerationConfig) async
-
-    /// Обновляет симуляцию с учётом времени
-    func updateSimulation(deltaTime: Float)
-
-    /// Выполняет замену частиц на высококачественные асинхронно
-    func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
-
-    /// Инициализирует систему с быстрой превью
-    func initializeFastPreview()
-
-    /// Очищает все ресурсы
-    func cleanup()
-
-    /// Возвращает текущее состояние симуляции
-    var hasActiveSimulation: Bool { get }
-
-    /// Возвращает буфер частиц для рендерера
-    var particleBuffer: MTLBuffer? { get }
-}
+/// Протокол для контроллера системы частиц
+//@MainActor
+//protocol ParticleSystemControlling: AnyObject {
+//    /// Начинает симуляцию частиц
+//    func startSimulation()
+//
+//    /// Останавливает симуляцию частиц
+//    func stopSimulation()
+//
+//    /// Переключает состояние симуляции
+//    func toggleSimulation()
+//
+//    /// Запускает специальный эффект "молниеносная буря"
+//    func startLightningStorm()
+//
+//    /// Обновляет конфигурацию системы частиц
+// //   func updateConfiguration(_ config: ParticleGenerationConfig) async
+//
+//    /// Обновляет симуляцию с учётом времени
+//    func updateSimulation(deltaTime: Float)
+//
+//    /// Выполняет замену частиц на высококачественные асинхронно
+//  //  func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
+//
+//    /// Инициализирует систему с быстрой превью
+// //   func initializeFastPreview()
+//
+//    /// Очищает все ресурсы
+//    func cleanup()
+//
+//    /// Возвращает текущее состояние симуляции
+//    var hasActiveSimulation: Bool { get }
+//
+//    /// Возвращает буфер частиц для рендерера
+//    var particleBuffer: MTLBuffer? { get }
+//}
 
 /// Протокол для рендерера Metal
 @MainActor
@@ -54,6 +54,9 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
 
     /// Настраивает буферы
     func setupBuffers(particleCount: Int) throws
+
+    /// Конфигурирует MTKView
+    func configureView(_ view: MTKView) throws
 
     /// Обновляет параметры симуляции
     func updateSimulationParams()
@@ -111,9 +114,14 @@ protocol SimulationEngineProtocol: AnyObject {
 
     /// Останавливает симуляцию
     func stop()
+    
+    func reset()
 
     /// Запускает сбор частиц
     func startCollecting()
+
+    /// Запускает сбор частиц к подготовленным целям изображения
+    func startCollectingToImage()
 
     /// Запускает молниеносную бурю
     func startLightningStorm()
@@ -134,10 +142,13 @@ protocol SimulationEngineProtocol: AnyObject {
     var clock: SimulationClockProtocol { get }
 
     /// Обновляет часы симуляции
-    func updateClock()
+  //  func updateClock()
 
     /// Колбек для сброса счетчика
     var resetCounterCallback: (() -> Void)? { get set }
+
+    /// Устанавливает флаг готовности HQ-частиц
+    func setHighQualityReady(_ ready: Bool)
 }
 
 /// Протокол для менеджера состояний
@@ -175,6 +186,9 @@ protocol ParticleStorageProtocol: AnyObject {
     /// Инициализирует хранилище с количеством частиц
     func initialize(with particleCount: Int)
 
+    /// Обновляет размер view для корректной нормализации координат
+    func updateViewSize(_ size: CGSize)
+
     /// Создает частицы для превью
     func createFastPreviewParticles()
 
@@ -183,6 +197,9 @@ protocol ParticleStorageProtocol: AnyObject {
 
     /// Создает разбросанные целевые позиции для разбиения
     func createScatteredTargets()
+
+    /// Устанавливает высококачественные целевые частицы для сборки изображения
+    func setHighQualityTargets(_ particles: [Particle])
 
     /// Обновляет частицы новыми данными
     func updateParticles(_ particles: [Particle])
@@ -250,22 +267,6 @@ protocol ConfigurationManagerProtocol {
 
     /// Сбрасывает к стандартной конфигурации
     func resetToDefaults()
-}
-
-/// Протокол для службы логирования
-
-public protocol LoggerProtocol: Sendable {
-    /// Логирует информационное сообщение
-    func info(_ message: String)
-
-    /// Логирует предупреждение
-    func warning(_ message: String)
-
-    /// Логирует ошибку
-    func error(_ message: String)
-
-    /// Логирует отладочное сообщение
-    func debug(_ message: String)
 }
 
 /// Протокол для менеджера памяти

@@ -32,8 +32,8 @@ final class ParticleStorage {
     private let logger: LoggerProtocol
     
     // Размеры экрана для преобразования координат
-    private let viewWidth: Float
-    private let viewHeight: Float
+    private var viewWidth: Float
+    private var viewHeight: Float
     
     // Очередь для синхронизации доступа к буферу
     private let bufferQueue = DispatchQueue(label: "com.particleflow.buffer", qos: .userInitiated)
@@ -62,7 +62,7 @@ final class ParticleStorage {
         self.logger = logger
         self.viewWidth = Float(viewSize.width)
         self.viewHeight = Float(viewSize.height)
-        logger.info("ParticleStorage initialized with viewSize: \(viewWidth)x\(viewHeight)")
+        logger.info("ParticleStorage initialized")
     }
     
     
@@ -79,7 +79,7 @@ final class ParticleStorage {
             bufferPointer[index] = particle
         }
         
-        logger.debug("Particles copied to buffer: \(particles.count)")
+        // no-op: keep logs minimal
     }
     
     /// Создает частицу с позицией в NDC [-1, 1]
@@ -104,12 +104,19 @@ final class ParticleStorage {
             Float.random(in: -0.1...0.1),
             0
         )
+        
+        // Гарантируем видимость частицы: альфа >= 0.6
+        var safeColor = color
+        if safeColor.w < 0.6 {
+            safeColor.w = 0.8 // Устанавливаем минимальную видимую альфу
+        }
+        
         return Particle(
             position: pos,
             velocity: vel,
             targetPosition: pos,
-            color: color,
-            originalColor: color,
+            color: safeColor,
+            originalColor: safeColor,
             size: size,
             baseSize: size,
             life: 0.0,
@@ -151,16 +158,22 @@ final class ParticleStorage {
     }
     
     /// Создает частицу из пикселя с нормализацией в NDC и джиттером
-    private func createParticleFromPixel(_ px: Pixel) -> Particle {
+    private func createParticleFromPixel(_ px: Pixel, viewWidth: Float, viewHeight: Float) -> Particle {
         // Нормализуем координаты под NDC (-1..1) с учётом размеров экрана, с джиттером
         let jitterX = Float.random(in: -jitterRange...jitterRange)
         let jitterY = Float.random(in: -jitterRange...jitterRange)
-        let pos = normalizePixelToNDC(px, jitterX: jitterX, jitterY: jitterY)
+        let pos = normalizePixelToNDC(px, viewWidth: viewWidth, viewHeight: viewHeight, jitterX: jitterX, jitterY: jitterY)
         let color = pixelToColor(px)
         return createNDCParticle(x: pos.x, y: pos.y, color: color)
     }
     /// Нормализует координаты пикселя в NDC [-1, 1] с учетом джиттера и отступа
-    private func normalizePixelToNDC(_ px: Pixel, jitterX: Float = 0, jitterY: Float = 0) -> SIMD3<Float> {
+    private func normalizePixelToNDC(
+        _ px: Pixel,
+        viewWidth: Float,
+        viewHeight: Float,
+        jitterX: Float = 0,
+        jitterY: Float = 0
+    ) -> SIMD3<Float> {
         let normalizedX = ((Float(px.x) + jitterX) / viewWidth) * 2.0 - 1.0
         let normalizedY = ((Float(px.y) + jitterY) / viewHeight) * 2.0 - 1.0
         let clampedX = min(max(normalizedX, -1.0 + boundsPadding), 1.0 - boundsPadding)
@@ -206,7 +219,7 @@ extension ParticleStorage: ParticleStorageProtocol {
         
         if let buffer = particleBuffer {
             memset(buffer.contents(), 0, bufferSize)
-            logger.info("Particle buffer created and zero-initialized: \(bufferSize) bytes")
+            // buffer created
         } else {
             logger.error("Failed to create particle buffer")
         }
@@ -214,32 +227,46 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func setSourcePixels(_ pixels: [Pixel]) {
         bufferQueue.sync {
-            logger.debug("Setting \(pixels.count) source pixels")
             self.sourcePixels = pixels
+        }
+    }
+
+    func updateViewSize(_ size: CGSize) {
+        bufferQueue.sync {
+            viewWidth = max(1, Float(size.width))
+            viewHeight = max(1, Float(size.height))
         }
     }
     
     func createFastPreviewParticles() {
-        logger.debug("Creating fast preview particles with initial velocities")
-        
         guard particleCount > 0, particleBuffer != nil else {
             logger.warning("Cannot create preview particles - storage not initialized")
             return
+        }
+
+        let (currentViewWidth, currentViewHeight, currentSourcePixels) = bufferQueue.sync {
+            (viewWidth, viewHeight, sourcePixels)
         }
         
         var particles: [Particle] = []
         particles.reserveCapacity(particleCount)
         
-        if !sourcePixels.isEmpty {
-            let count = min(particleCount, sourcePixels.count)
+        if !currentSourcePixels.isEmpty {
+            let count = min(particleCount, currentSourcePixels.count)
             
             // Создаем частицы из sourcePixels
             for i in 0..<count {
-                particles.append(createParticleFromPixel(sourcePixels[i]))
+                particles.append(
+                    createParticleFromPixel(
+                        currentSourcePixels[i],
+                        viewWidth: currentViewWidth,
+                        viewHeight: currentViewHeight
+                    )
+                )
             }
             
             // Заполнение оставшихся частиц
-            if particleCount > sourcePixels.count {
+            if particleCount > currentSourcePixels.count {
                 let (xRange, yRange) = calculateBoundsFromPixels()
                 for _ in count..<particleCount {
                     particles.append(createRandomParticle(in: xRange, yRange))
@@ -268,7 +295,7 @@ extension ParticleStorage: ParticleStorageProtocol {
         // Сохраняем частицы в буфер
         updateParticles(particles)
         
-        logger.info("Fast preview particles created: \(particles.count)")
+        logger.info("Fast preview particles created")
     }
     
     func recreateHighQualityParticles() {
@@ -285,7 +312,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                 let count = min(particleCount, sourcePixels.count)
                 for i in 0..<count {
                     let px = sourcePixels[i]
-                    let targetPos = normalizePixelToNDC(px)
+                    let targetPos = normalizePixelToNDC(px, viewWidth: viewWidth, viewHeight: viewHeight)
                     bufferPointer[i].targetPosition = targetPos
                     // Также обновляем цвет и размер для HQ
                     bufferPointer[i].color = SIMD4<Float>(
@@ -321,7 +348,7 @@ extension ParticleStorage: ParticleStorageProtocol {
             
             // Сбрасываем прогресс для плавного перехода
             transitionProgress = 0
-            logger.info("Recreated high quality particles: \(particleCount)")
+            logger.info("Recreated high quality particles")
         }
     }
     
@@ -380,7 +407,27 @@ extension ParticleStorage: ParticleStorageProtocol {
             }
             
             transitionProgress = 0
-            logger.info("Created scattered targets for breaking apart: \(particleCount)")
+            logger.info("Created scattered targets for breaking apart")
+        }
+    }
+
+    func setHighQualityTargets(_ particles: [Particle]) {
+        bufferQueue.sync {
+            highQualityParticles = []
+            highQualityParticles.reserveCapacity(particleCount)
+
+            if particles.count >= particleCount {
+                highQualityParticles.append(contentsOf: particles.prefix(particleCount))
+            } else {
+                highQualityParticles.append(contentsOf: particles)
+                let missing = particleCount - particles.count
+                for _ in 0..<missing {
+                    highQualityParticles.append(createScatteredParticle())
+                }
+            }
+
+            transitionProgress = 0
+            logger.info("High quality targets set: \(highQualityParticles.count)")
         }
     }
     
@@ -437,8 +484,6 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func updateHighQualityTransition(deltaTime: Float) {
         bufferQueue.sync {
-            logger.debug("Updating high quality transition with deltaTime \(deltaTime)")
-            
             let count = min(particleCount, highQualityParticles.count)
             guard count > 0, let particleBuffer = particleBuffer else {
                 logger.warning("No high quality particles or buffer for transition")
@@ -473,14 +518,12 @@ extension ParticleStorage: ParticleStorageProtocol {
                 bufferPointer[i] = current
             }
             
-            logger.debug("High quality transition updated for \(count) particles")
+            // no-op: keep logs minimal
         }
     }
     
     func clear() {
         bufferQueue.sync {
-            logger.debug("Clearing particle storage")
-            
             particleBuffer = nil
             particleCount = 0
             sourcePixels.removeAll()
@@ -511,7 +554,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                     a: UInt8(clamping: Int((particle.color.w * 255).rounded()))
                 )
             }
-            logger.info("Saved \(sourcePixels.count) high-quality pixels for collection")
+            logger.info("Saved high-quality pixels for collection")
         }
     }
     
@@ -539,7 +582,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                 bufferPointer[startIndex + i] = particle
             }
             
-            logger.debug("Updated \(particles.count) particles in buffer at startIndex \(startIndex)")
+            // no-op: keep logs minimal
         }
     }
     
@@ -587,7 +630,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                 }
                 
                 self.transitionProgress = 0
-                self.logger.info("High quality particles generated: \(self.highQualityParticles.count)")
+                self.logger.info("High quality particles generated")
             }
             
             DispatchQueue.main.async {

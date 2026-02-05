@@ -34,15 +34,21 @@ final class SimulationParamsUpdater {
         p.time = clock.time
         p.deltaTime = clock.deltaTime
         p.particleCount = UInt32(particleCount)
-        p.screenSize = .init(Float(screenSize.width), Float(screenSize.height))
+        
+        // Валидация размеров экрана
+        let safeWidth = max(Float(screenSize.width), 1.0)
+        let safeHeight = max(Float(screenSize.height), 1.0)
+        p.screenSize = .init(safeWidth, safeHeight)
         p.state = state.shaderValue
         
         // === Параметры рендеринга частиц ===
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
-        p.minParticleSize = Float(config.minParticleSize) * displayScale
-        p.maxParticleSize = Float(config.maxParticleSize) * displayScale
+        let minSize = max(Float(config.minParticleSize) * displayScale, 0.5)
+        let maxSize = max(Float(config.maxParticleSize) * displayScale, minSize)
+        p.minParticleSize = minSize
+        p.maxParticleSize = maxSize
 
         
         // === Параметры анимации и эффектов ===

@@ -3,16 +3,15 @@
 //  PixelFlow
 //
 //  Created by Yauheni Kozich on 11.01.26.
-//  Адаптер для интеграции GenerationCoordinator с ParticleSystemCoordinator
+//  Адаптер для интеграции GenerationCoordinator с ParticleSystemController
 //
 
 import CoreGraphics
 import Foundation
 
-/// Адаптер для интеграции GenerationCoordinator с ParticleSystemCoordinator
+/// Адаптер для интеграции GenerationCoordinator с ParticleSystemController
 /// Реализует ParticleGeneratorProtocol, используя GenerationCoordinator внутри
 final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProtocol {
-    
     // MARK: - Properties
 
     var image: CGImage? { nil } // Не храним изображение, передаем в метод

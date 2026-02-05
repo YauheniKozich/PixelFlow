@@ -67,6 +67,13 @@ final class AppContainer {
     private init() {}
 }
 
+/// Thread-safe singleton для engine-контейнера (генератор + рендер)
+final class EngineContainer {
+    static let shared = DIContainer()
+    
+    private init() {}
+}
+
 /// Удобный глобальный доступ к контейнеру
 func resolve<T>(_ type: T.Type = T.self, name: String? = nil) -> T? {
     return AppContainer.shared.resolve(type, name: name)
@@ -78,4 +85,17 @@ func register<T>(_ service: T, for type: T.Type = T.self, name: String? = nil) {
 
 func isRegistered<T>(_ type: T.Type = T.self, name: String? = nil) -> Bool {
     return AppContainer.shared.isRegistered(type, name: name)
+}
+
+/// Удобный доступ к engine-контейнеру
+func resolveEngine<T>(_ type: T.Type = T.self, name: String? = nil) -> T? {
+    return EngineContainer.shared.resolve(type, name: name)
+}
+
+func registerEngine<T>(_ service: T, for type: T.Type = T.self, name: String? = nil) {
+    EngineContainer.shared.register(service, for: type, name: name)
+}
+
+func isRegisteredEngine<T>(_ type: T.Type = T.self, name: String? = nil) -> Bool {
+    return EngineContainer.shared.isRegistered(type, name: name)
 }

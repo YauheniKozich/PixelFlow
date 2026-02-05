@@ -54,7 +54,8 @@ struct GraphicsUtils {
     static func createBitmapContext(width: Int, height: Int) -> CGContext? {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         // Явно указываем BGRA порядок для совместимости с Metal (iOS little-endian)
-        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        // BGRA в памяти соответствует premultipliedFirst + byteOrder32Little
+        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         
         let bytesPerRow = bytesPerRow(forWidth: width)
         

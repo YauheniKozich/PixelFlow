@@ -118,7 +118,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 **Основной контроллер приложения**
 
 **Структура:**
-- MTKView для Metal рендеринга частиц
+- Render view (создаётся через ViewModel) для Metal рендеринга частиц
 - ParticleViewModel для бизнес-логики
 - UI элементы для управления (кнопки, слайдеры, индикаторы)
 
@@ -126,19 +126,18 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 ```swift
 override func viewDidLoad() {
     super.viewDidLoad()
-    setupMetalView()
+    setupRenderView()
     setupUIControls()
     setupViewModel()
 }
 
-func setupMetalView() {
-    let mtkView = MTKView(frame: view.bounds)
-    // Конфигурация Metal view
-    view.addSubview(mtkView)
+func setupRenderView() {
+    let renderView = viewModel.makeRenderView(frame: view.bounds)
+    view.addSubview(renderView)
 
     // Создание системы частиц
     Task {
-        let success = await viewModel.createSystem(in: mtkView)
+        let success = await viewModel.createSystem(in: renderView)
         if success {
             // Начать симуляцию
         }
@@ -153,7 +152,7 @@ App Launch → AppDelegate.didFinishLaunching → SceneDelegate.willConnectToSce
     ↓
 Создание окна → Assembly.assemble() → ViewController с ParticleViewModel
     ↓
-setupMetalView() → viewModel.createSystem() → ParticleSystem инициализация
+setupRenderView() → viewModel.createSystem() → ParticleSystem инициализация
     ↓
 Симуляция частиц → Metal рендеринг
 ```

@@ -50,10 +50,9 @@ final class SimulationEngine {
             
         case .collecting:
             guard hqParticlesReady else {
-                logger.warning("Cannot update collecting particles - HQ particles not ready")
+                // HQ not ready yet; skip collecting updates
                 return
             }
-            logger.debug("Updating collecting particles")
             particleStorage.updateHighQualityTransition(deltaTime: deltaTime)
             let progress = particleStorage.getTransitionProgress()
             updateProgress(progress)
@@ -106,11 +105,20 @@ extension SimulationEngine: SimulationEngineProtocol {
     func startCollecting() {
         logger.info("Starting particle scattering (breaking apart)")
         guard hqParticlesReady else {
-            logger.warning("Cannot start collecting - HQ particles not ready")
             return
         }
         
         particleStorage.createScatteredTargets()
+        stateMachine.startCollecting()
+        resetCounterCallback?()
+    }
+
+    /// Запускает сбор частиц к подготовленным целям изображения
+    func startCollectingToImage() {
+        logger.info("Starting particle collection to image")
+        guard hqParticlesReady else {
+            return
+        }
         stateMachine.startCollecting()
         resetCounterCallback?()
     }
@@ -123,12 +131,11 @@ extension SimulationEngine: SimulationEngineProtocol {
     
     func updateProgress(_ progress: Float) {
         guard case .collecting = stateMachine.state else { return }
-        logger.debug("updateProgress called with progress: \(String(format: "%.3f", progress))")
         stateMachine.updateProgress(progress)
     }
     
     /// Обновляет состояние симуляции на основе прошедшего времени
-    func update(deltaTime: Float) {
+    @MainActor func update(deltaTime: Float) {
         let clampedDeltaTime = min(deltaTime, 0.1)
         clock.update(with: clampedDeltaTime)
         applyForces()
@@ -147,11 +154,12 @@ extension SimulationEngine: SimulationEngineProtocol {
         particleStorage.clear()
         hqParticlesReady = false
     }
+
+    func setHighQualityReady(_ ready: Bool) {
+        hqParticlesReady = ready
+    }
     
     // MARK: - Public Methods
-    func updateClock() {
-        clock.update()
-    }
     
     func getCurrentTime() -> Float {
         clock.time

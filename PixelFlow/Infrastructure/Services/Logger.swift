@@ -3,6 +3,7 @@
 //  PixelFlow
 //
 //  Created by Yauheni Kozich on 31.10.25.
+//  Moved to Infrastructure/Services on 2026-02-05.
 //  Утилита логирования для структурированного логирования во всем приложении
 //
 
@@ -27,7 +28,11 @@ public final class Logger {
     
     private init() {}
     
-    func log(_ message: String, level: LogLevel = .info, file: String = #file, function: String = #function, line: Int = #line) {
+    func log(_ message: String,
+             level: LogLevel = .info,
+             file: String = #file,
+             function: String = #function,
+             line: Int = #line) {
         guard isLoggingEnabled else { return }
         
         let timestamp = Date().formatted(.iso8601.time(includingFractionalSeconds: true))

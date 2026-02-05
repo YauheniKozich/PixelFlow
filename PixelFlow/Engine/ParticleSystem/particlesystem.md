@@ -48,7 +48,7 @@ func replaceWithHighQualityParticles()       // Замена на HQ части�
 func cleanup()                               // Очистка ресурсов
 ```
 
-### ParticleSystemCoordinator
+### ParticleSystemController
 **Главный координатор системы**
 
 **Функциональность:**
@@ -119,7 +119,7 @@ struct SimulationClock {
 func setupPipelines() throws              // Настройка Metal pipelines
 func setupBuffers(particleCount: Int)    // Создание буферов
 func encodeCompute(into: MTLCommandBuffer) // Кодирование compute команд
-func draw(in: MTKView)                    // Отрисовка кадра
+func draw(in: MTKView)                    // Отрисовка кадра (внутри render view)
 ```
 
 **Особенности:**
@@ -254,13 +254,13 @@ extension SimulationState {
 ## Взаимодействие компонентов
 
 ```
-App → ParticleSystemAdapter → ParticleSystemCoordinator
+App → ParticleSystemAdapter → ParticleSystemController
                               ↓
                     SimulationEngine ← MetalRenderer
                               ↓
                         GPU Shaders (Metal)
                               ↓
-                    MTKView → Display
+                    Render View (MTKView) → Display
 ```
 
 ## Производительность

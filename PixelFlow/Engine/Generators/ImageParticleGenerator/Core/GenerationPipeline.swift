@@ -119,6 +119,7 @@ final class GenerationPipeline: GenerationPipelineProtocol {
             guard let image = context.image else {
                 throw GenerationPipelineError.missingImage
             }
+            logger.debug("Image available: \(image.width)x\(image.height)")
 
             let samples = try sampler.samplePixels(
                 from: analysis,
@@ -201,9 +202,19 @@ final class GenerationPipeline: GenerationPipelineProtocol {
 
         case (.sampling, .samples(let samples)):
             context.samples = samples
+            if let first = samples.first {
+                logger.debug("Sampling produced \(samples.count) samples. First: (\(first.x), \(first.y)) color=\(String(format: "%.2f", first.color.x)),\(String(format: "%.2f", first.color.y)),\(String(format: "%.2f", first.color.z)) a=\(String(format: "%.2f", first.color.w))")
+            } else {
+                logger.warning("Sampling produced 0 samples")
+            }
 
         case (.assembly, .particles(let particles)):
             context.particles = particles
+            if let first = particles.first {
+                logger.debug("Assembly produced \(particles.count) particles. First: pos=(\(String(format: "%.3f", first.position.x)), \(String(format: "%.3f", first.position.y))) size=\(String(format: "%.2f", first.size)) a=\(String(format: "%.2f", first.color.w))")
+            } else {
+                logger.warning("Assembly produced 0 particles")
+            }
 
         case (.caching, .cached):
             // Ничего не делаем, кэширование в координаторе

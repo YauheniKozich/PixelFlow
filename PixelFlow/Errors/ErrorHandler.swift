@@ -260,6 +260,17 @@ private extension UIApplication {
     /// Получить key window (для iOS 13+)
     var keyWindow: UIWindow? {
         if #available(iOS 13.0, *) {
+            let activeScenes = connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .filter { $0.activationState == .foregroundActive }
+
+            if let activeKeyWindow = activeScenes
+                .flatMap({ $0.windows })
+                .first(where: { $0.isKeyWindow }) {
+                return activeKeyWindow
+            }
+
+            // Fallback: если активной сцены нет (редкий случай), берём любой keyWindow
             return connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap { $0.windows }

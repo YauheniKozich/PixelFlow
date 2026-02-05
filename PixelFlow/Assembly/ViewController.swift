@@ -1,39 +1,22 @@
 import UIKit
-import MetalKit
 
-class ViewController: UIViewController {
+
+class ViewController: UIViewController, ParticleSystemLifecycleHandling {
 
     // MARK: - Свойства
 
-    lazy var mtkView: MTKView = {
-        let view = MTKView(frame: self.view.bounds, device: self.device)
-        view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        view.colorPixelFormat = .bgra8Unorm_srgb
-        view.framebufferOnly = true
-        view.preferredFramesPerSecond = 60
-        view.isPaused = true
-        view.enableSetNeedsDisplay = false
-        self.view.addSubview(view)
-        return view
-    }()
     private let viewModel: ParticleViewModel
-    private let device: MTLDevice
+    private var renderView: RenderView?
     private var qualityUpgradeLabel: UILabel?
     private var restartMessageLabel: UILabel?
     private var isFirstLayout = true
-    private var qualityUpgradeObserver: NSObjectProtocol?
+    private var memoryWarningObserver: NSObjectProtocol?
+  
 
     // MARK: - Инициализация
 
     init(viewModel: ParticleViewModel) {
         self.viewModel = viewModel
-
-        guard let device = resolve(MTLDevice.self) else {
-            fatalError("MTLDevice not available in DI container")
-        }
-        self.device = device
-
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -46,44 +29,46 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
-        // setupMetalView() больше не требуется, инициализация через lazy var
+        let viewInstance = viewModel.makeRenderView(frame: view.bounds)
+        renderView = viewInstance
+        guard let renderUIView = viewInstance as? UIView else { return }
+        view.addSubview(renderUIView)
         setupGestures()
-        setupQualityUpgradeNotification()
+        setupViewModelCallbacks()
+        setupMemoryWarningObserver()
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        mtkView.frame = view.bounds
+        let scale = traitCollection.displayScale
+        viewModel.updateRenderViewLayout(
+            frame: view.bounds,
+            scale: scale
+        )
         
         guard isFirstLayout else { return }
+        guard view.bounds.size != .zero else { return }
         isFirstLayout = false
         
-        Task { @MainActor in
-            if viewModel.isConfigured { return }
-            if await viewModel.createSystem(in: mtkView) {
-                viewModel.initializeWithFastPreview()
-                viewModel.startSimulation()
-                startRendering()
-                activateGestures()
+        Task { [weak self] in
+            guard let self else { return }
+            if self.viewModel.isConfigured { return }
+            guard let renderView = self.renderView else { return }
+            if await self.viewModel.createSystem(in: renderView) {
+                self.activateGestures()
+                
             }
         }
     }
     
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        startRendering()
-    }
-    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        mtkView.isPaused = true
+        viewModel.pauseRendering()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        Task { @MainActor in
-            viewModel.cleanupAllResources()
-        }
+        viewModel.cleanupAllResources()
     }
     
     override var prefersStatusBarHidden: Bool { true }
@@ -92,7 +77,17 @@ class ViewController: UIViewController {
 
     
     private func activateGestures() {
-        mtkView.isUserInteractionEnabled = true
+        renderView?.isUserInteractionEnabled = true
+    }
+
+    // MARK: - App Lifecycle Forwarding
+
+    func handleWillResignActive() {
+        viewModel.handleWillResignActive()
+    }
+
+    func handleDidBecomeActive() {
+        viewModel.handleDidBecomeActive()
     }
 
     // MARK: - Настройка жестов
@@ -124,7 +119,7 @@ class ViewController: UIViewController {
     
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
-        mtkView.isPaused = true
+        viewModel.pauseRendering()
         viewModel.resetParticleSystem()
         showRestartMessage()
         isFirstLayout = true
@@ -139,7 +134,7 @@ class ViewController: UIViewController {
     }
     
     private func startRendering() {
-        mtkView.isPaused = false
+        renderView?.setNeedsDisplay()
     }
 
     // MARK: - Визуальная обратная связь
@@ -175,21 +170,26 @@ class ViewController: UIViewController {
             }
         }
     }
-    
-    private func setupQualityUpgradeNotification() {
-        qualityUpgradeObserver = NotificationCenter.default.addObserver(
-            forName: .particleQualityUpgraded,
+
+    private func setupViewModelCallbacks() {
+        viewModel.onQualityUpgraded = { [weak self] in
+            guard let self else { return }
+            self.showQualityUpgradeAnimation()
+        }
+    }
+
+    private func setupMemoryWarningObserver() {
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.showQualityUpgradeAnimation()
+            DispatchQueue.main.async {
+                self?.viewModel.handleLowMemory()
             }
         }
     }
-    
-    @MainActor
+
     private func showQualityUpgradeAnimation() {
         qualityUpgradeLabel?.removeFromSuperview()
         
@@ -228,11 +228,12 @@ class ViewController: UIViewController {
             }
         }
     }
+
     
     // MARK: - Деинициализация
     
     deinit {
-        if let observer = qualityUpgradeObserver {
+        if let observer = memoryWarningObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }

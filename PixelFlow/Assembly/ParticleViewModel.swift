@@ -4,60 +4,70 @@
 //
 //  Created by Yauheni Kozich on 11.01.26.
 
-import UIKit
-import MetalKit
-
-// MARK: - Public Notification
-
-extension Notification.Name {
-    /// Posted when high‑quality particles have been generated and swapped
-    /// for the fast‑preview particles.
-    static let particleQualityUpgraded = Notification.Name("ParticleQualityUpgraded")
-    static let particleLoadFailed = Notification.Name("ParticleLoadFailed")
-}
+import Foundation
+import CoreGraphics
 
 // MARK: - ParticleViewModel
 
 /// Управляет загрузкой изображения, созданием `ParticleSystem`,
 /// переключением от быстрого превью к качественным частицам,
 /// обработкой low‑memory и небольшим публичным API, пригодным для unit‑тестов.
+@MainActor
 final class ParticleViewModel {
     
     // MARK: - Public read‑only state
     
-    @MainActor public private(set) var isConfigured = false
+    public private(set) var isConfigured = false
     public private(set) var isGeneratingHighQuality = false
-    @MainActor public private(set) var particleSystem: ParticleSystemCoordinator?
+    public private(set) var particleSystem: ParticleSystemControlling?
+    
+    // MARK: - UI Callbacks
+    
+    public var onQualityUpgraded: (() -> Void)?
     
     // MARK: - Private storage
     
     private let logger: LoggerProtocol
     private let imageLoader: ImageLoaderProtocol
+    private let errorHandler: ErrorHandlerProtocol
+    private let renderViewFactory: @MainActor (CGRect) -> RenderView
+    private let systemFactory: @MainActor (RenderView) -> ParticleSystemControlling?
     private var currentConfig = ParticleGenerationConfig.standard
+    private var renderView: RenderView?
     private var qualityTask: Task<Void, Never>?
-    private var memoryWarningObserver: NSObjectProtocol?
     
     // --------------------------------------------------------------------
     // MARK: - Life‑cycle
     
-    public init(logger: LoggerProtocol, imageLoader: ImageLoaderProtocol) {
+    public init(logger: LoggerProtocol,
+                imageLoader: ImageLoaderProtocol,
+                errorHandler: ErrorHandlerProtocol,
+                renderViewFactory: @escaping @MainActor (CGRect) -> RenderView,
+                systemFactory: @escaping @MainActor (RenderView) -> ParticleSystemControlling?) {
         self.logger = logger
         self.imageLoader = imageLoader
+        self.errorHandler = errorHandler
+        self.renderViewFactory = renderViewFactory
+        self.systemFactory = systemFactory
         logger.info("ParticleViewModel init")
-        observeMemoryWarnings()
     }
     
     deinit {
-        cancelQualityTask()
+        let cancellableTask = { [weak self] in
+            await self?.cancelQualityTask()
+        }
+        
+        Task {
+            await cancellableTask()
+        }
         particleSystem = nil
-        removeMemoryWarningObserver()
         logger.info("ParticleViewModel deinit")
     }
     
     // --------------------------------------------------------------------
     // MARK: - Public API – Configuration
     
-    @MainActor public func apply(_ newConfig: ParticleGenerationConfig) {
+    private func apply(_ newConfig: ParticleGenerationConfig) {
         currentConfig = newConfig
         logger.info("New configuration applied: \(newConfig)")
         
@@ -68,37 +78,41 @@ final class ParticleViewModel {
         }
     }
     
-    @MainActor  func applyDraftPreset()   { apply(ParticleGenerationConfig.draft)   }
-    @MainActor func applyStandardPreset() { apply(ParticleGenerationConfig.standard) }
-    @MainActor  func applyHighPreset()    { apply(ParticleGenerationConfig.high)    }
-    @MainActor func applyUltraPreset()   { apply(ParticleGenerationConfig.ultra)   }
+    private func applyDraftPreset()   { apply(ParticleGenerationConfig.draft)   }
+    private func applyStandardPreset() { apply(ParticleGenerationConfig.standard) }
+    private func applyHighPreset()    { apply(ParticleGenerationConfig.high)    }
+    private func applyUltraPreset()   { apply(ParticleGenerationConfig.ultra)   }
     
     // --------------------------------------------------------------------
     // MARK: - Public API – System Lifecycle
     
-    /// Создаёт и запускает `ParticleSystem` в переданном `MTKView`.
+    /// Создаёт и запускает `ParticleSystem` в переданном render view.
     /// Возвращает `true`, если всё прошло успешно.
-    @MainActor
-    public func createSystem(in view: MTKView) async -> Bool {
+    func createSystem(in view: RenderView) async -> Bool {
         guard !isConfigured else {
             logger.info("Particle system is already configured")
             return true
         }
         
+        logger.info("=== STARTING PARTICLE SYSTEM INITIALIZATION ===")
+        
         // Загрузка изображения
         logger.info("Loading source image…")
         guard let image = imageLoader.loadImageWithFallback() else {
             logger.error("Failed to load source image")
-            NotificationCenter.default.post(
-                name: .particleLoadFailed,
-                object: nil
-            )
+            errorHandler.handle(PixelFlowError.missingImage,
+                                context: "ParticleViewModel.createSystem",
+                                recovery: .showUserMessage("Не удалось загрузить изображение"))
             return false
         }
+        logger.info("Loaded image: \(image.width)x\(image.height) pixels")
+        
+        logger.info("Source image loaded: \(image.width)x\(image.height)")
         
         // Вычисление количества частиц
         let particleCount = optimalParticleCount(for: image,
                                                  preset: currentConfig.qualityPreset)
+        logger.info("Using image size: \(image.width)x\(image.height) for particle generation")
         logger.info("Calculated particle count: \(particleCount)")
         
         // Обновляем конфигурацию с правильным количеством частиц
@@ -106,26 +120,23 @@ final class ParticleViewModel {
         config.targetParticleCount = particleCount
         
         // Инициализация ParticleSystem
-        let system = ParticleSystemAssembly.makeCoordinator()
-        
+        logger.info("Creating particle system controller…")
+        if particleSystem == nil {
+            particleSystem = systemFactory(view)
+        }
+        guard let system = particleSystem else {
+            logger.error("Failed to create particle system controller")
+            errorHandler.handle(PixelFlowError.invalidContext,
+                                context: "ParticleViewModel.createSystem",
+                                recovery: .showUserMessage("Ошибка инициализации рендера"))
+            return false
+        }
         // Инициализируем систему с изображением и конфигурацией
+        logger.info("Initializing system with image and config…")
         system.initialize(with: image, particleCount: particleCount, config: config)
         
         // === ПОСЛЕДОВАТЕЛЬНОСТЬ ИНИЦИАЛИЗАЦИИ: 1. ПАЙПЛАЙНЫ ===
         logger.info("=== INITIALIZATION SEQUENCE: 1. PIPELINES ===")
-        if let renderer = system.renderer as? MetalRenderer {
-            do {
-                try renderer.configureView(view)
-                view.delegate?.mtkView(view, drawableSizeWillChange: view.drawableSize)
-            } catch {
-                logger.error("Failed to configure Metal renderer: \(error)")
-                NotificationCenter.default.post(
-                    name: .particleLoadFailed,
-                    object: nil
-                )
-                return false
-            }
-        }
         
         // === ПОСЛЕДОВАТЕЛЬНОСТЬ ИНИЦИАЛИЗАЦИИ: 2. СИМУЛЯЦИЯ ===
         logger.info("=== INITIALIZATION SEQUENCE: 2. SIMULATION ===")
@@ -144,8 +155,7 @@ final class ParticleViewModel {
         return true
     }
     
-    /// Останавливает текущую систему и очищает её состояние.
-    @MainActor public func resetParticleSystem() {
+    func resetParticleSystem() {
         logger.info("Resetting particle system")
         cancelQualityTask()
         particleSystem?.cleanup()
@@ -153,45 +163,75 @@ final class ParticleViewModel {
         isConfigured = false
     }
     
-    /// Переключает симуляцию между паузой и запуском.
-    @MainActor public func toggleSimulation() {
+    func toggleSimulation() {
         guard let system = particleSystem else { return }
         
-        if system.isHighQuality {
-            // Если HQ готовы — запускаем collecting (разбиение)
-            system.simulationEngine.startCollecting()
-            logger.info("Started particle scattering (breaking apart)")
-            // Рендеринг управляется через MTKView в ViewController
-        } else if isGeneratingHighQuality {
-            // Если генерируются — показать сообщение
+        if isGeneratingHighQuality {
             logger.info("High-quality particles are generating, please wait...")
-        } else {
-            // Если HQ не готовы и не генерируются — начать симуляцию
-            system.startSimulation()
-            logger.info("Started chaotic simulation")
+            return
         }
+        
+        system.collectHighQualityImage()
+        logger.info("Started high-quality image collection")
     }
     
     /// Запускает «молниеносную бурю», если движок её поддерживает.
-    @MainActor public func startLightningStorm() {
+    func startLightningStorm() {
         particleSystem?.startLightningStorm()
     }
     
+    // MARK: - Lifecycle Signals (from UI / SceneDelegate)
+    
+    func handleWillResignActive() {
+        particleSystem?.handleWillResignActive()
+    }
+    
+    func handleDidBecomeActive() {
+        particleSystem?.handleDidBecomeActive()
+    }
+    
+    // MARK: - Render View Factory
+    
+    func makeRenderView(frame: CGRect) -> RenderView {
+        if renderView == nil {
+            renderView = renderViewFactory(frame)
+        }
+        return renderView!
+    }
+    
+    // MARK: - Render View Layout (from UI)
+    
+    func updateRenderViewLayout(frame: CGRect, scale: CGFloat) {
+        guard let system = particleSystem else { return }
+        system.updateRenderViewLayout(frame: frame, scale: scale)
+    }
+    
     /// Инициализирует fast preview частиц (для совместимости с ViewController).
-    @MainActor public func initializeWithFastPreview() {
-        particleSystem?.initializeFastPreview()
+    func initializeWithFastPreview() {
+        //  particleSystem?.initializeFastPreview()
     }
     
     /// Запускает симуляцию (для совместимости с ViewController).
-    @MainActor public func startSimulation() {
+    func startSimulation() {
         particleSystem?.startSimulation()
     }
     
-    // --------------------------------------------------------------------
+    func pauseRendering() {
+        updateRenderPaused(true)
+    }
+    
+    func resumeRendering() {
+        updateRenderPaused(false)
+    }
+    
+    private func updateRenderPaused(_ paused: Bool) {
+        particleSystem?.setRenderPaused(paused)
+    }
+    
     // MARK: - Private – High‑Quality Generation
     
     /// Запускает задачу, заменяющую быстрые частицы на качественные.
-    @MainActor private func startQualityGeneration(for system: ParticleSystemCoordinator) {
+    func startQualityGeneration(for system: ParticleSystemControlling) {
         cancelQualityTask()
         isGeneratingHighQuality = true
         logger.info("Launching high‑quality particle generation")
@@ -202,33 +242,33 @@ final class ParticleViewModel {
             try? await Task.sleep(nanoseconds: 100_000_000)
             guard !Task.isCancelled else { return }
             
-            logger.info("Generating high‑quality particles…")
-            logger.info("Starting high-quality replacement task for system")
-            
-            let success = await withCheckedContinuation { continuation in
-                system.replaceWithHighQualityParticles { ok in
-                    continuation.resume(returning: ok)
-                }
-            }
-            
-            isGeneratingHighQuality = false
-            
-            if success {
-                logger.info("High‑quality particles ready")
-                NotificationCenter.default.post(
-                    name: .particleQualityUpgraded,
-                    object: nil
-                )
-                // Рендеринг управляется через MTKView в ViewController
-            } else {
-                logger.warning("High‑quality particle generation failed")
-                system.startSimulation()
-                // Рендеринг управляется через MTKView в ViewController
-            }
+            await self.performQualityGeneration(for: system)
         }
     }
     
-    /// Отменить фон. задачу, если она запущена.
+    private func performQualityGeneration(for system: ParticleSystemControlling) async {
+        logger.info("Generating high‑quality particles…")
+        logger.info("Starting high-quality replacement task for system")
+        
+        let success = await withCheckedContinuation { continuation in
+            system.replaceWithHighQualityParticles { ok in
+                continuation.resume(returning: ok)
+            }
+        }
+        
+        isGeneratingHighQuality = false
+        
+        if success {
+            logger.info("High‑quality particles ready")
+            onQualityUpgraded?()
+            // Рендеринг управляется через render view в ViewController
+        } else {
+            logger.warning("High‑quality particle generation failed")
+            system.startSimulation()
+            // Рендеринг управляется через render view в ViewController
+        }
+    }
+    
     private func cancelQualityTask() {
         if qualityTask != nil {
             logger.info("Cancelling high-quality particle generation task")
@@ -238,46 +278,22 @@ final class ParticleViewModel {
         isGeneratingHighQuality = false
     }
     
-    // --------------------------------------------------------------------
     // MARK: - Low‑Memory Handling
     
-    private func observeMemoryWarnings() {
-        memoryWarningObserver = NotificationCenter.default.addObserver(
-            forName: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleLowMemory()
-            }
-        }
-    }
-    
-    private func removeMemoryWarningObserver() {
-        if let observer = memoryWarningObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        memoryWarningObserver = nil
-    }
-    
-    @MainActor
-    private func handleLowMemory() {
+    func handleLowMemory() {
         logger.warning("Low‑memory warning received – cleaning up")
         cleanupAllResources()
     }
     
-    // --------------------------------------------------------------------
     // MARK: - Full Cleanup
     
-    @MainActor
-    public func cleanupAllResources() {
+    func cleanupAllResources() {
         logger.info("Performing full resource cleanup")
         
         cancelQualityTask()
         particleSystem?.cleanup()
         particleSystem = nil
         isConfigured = false
-        removeMemoryWarningObserver()
         
         URLCache.shared.removeAllCachedResponses()
         clearTemporaryDirectory()
@@ -301,12 +317,6 @@ final class ParticleViewModel {
         }
     }
     
-    // --------------------------------------------------------------------
-    // MARK: - Image Loading
-    
-    
-    
-    // --------------------------------------------------------------------
     // MARK: - Particle Count & Config Helpers
     
     /// Вычисляет количество частиц, учитывая плотность, зависящую от `QualityPreset`.
@@ -328,39 +338,5 @@ final class ParticleViewModel {
         
         logger.info("optimalParticleCount – raw:\(raw) clamped:\(clamped) for preset:\(preset)")
         return clamped
-    }
-    
-    // --------------------------------------------------------------------
-    // MARK: - Debug / Diagnostics
-    
-    @MainActor public func configurationInfo() -> String {
-        let status = isGeneratingHighQuality ? "Generating…" :
-        (particleSystem?.isHighQuality ?? false ? "High‑quality" : "Fast preview")
-        return """
-        === ParticleViewModel ===
-        Config preset      : \(currentConfig.qualityPreset)
-        Sampling algorithm : \(currentConfig.samplingStrategy)
-        Particle count    : \(particleSystem?.particleCount ?? 0)
-        Status            : \(status)
-        Caching           : \(currentConfig.enableCaching ? "ON" : "OFF")
-        SIMD              : \(currentConfig.useSIMD ? "ON" : "OFF")
-        Concurrent ops    : \(currentConfig.maxConcurrentOperations)
-        Cache limit (MB)  : \(currentConfig.cacheSizeLimit)
-        Particle size     : \(currentConfig.minParticleSize) – \(currentConfig.maxParticleSize)
-        Importance thresh : \(String(format: "%.2f", currentConfig.importanceThreshold))
-        Contrast weight   : \(String(format: "%.2f", currentConfig.contrastWeight))
-        Saturation weight : \(String(format: "%.2f", currentConfig.saturationWeight))
-        Edge radius       : \(currentConfig.edgeDetectionRadius)
-        """
-    }
-    
-    @MainActor public func logCurrentConfiguration() {
-        logger.info("=== Current Particle Configuration ===")
-        logger.info("Preset                : \(currentConfig.qualityPreset)")
-        logger.info("Sampling strategy     : \(currentConfig.samplingStrategy)")
-        logger.info("Particle count        : \(particleSystem?.particleCount ?? 0)")
-        logger.info("High‑quality active   : \(particleSystem?.isHighQuality ?? false)")
-        logger.info("Generating HQ         : \(isGeneratingHighQuality)")
-        logger.info("====================================")
     }
 }

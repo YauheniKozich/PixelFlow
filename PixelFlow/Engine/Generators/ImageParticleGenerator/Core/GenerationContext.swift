@@ -39,7 +39,14 @@ final class GenerationContext: GenerationContextProtocol {
 
     var image: CGImage? {
         get { stateQueue.sync { _image } }
-        set { stateQueue.async(flags: .barrier) { self._image = newValue } }
+        set {
+            stateQueue.async(flags: .barrier) {
+                self._image = newValue
+                if let image = newValue {
+                    self.logger.debug("Image set in context: \(image.width)x\(image.height)")
+                }
+            }
+        }
     }
 
     var config: ParticleGenerationConfig? {

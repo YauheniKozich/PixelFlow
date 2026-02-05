@@ -84,7 +84,7 @@ final class ImageLoader: ImageLoaderProtocol {
     
     /// Загружает изображение с fallback к тестовому изображению
     func loadImageWithFallback() -> CGImage? {
-        let possibleNames = ["steve", "test", "image"]
+        let possibleNames = ["steve"]
         
         for name in possibleNames {
             if let image = loadImage(named: name) {

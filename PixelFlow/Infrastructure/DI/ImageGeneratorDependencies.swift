@@ -45,7 +45,7 @@ final class ImageGeneratorDependencies {
         
         // Adaptive стратегия - рекомендуемая
         let adaptiveStrategy = AdaptiveStrategy(logger: logger)
-        container.register(adaptiveStrategy, for: GenerationStrategyProtocol.self)
+        container.register(adaptiveStrategy, for: GenerationStrategyProtocol.self, name: "adaptive")
     }
     
     private static func registerGenerationComponents(in container: DIContainer) {
@@ -76,7 +76,7 @@ final class ImageGeneratorDependencies {
         let analyzer = container.resolve(ImageAnalyzerProtocol.self)!
         let sampler = container.resolve(PixelSamplerProtocol.self)!
         let assembler = container.resolve(ParticleAssemblerProtocol.self)!
-        let strategy = container.resolve(GenerationStrategyProtocol.self)!
+        let strategy = container.resolve(GenerationStrategyProtocol.self, name: "adaptive")!
         let context = container.resolve(GenerationContextProtocol.self)!
         
         let pipeline = GenerationPipeline(
@@ -91,9 +91,6 @@ final class ImageGeneratorDependencies {
         
         // Менеджер операций
         container.register(OperationManager(logger: logger), for: OperationManagerProtocol.self)
-        
-        // Менеджер памяти
-        container.register(MemoryManager(logger: logger), for: MemoryManagerProtocol.self)
         
         // Менеджер кэша
         container.register(DefaultCacheManager(cacheSizeLimit: 100 * 1024 * 1024), for: CacheManagerProtocol.self) // 100 MB
@@ -239,7 +236,6 @@ final class ResourceTracker: ResourceTrackerProtocol {
     }
     
     func trackDeallocation(_ resource: AnyObject) {
-        // В Swift автоматическое управление памятью
         // Здесь можно добавить дополнительный учет если нужно
     }
     

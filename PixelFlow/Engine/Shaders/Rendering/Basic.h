@@ -76,6 +76,18 @@ using namespace metal;
 #define NDC_COORDINATE_SYSTEM 1            // Частицы используют NDC [-1, 1], а не экранные [0, 1]
 
 // ============================================================================
+// COLOR SPACE HELPERS
+// ============================================================================
+// Particle colors come from CGImage/PixelCache in sRGB space, while the MTKView
+// renders into an sRGB framebuffer (bgra8Unorm_srgb). Convert to linear before
+// applying lighting, so the GPU can do the correct sRGB encoding at output.
+static inline float3 srgbToLinear(float3 c) {
+    float3 low = c / 12.92;
+    float3 high = pow((c + 0.055) / 1.055, float3(2.4));
+    return select(low, high, c > 0.04045);
+}
+
+// ============================================================================
 // VERTEX ШЕЙДЕР - РАЗМЕЩЕНИЕ ЧАСТИЦ В ПРОСТРАНСТВЕ
 // ============================================================================
 
@@ -250,6 +262,7 @@ fragment float4 fragmentParticle(
     // ============================================================================
 
     float3 col;  // Финальный цвет частицы
+    float3 baseColor = srgbToLinear(in.color.rgb);
 
     // СПЕЦИАЛЬНАЯ ОБРАБОТКА ЭЛЕКТРИЧЕСКОЙ БУРИ ⚡
     if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
@@ -349,7 +362,7 @@ fragment float4 fragmentParticle(
         // КРИТИЧНО: В режиме CHAOTIC просто выводим оригинальный цвет с свечением!
         if (params[0].state == SIMULATION_STATE_CHAOTIC) {
             // Берём оригинальный цвет БЕЗ каких-либо модификаций
-            col = in.color.rgb;
+            col = baseColor;
             
             // Только добавляем мягкое свечение
             float glow = pow(1.0 - dist, 2.5) * 0.2;
@@ -358,7 +371,7 @@ fragment float4 fragmentParticle(
             // Для других режимов используем полное освещение
             float localTime = params[0].time * getStateTimeScale(params[0].state);
             col = calculateParticle2DLighting(
-                in.color.rgb,           // Базовый цвет частицы
+                baseColor,              // Базовый цвет частицы (linear)
                 in.screenPos,           // Позиция на экране
                 dist,                   // Расстояние от центра
                 localTime,              // Адаптированное время
@@ -467,6 +480,7 @@ fragment float4 fragmentParticlePerformance(
 
     // МИНИМАЛЬНОЕ ОСВЕЩЕНИЕ
     float3 col;
+    float3 baseColor = srgbToLinear(in.color.rgb);
 
     if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
         // Упрощенные цвета бури
@@ -480,7 +494,7 @@ fragment float4 fragmentParticlePerformance(
     } else {
         // Только простое свечение
         float glow = pow(1.0 - dist, 2.5) * GLOW_BASE_INTENSITY;
-        col = clamp(in.color.rgb * in.brightnessBoost, 0.0, 1.0) + glow;
+        col = clamp(baseColor * in.brightnessBoost, 0.0, 1.0) + glow;
     }
 
     float finalAlpha = alpha * in.color.a;

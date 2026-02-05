@@ -186,23 +186,17 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
         }
 
         executionTask = Task {
-            try await operationBlock()
-        }
-
-        Task {
             do {
-                guard let executionTask = executionTask else {
-                    callResultHandlerOnce(with: .failure(OperationError.operationUnknown))
-                    return
-                }
-                let result = try await executionTask.value
+                let result = try await operationBlock()
                 callResultHandlerOnce(with: .success(result))
+                return result
             } catch {
                 if !isCancelled {
                     callResultHandlerOnce(with: .failure(error))
                 } else {
                     callResultHandlerOnce(with: .failure(OperationError.operationCancelled))
                 }
+                throw error
             }
         }
     }
@@ -222,5 +216,3 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
         }
     }
 }
-
-

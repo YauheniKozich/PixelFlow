@@ -10,7 +10,7 @@ import CoreGraphics
 import Foundation
 
 /// Главный координатор генерации частиц из изображений
-final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
+final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoordinatorProtocol {
 
     // MARK: - Dependencies
 
@@ -85,6 +85,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
         }
 
         logger.info("Starting particle generation for image \(image.width)x\(image.height)")
+        logger.debug("Image passed to coordinator: \(image.width)x\(image.height)")
 
         // Создание задачи генерации
         let generationTask = Task { [weak self] () -> [Particle] in
@@ -122,7 +123,7 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
                         self._currentStage = stage
                     }
 
-                    Task { @MainActor in
+                    DispatchQueue.main.async {
                         progress(progressValue, stage)
                     }
                 }
@@ -214,12 +215,12 @@ final class GenerationCoordinator: NSObject, GenerationCoordinatorProtocol {
 enum GenerationCoordinatorFactory {
     static func makeCoordinator() -> GenerationCoordinator {
         // Получить зависимости из DI контейнера
-        guard let pipeline = resolve(GenerationPipelineProtocol.self),
-              let operationManager = resolve(OperationManagerProtocol.self),
-              let memoryManager = resolve(MemoryManagerProtocol.self),
-              let cacheManager = resolve(CacheManagerProtocol.self),
-              let logger = resolve(LoggerProtocol.self),
-              let errorHandler = resolve(ErrorHandlerProtocol.self) else {
+        guard let pipeline = resolveEngine(GenerationPipelineProtocol.self),
+              let operationManager = resolveEngine(OperationManagerProtocol.self),
+              let memoryManager = resolveEngine(MemoryManagerProtocol.self),
+              let cacheManager = resolveEngine(CacheManagerProtocol.self),
+              let logger = resolveEngine(LoggerProtocol.self),
+              let errorHandler = resolveEngine(ErrorHandlerProtocol.self) else {
             fatalError("Failed to resolve GenerationCoordinator dependencies")
         }
 

@@ -49,6 +49,7 @@
 		91626DCAFC61FCF4EA230B69 /* GraphicsUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */; };
 		9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93560018522BD7AF9E98529F /* SimulationClock.swift */; };
 		9A802FCC34C2237DFA0DB11F /* image-particle-generator.md in Resources */ = {isa = PBXBuildFile; fileRef = C804BE34CE7F9388490C2945 /* image-particle-generator.md */; };
+		9C4D0D7B1E17E48C53B3A4E1 /* LoggingProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6F3C24E3E3A2F0E61A37D2 /* LoggingProtocols.swift */; };
 		9D1852C3D8ED18EAB85A4438 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B744089D6AB6D4E747083D1E /* AppDelegate.swift */; };
 		9D76828B60C2E6B54B29020F /* Shader-Usage-Guide.md in Resources */ = {isa = PBXBuildFile; fileRef = 4023B17A28170155CF9BC248 /* Shader-Usage-Guide.md */; };
 		9DC6FDCB841C9C51363245E2 /* AdaptiveStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CCE7AF3F511F318AD3FEC2 /* AdaptiveStrategy.swift */; };
@@ -56,17 +57,18 @@
 		A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */ = {isa = PBXBuildFile; fileRef = 43D107B3D96FF487FE0CF627 /* ParticleShader.metal */; };
 		A1BD68667A39490AAE003F61 /* MetalRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB68D53A9CB81EBE2FA37CD /* MetalRenderer.swift */; };
 		A90FA36C636D757BA38F0867 /* core.md in Resources */ = {isa = PBXBuildFile; fileRef = CA59DCA785AF9DE36BE5597C /* core.md */; };
+		AA1111AA1111AA1111AA1111 /* RenderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222AA2222AA2222AA2222 /* RenderView.swift */; };
 		AA5E433B7B2F56508ACAED9B /* DIContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE513399080F8D957D309707 /* DIContainer.swift */; };
 		AD68EF778C7FB8EB1ECE95AB /* PixelSampler.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FD361633A6093BC6532961B /* PixelSampler.c */; };
 		ADB08432FF312BEBA828E7EF /* UniformSamplingStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0118EBBF09B49E273773B363 /* UniformSamplingStrategy.swift */; };
-		AE633C51A2DE14DB269BD134 /* ParticleSystemCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */; };
+		AE633C51A2DE14DB269BD134 /* ParticleSystemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C625AABE1ABBCB060E495AD /* ParticleSystemController.swift */; };
 		B190B665958E666F621FCFCE /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAE96AC27175B66D6BA65564 /* CacheManager.swift */; };
 		B2E51ADCE6460535ECFE5AF8 /* ImageParticleGeneratorToParticleSystemAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */; };
 		B54EEAAC4EABC47662D07085 /* GenerationPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */; };
 		B587A9C433E13B8643AD846B /* infrastructure.md in Resources */ = {isa = PBXBuildFile; fileRef = 05001C3DBFEEC8963534876B /* infrastructure.md */; };
 		B64726E04585C84AEAFA14F1 /* ArtifactPreventionHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2063D5A9138A5E983F4BBB /* ArtifactPreventionHelper.swift */; };
 		B6B0E376C4091E0C46EB6E20 /* AssemblyDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */; };
-		BF4097052F24F98C00350BE4 /* ParticleSystemAssembly.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */; };
+		BB1111BB1111BB1111BB1111 /* RenderView+MetalKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2222BB2222BB2222BB2222 /* RenderView+MetalKit.swift */; };
 		C0095922D3B76D689FB6A643 /* State+ShaderValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */; };
 		C1A384093C7B46F51DA91E9D /* ImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */; };
 		C36F20B4EE6256AF819C177C /* DIProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */; };
@@ -126,7 +128,7 @@
 		634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIProtocols.swift; sourceTree = "<group>"; };
 		6440E1FA626464C4089489D6 /* Particle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Particle.swift; sourceTree = "<group>"; };
 		68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleViewModel.swift; sourceTree = "<group>"; };
-		6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemCoordinator.swift; sourceTree = "<group>"; };
+		6C625AABE1ABBCB060E495AD /* ParticleSystemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemController.swift; sourceTree = "<group>"; };
 		6E89750A6C798E3F458B525C /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemProtocols.swift; sourceTree = "<group>"; };
 		74746CEA8FC94DDCDD52C303 /* ui.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ui.md; sourceTree = "<group>"; };
@@ -134,6 +136,7 @@
 		7FA307C990AEBBFA1CFBBC32 /* SamplingParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamplingParams.swift; sourceTree = "<group>"; };
 		84709E0D21F5CD033B857A16 /* PixelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelCache.swift; sourceTree = "<group>"; };
 		85EAD463A5CC294E14FC85C5 /* AssemblyDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssemblyDependencies.swift; sourceTree = "<group>"; };
+		8C6F3C24E3E3A2F0E61A37D2 /* LoggingProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggingProtocols.swift; sourceTree = "<group>"; };
 		8EA3169F5F984CAD7AEFFE34 /* GenerationPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationPipeline.swift; sourceTree = "<group>"; };
 		8ED157F9EBCBE196F3620E03 /* ImageParticleGeneratorToParticleSystemAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageParticleGeneratorToParticleSystemAdapter.swift; sourceTree = "<group>"; };
 		8F7975CE3EFCE4BF396F8D79 /* strategies.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = strategies.md; sourceTree = "<group>"; };
@@ -144,6 +147,7 @@
 		A010E71EE8931CF04EB647D6 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A75360AEEEBEB66BE5955699 /* sampling.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = sampling.md; sourceTree = "<group>"; };
 		A806E0723DD47B0F0831AC4E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA2222AA2222AA2222AA2222 /* RenderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderView.swift; sourceTree = "<group>"; };
 		AAE96AC27175B66D6BA65564 /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheManager.swift; sourceTree = "<group>"; };
 		ABF2E81E25807B0FD3BE4E6C /* PixelFlowErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelFlowErrors.swift; sourceTree = "<group>"; };
 		AD7D7BC45FB33D10147667E5 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -154,8 +158,8 @@
 		B744089D6AB6D4E747083D1E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProtocols.swift; sourceTree = "<group>"; };
 		BA12389FB45FC7909E222F75 /* Supporting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Supporting.swift; sourceTree = "<group>"; };
+		BB2222BB2222BB2222BB2222 /* RenderView+MetalKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RenderView+MetalKit.swift"; sourceTree = "<group>"; };
 		BB8C59DD5ECEBB707906EBD2 /* GraphicsUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphicsUtils.swift; sourceTree = "<group>"; };
-		BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleSystemAssembly.swift; sourceTree = "<group>"; };
 		C351577CD732281AA4A64309 /* HybridSamplingStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HybridSamplingStrategy.swift; sourceTree = "<group>"; };
 		C6B78784CEF0C867B06BD275 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C804BE34CE7F9388490C2945 /* image-particle-generator.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "image-particle-generator.md"; sourceTree = "<group>"; };
@@ -191,7 +195,7 @@
 		0A7D1952024CB087520846AA /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				6C625AABE1ABBCB060E495AD /* ParticleSystemCoordinator.swift */,
+				6C625AABE1ABBCB060E495AD /* ParticleSystemController.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -200,6 +204,7 @@
 			isa = PBXGroup;
 			children = (
 				634B7A5B83532DB6E8B78B09 /* DIProtocols.swift */,
+				8C6F3C24E3E3A2F0E61A37D2 /* LoggingProtocols.swift */,
 				ECB29E33B8CF8C7E19E5D3D8 /* GeneratorProtocols.swift */,
 				B909DCAD2E75EB2D6E7AD440 /* MetalProtocols.swift */,
 				71C1155C93F18B1CBADAD218 /* ParticleSystemProtocols.swift */,
@@ -253,6 +258,8 @@
 			children = (
 				3C70D01338E7A16D54D9F478 /* assembly.md */,
 				49BD410F3E60CA748FBC688F /* ParticleAssembly.swift */,
+				AA2222AA2222AA2222AA2222 /* RenderView.swift */,
+				BB2222BB2222BB2222BB2222 /* RenderView+MetalKit.swift */,
 				68A3CB4382D137B46543BEEC /* ParticleViewModel.swift */,
 				AD7D7BC45FB33D10147667E5 /* ViewController.swift */,
 			);
@@ -358,7 +365,6 @@
 		64E149131E2695F21E969FC1 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
-				A010E71EE8931CF04EB647D6 /* Logger.swift */,
 				633F4EDB9495DC97BB1BB117 /* MemoryManager.swift */,
 				1071208BF3D8FC1584C55FB4 /* State+ShaderValue.swift */,
 			);
@@ -368,6 +374,7 @@
 		658CE28E51E516DA22B8ED7C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				A010E71EE8931CF04EB647D6 /* Logger.swift */,
 				52C8CC9F463AF3B3643F51A2 /* ImageLoader.swift */,
 			);
 			path = Services;
@@ -452,7 +459,6 @@
 			isa = PBXGroup;
 			children = (
 				F37315C3AC16D20A1B95A0B5 /* particlesystem.md */,
-				BF4097032F24F95A00350BE4 /* ParticleSystemAssembly */,
 				0A7D1952024CB087520846AA /* Core */,
 				D729624B43A42597869F1C3A /* Models */,
 				295E148330EE623EA6912CB1 /* Particles */,
@@ -474,14 +480,6 @@
 				428AF6C46734B0AF2D0AC07C /* Shaders */,
 			);
 			path = Engine;
-			sourceTree = "<group>";
-		};
-		BF4097032F24F95A00350BE4 /* ParticleSystemAssembly */ = {
-			isa = PBXGroup;
-			children = (
-				BF4097042F24F98C00350BE4 /* ParticleSystemAssembly.swift */,
-			);
-			path = ParticleSystemAssembly;
 			sourceTree = "<group>";
 		};
 		C0EC9E0F7611CA8C020822FB /* Core */ = {
@@ -660,6 +658,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9C4D0D7B1E17E48C53B3A4E1 /* LoggingProtocols.swift in Sources */,
+				AA1111AA1111AA1111AA1111 /* RenderView.swift in Sources */,
+				BB1111BB1111BB1111BB1111 /* RenderView+MetalKit.swift in Sources */,
 				37E1BBB8789E45030C938FE3 /* AdaptiveSamplingStrategy.swift in Sources */,
 				9DC6FDCB841C9C51363245E2 /* AdaptiveStrategy.swift in Sources */,
 				23FD6456B14FB1F7DCAD3ED0 /* AdvancedPixelSampler.swift in Sources */,
@@ -697,7 +698,7 @@
 				75D67CF6139BE441A231D054 /* ParticleConstants.swift in Sources */,
 				A0042174D614793BFA27BD62 /* ParticleShader.metal in Sources */,
 				7E135093549CD0CCCB4E1A1D /* ParticleStorage.swift in Sources */,
-				AE633C51A2DE14DB269BD134 /* ParticleSystemCoordinator.swift in Sources */,
+				AE633C51A2DE14DB269BD134 /* ParticleSystemController.swift in Sources */,
 				FAFD7840A754AF4FD1286612 /* ParticleSystemDependencies.swift in Sources */,
 				1BA584FA3941094591F43133 /* ParticleSystemProtocols.swift in Sources */,
 				7A34FCABF4BC3629CBAFD883 /* ParticleViewModel.swift in Sources */,
@@ -712,7 +713,6 @@
 				DCD1F9787764F5C0977A082C /* SceneDelegate.swift in Sources */,
 				9FFBC24CE0D99C0ED2CE55F4 /* SequentialStrategy.swift in Sources */,
 				9886620EBD0B25E4B53F254A /* SimulationClock.swift in Sources */,
-				BF4097052F24F98C00350BE4 /* ParticleSystemAssembly.swift in Sources */,
 				693CB28336633F85948A55F2 /* SimulationEngine.swift in Sources */,
 				69D411FE31432C762DC6E664 /* SimulationParamsUpdater.swift in Sources */,
 				308B183B72C5FAAF9CA64ABA /* SimulationStateMachine.swift in Sources */,

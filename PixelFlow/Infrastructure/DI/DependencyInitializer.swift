@@ -13,18 +13,19 @@ import MetalKit
 /// Гарантирует однократную регистрацию всех зависимостей приложения
 final class DependencyInitializer {
 
-    private static var isInitialized = false
+    private static var isCoreInitialized = false
+    private static var isViewInitialized = false
     private static let lock = NSLock()
 
-    /// Инициализирует все зависимости приложения
+    /// Инициализирует зависимости, не зависящие от конкретного MTKView
     /// Thread-safe и идемпотентный метод
-    @MainActor static func initialize(metalView: MTKView) {
+    @MainActor static func initializeCore() {
         lock.lock()
         defer { lock.unlock() }
 
-        guard !isInitialized else {
+        guard !isCoreInitialized else {
             // Logger может быть еще не зарегистрирован, используем прямой доступ
-            Logger.shared.debug("Dependencies already initialized")
+            Logger.shared.debug("Core dependencies already initialized")
             return
         }
 
@@ -37,26 +38,74 @@ final class DependencyInitializer {
             fatalError("Failed to resolve logger after registration")
         }
 
-        logger.info("Initializing application dependencies...")
+        logger.info("Initializing core application dependencies...")
 
         // Регистрация зависимостей в правильном порядке
         AssemblyDependencies.register(in: AppContainer.shared)
-        ImageGeneratorDependencies.register(in: AppContainer.shared)
-        ParticleSystemDependencies.register(in: AppContainer.shared, metalView: metalView)
+        syncSharedServicesToEngineContainer()
+        ImageGeneratorDependencies.register(in: EngineContainer.shared)
+        ParticleSystemDependencies.registerCore(in: EngineContainer.shared)
 
-        isInitialized = true
-        logger.info("All dependencies initialized successfully")
+        isCoreInitialized = true
+        logger.info("Core dependencies initialized successfully")
+    }
+
+    /// Инициализирует зависимости, зависящие от MTKView (размер, storage, simulation)
+    /// Thread-safe и идемпотентный метод
+    @MainActor static func configureForView(metalView: MTKView) {
+        lock.lock()
+        let needsCoreInit = !isCoreInitialized
+        let needsViewInit = !isViewInitialized
+        lock.unlock()
+
+        if needsCoreInit {
+            initializeCore()
+        }
+
+        guard needsViewInit else {
+            Logger.shared.debug("View-dependent dependencies already initialized")
+            return
+        }
+
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isViewInitialized else { return }
+
+        guard let logger = AppContainer.shared.resolve(LoggerProtocol.self) else {
+            Logger.shared.error("Critical: Failed to resolve logger before view-dependent init")
+            fatalError("Failed to resolve logger before view-dependent init")
+        }
+
+        logger.info("Initializing view-dependent dependencies...")
+        ParticleSystemDependencies.registerViewDependent(in: EngineContainer.shared, metalView: metalView)
+
+        isViewInitialized = true
+        logger.info("View-dependent dependencies initialized successfully")
     }
 
     private static func registerLogger(in container: DIContainer) {
         container.register(Logger.shared as LoggerProtocol, for: LoggerProtocol.self)
     }
 
+    private static func syncSharedServicesToEngineContainer() {
+        // Прокидываем общие сервисы из AppContainer в EngineContainer
+        if let logger = AppContainer.shared.resolve(LoggerProtocol.self) {
+            EngineContainer.shared.register(logger, for: LoggerProtocol.self)
+        }
+        if let errorHandler = AppContainer.shared.resolve(ErrorHandlerProtocol.self) {
+            EngineContainer.shared.register(errorHandler, for: ErrorHandlerProtocol.self)
+        }
+        if let memoryManager = AppContainer.shared.resolve(MemoryManagerProtocol.self) {
+            EngineContainer.shared.register(memoryManager, for: MemoryManagerProtocol.self)
+        }
+    }
+
     /// Проверяет, были ли инициализированы зависимости
     static var isDependenciesInitialized: Bool {
         lock.lock()
         defer { lock.unlock() }
-        return isInitialized
+        return isCoreInitialized && isViewInitialized
     }
 
     /// Сбрасывает состояние инициализации (для тестирования)
@@ -64,8 +113,10 @@ final class DependencyInitializer {
         lock.lock()
         defer { lock.unlock() }
 
-        isInitialized = false
+        isCoreInitialized = false
+        isViewInitialized = false
         AppContainer.shared.reset()
+        EngineContainer.shared.reset()
         // Logger может быть сброшен, используем прямой доступ
         Logger.shared.info("Dependencies reset")
     }
