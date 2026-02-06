@@ -54,6 +54,7 @@ class ViewController: UIViewController, ParticleSystemLifecycleHandling {
             guard let self else { return }
             if self.viewModel.isConfigured { return }
             guard let renderView = self.renderView else { return }
+            self.viewModel.setImageDisplayMode(.fit)
             if await self.viewModel.createSystem(in: renderView) {
                 self.activateGestures()
                 

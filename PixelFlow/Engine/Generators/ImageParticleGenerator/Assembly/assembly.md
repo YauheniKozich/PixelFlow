@@ -33,9 +33,9 @@
 
 **Конфигурация размеров:**
 ```swift
-let sizeRange: ClosedRange<Float> = config.qualityPreset == .ultra ? 1.0...12.0 :
-                                   config.qualityPreset == .high ? 2.0...10.0 :
-                                   config.qualityPreset == .standard ? 3.0...8.0 : 4.0...6.0
+let sizeRange: ClosedRange<Float> = config.qualityPreset == .ultra ? 0.8...15.0 :
+                                   config.qualityPreset == .high ? 1.5...12.0 :
+                                   config.qualityPreset == .standard ? 2.0...9.0 : 3.0...7.0
 ```
 
 ## Входные данные

@@ -26,18 +26,19 @@ final class GenerationPipeline: GenerationPipelineProtocol {
     init(analyzer: ImageAnalyzerProtocol,
          sampler: PixelSamplerProtocol,
          assembler: ParticleAssemblerProtocol,
-         strategy: GenerationStrategyProtocol = SequentialGenerationStrategy(),
+         strategy: GenerationStrategyProtocol? = nil,
          context: GenerationContextProtocol,
          logger: LoggerProtocol) {
 
         self.analyzer = analyzer
         self.sampler = sampler
         self.assembler = assembler
-        self.strategy = strategy
         self.context = context
         self.logger = logger
+        let resolvedStrategy = strategy ?? SequentialStrategy(logger: logger)
+        self.strategy = resolvedStrategy
 
-        logger.info("GenerationPipeline initialized with strategy: \(type(of: strategy))")
+        logger.info("GenerationPipeline initialized with strategy: \(type(of: resolvedStrategy))")
     }
 
     // MARK: - GenerationPipelineProtocol
@@ -59,28 +60,45 @@ final class GenerationPipeline: GenerationPipelineProtocol {
         context.image = image
         context.config = config
 
-        // Выполнение этапов согласно стратегии
-        let stages = strategy.executionOrder
+        // Выполнение этапов согласно стратегии (с учётом зависимостей и параллелизма)
+        let stages = effectiveStages(for: config)
+        let executionPlan = try buildExecutionPlan(stages: stages, strategy: strategy)
+        logger.debug("Execution plan: \(executionPlan.map { $0.map(\.description) })")
+        let totalStages = stages.count
+        var completedStages = 0
 
-        for (index, stage) in stages.enumerated() {
-            let stageProgress = Float(index) / Float(stages.count)
-            let stageWeight = 1.0 / Float(stages.count)
+        let reportProgress: (GenerationStage) -> Void = { stage in
+            completedStages += 1
+            let currentProgress = Float(completedStages) / Float(max(1, totalStages))
+            self.context.updateProgress(currentProgress, stage: stage.description)
+            progress(currentProgress, stage.description)
+        }
 
-            do {
-                let input = try prepareInput(for: stage)
-                let output = try await executeStage(stage, input: input, config: config, screenSize: screenSize)
-
-                try processOutput(output, for: stage)
-
-                // Обновление прогресса
-                let currentProgress = stageProgress + stageWeight
-                progress(currentProgress, stage.description)
-
-                logger.debug("Completed stage: \(stage)")
-
-            } catch {
-                logger.error("Failed to execute stage \(stage): \(error)")
-                throw GeneratorError.stageFailed(stage: stage.description, error: error)
+        for group in executionPlan {
+            try Task.checkCancellation()
+            let maxParallel = max(1, min(config.maxConcurrentOperations, group.count))
+            if group.count == 1 || maxParallel == 1 {
+                for stage in group {
+                    try await executeStageAndReport(
+                        stage,
+                        config: config,
+                        screenSize: screenSize,
+                        reportProgress: reportProgress
+                    )
+                }
+            } else {
+                var startIndex = 0
+                while startIndex < group.count {
+                    let endIndex = min(startIndex + maxParallel, group.count)
+                    let chunk = Array(group[startIndex..<endIndex])
+                    try await executeStageGroup(
+                        chunk,
+                        config: config,
+                        screenSize: screenSize,
+                        reportProgress: reportProgress
+                    )
+                    startIndex = endIndex
+                }
             }
         }
 
@@ -138,13 +156,15 @@ final class GenerationPipeline: GenerationPipelineProtocol {
                 throw GenerationPipelineError.invalidContext
             }
 
-            let imageSize = CGSize(width: image.width, height: image.height)
+            let originalImageSize = CGSize(width: image.width, height: image.height)
+            // Use the raw pixel dimensions for display to keep pixel-perfect mapping.
+            let imageSize = originalImageSize
             let particles = assembler.assembleParticles(
                 from: samples,
                 config: config,
                 screenSize: screenSize,
                 imageSize: imageSize,
-                originalImageSize: imageSize
+                originalImageSize: originalImageSize
             )
             return .particles(particles)
 
@@ -224,6 +244,134 @@ final class GenerationPipeline: GenerationPipelineProtocol {
             throw GenerationPipelineError.invalidOutput
         }
     }
+
+    // MARK: - Execution Planning
+
+    private func effectiveStages(for config: ParticleGenerationConfig) -> [GenerationStage] {
+        let stages = strategy.executionOrder
+        guard config.enableCaching else {
+            return stages.filter { $0 != .caching }
+        }
+        return stages
+    }
+
+    private func buildExecutionPlan(
+        stages: [GenerationStage],
+        strategy: GenerationStrategyProtocol
+    ) throws -> [[GenerationStage]] {
+        let stageSet = Set(stages)
+        let stageOrderIndex = Dictionary(uniqueKeysWithValues: stages.enumerated().map { ($0.element, $0.offset) })
+        var remaining = stages
+        var completed = Set<GenerationStage>()
+        var plan: [[GenerationStage]] = []
+
+        while !remaining.isEmpty {
+            let ready = stages.filter { stage in
+                guard remaining.contains(stage) else { return false }
+                let deps = strategy.dependencies(for: stage).filter { stageSet.contains($0) }
+                return deps.allSatisfy { completed.contains($0) }
+            }
+
+            let sortedReady = ready.sorted { lhs, rhs in
+                let lhsPriority = priorityValue(strategy.priority(for: lhs))
+                let rhsPriority = priorityValue(strategy.priority(for: rhs))
+                if lhsPriority != rhsPriority {
+                    return lhsPriority > rhsPriority
+                }
+                let lhsIndex = stageOrderIndex[lhs] ?? 0
+                let rhsIndex = stageOrderIndex[rhs] ?? 0
+                return lhsIndex < rhsIndex
+            }
+
+            guard let firstReady = sortedReady.first else {
+                logger.error("Execution plan unresolved dependencies. Remaining: \(remaining)")
+                throw GenerationPipelineError.pipelineInvalidConfiguration
+            }
+
+            if !strategy.canParallelize(firstReady) {
+                plan.append([firstReady])
+                completed.insert(firstReady)
+                remaining.removeAll { $0 == firstReady }
+                continue
+            }
+
+            let parallelStages = sortedReady.filter { strategy.canParallelize($0) }
+            plan.append(parallelStages)
+            for stage in parallelStages {
+                completed.insert(stage)
+            }
+            remaining.removeAll { parallelStages.contains($0) }
+        }
+
+        return plan
+    }
+
+    private func priorityValue(_ priority: Operation.QueuePriority) -> Int {
+        switch priority {
+        case .veryHigh: return 4
+        case .high: return 3
+        case .normal: return 2
+        case .low: return 1
+        case .veryLow: return 0
+        @unknown default: return 2
+        }
+    }
+
+    // MARK: - Stage Execution
+
+    private func executeStageAndReport(
+        _ stage: GenerationStage,
+        config: ParticleGenerationConfig,
+        screenSize: CGSize,
+        reportProgress: @escaping (GenerationStage) -> Void
+    ) async throws {
+        do {
+            try Task.checkCancellation()
+            let input = try prepareInput(for: stage)
+            let output = try await executeStage(stage, input: input, config: config, screenSize: screenSize)
+            try processOutput(output, for: stage)
+            reportProgress(stage)
+            logger.debug("Completed stage: \(stage)")
+        } catch {
+            if Task.isCancelled || error is CancellationError {
+                throw GeneratorError.cancelled
+            }
+            logger.error("Failed to execute stage \(stage): \(error)")
+            throw GeneratorError.stageFailed(stage: stage.description, error: error)
+        }
+    }
+
+    private func executeStageGroup(
+        _ stages: [GenerationStage],
+        config: ParticleGenerationConfig,
+        screenSize: CGSize,
+        reportProgress: @escaping (GenerationStage) -> Void
+    ) async throws {
+        try await withThrowingTaskGroup(of: GenerationStage.self) { group in
+            for stage in stages {
+                group.addTask { [self] in
+                    do {
+                        try Task.checkCancellation()
+                        let input = try prepareInput(for: stage)
+                        let output = try await executeStage(stage, input: input, config: config, screenSize: screenSize)
+                        try processOutput(output, for: stage)
+                        return stage
+                    } catch {
+                        if Task.isCancelled || error is CancellationError {
+                            throw GeneratorError.cancelled
+                        }
+                        logger.error("Failed to execute stage \(stage): \(error)")
+                        throw GeneratorError.stageFailed(stage: stage.description, error: error)
+                    }
+                }
+            }
+
+            for try await stage in group {
+                reportProgress(stage)
+                logger.debug("Completed stage: \(stage)")
+            }
+        }
+    }
 }
 
 
@@ -236,48 +384,5 @@ extension GenerationStage {
         case .assembly: return "Particle Assembly"
         case .caching: return "Result Caching"
         }
-    }
-}
-
-// MARK: - Default Strategy
-
-struct SequentialGenerationStrategy: GenerationStrategyProtocol {
-   
-    let executionOrder: [GenerationStage] = [.analysis, .sampling, .assembly, .caching]
-
-    func canParallelize(_ stage: GenerationStage) -> Bool { false }
-
-    func dependencies(for stage: GenerationStage) -> [GenerationStage] {
-        switch stage {
-        case .analysis: return []
-        case .sampling: return [.analysis]
-        case .assembly: return [.sampling]
-        case .caching: return [.assembly]
-        }
-    }
-
-    func priority(for stage: GenerationStage) -> Operation.QueuePriority {
-        switch stage {
-        case .analysis: return .veryHigh
-        case .sampling: return .high
-        case .assembly: return .normal
-        case .caching: return .low
-        }
-    }
-
-    func validate(config: ParticleGenerationConfig) throws {
-        // Sequential strategy всегда валидна
-    }
-
-    func estimateExecutionTime(for config: ParticleGenerationConfig) -> TimeInterval {
-        let analysisTime = 0.05
-        let samplingTime = Double(config.targetParticleCount) * 0.0001
-        let assemblyTime = Double(config.targetParticleCount) * 0.00005
-        let cachingTime = Double(config.targetParticleCount) * 0.00002
-        return analysisTime + samplingTime + assemblyTime + cachingTime
-    }
-
-    func isOptimal(for config: ParticleGenerationConfig) -> Bool {
-        true // Sequential всегда "оптимальна" для тестов
     }
 }

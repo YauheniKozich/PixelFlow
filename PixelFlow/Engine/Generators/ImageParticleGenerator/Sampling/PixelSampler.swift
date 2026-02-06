@@ -106,7 +106,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
             )
             
         case .importance:
-            let params = SamplingParameters.samplingParams(from: config)
+            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
             return try ImportanceSamplingStrategy.sample(
                 width: cache.width,
                 height: cache.height,
@@ -117,7 +117,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
             )
 
         case .adaptive:
-            let params = SamplingParameters.samplingParams(from: config)
+            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
             return try AdaptiveSamplingStrategy.sample(
                 width: cache.width,
                 height: cache.height,
@@ -128,7 +128,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
             )
             
         case .hybrid:
-            let params = SamplingParameters.samplingParams(from: config)
+            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
             return try HybridSamplingStrategy.sample(
                 width: cache.width,
                 height: cache.height,
@@ -141,7 +141,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         case .advanced(let algorithm):
             // ВАЖНО: AdvancedPixelSampler требует SIMD4<Float> для dominantColors
             // Конвертируем только здесь, когда действительно необходимо
-            let params = SamplingParameters.samplingParams(from: config)
+            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
             let dominantColors4 = convertDominantColors(analysis.dominantColors)
 
             return try AdvancedPixelSampler.samplePixels(
@@ -202,5 +202,4 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
 //    }
     #endif
 }
-
 

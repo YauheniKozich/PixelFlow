@@ -47,6 +47,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     private var firstDraw: Bool = true
     // Reserved for future detailed diagnostics
     private var lastFrameTimestamp: CFTimeInterval = 0
+    private var lastLoggedCollectionProgress: Float = 0
 
     // MARK: - Инициализация
     init(device: MTLDevice, logger: LoggerProtocol) throws {
@@ -176,7 +177,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         // Проверка буферов перед использованием
         guard let particleBuffer = particleBuffer else { return }
         guard let paramsBuffer = paramsBuffer else { return }
-        guard let collectedCounterBuffer = collectedCounterBuffer else { return }
+        guard collectedCounterBuffer != nil else { return }
 
         updateSimulationParams()
         encodeCompute(into: commandBuffer)
@@ -189,6 +190,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         renderEncoder.setFragmentBuffer(paramsBuffer, offset: 0, index: 1)
         renderEncoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)
         renderEncoder.endEncoding()
+
+        commandBuffer.addCompletedHandler { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.checkCollectionCompletion()
+            }
+        }
 
         commandBuffer.present(drawable)
         commandBuffer.commit()
@@ -256,6 +264,7 @@ extension MetalRenderer: MetalRendererProtocol {
     func resetCollectedCounter() {
         guard let collectedCounterBuffer = collectedCounterBuffer else { return }
         collectedCounterBuffer.contents().assumingMemoryBound(to: UInt32.self).pointee = 0
+        lastLoggedCollectionProgress = 0
     }
 
     func checkCollectionCompletion() {
@@ -266,7 +275,12 @@ extension MetalRenderer: MetalRendererProtocol {
         guard particleCount > 0 else { return }
 
         let collectedCount = Int(collectedCounterBuffer.contents().assumingMemoryBound(to: UInt32.self).pointee)
-        let completionRatio = Float(collectedCount) / Float(particleCount)
+        let completionRatio = min(1.0, max(0.0, Float(collectedCount) / Float(particleCount)))
+
+        if completionRatio >= 1.0 || completionRatio - lastLoggedCollectionProgress >= 0.05 {
+            logger.debug("Collection progress: \(collectedCount)/\(particleCount) (\(String(format: "%.2f", completionRatio * 100))%)")
+            lastLoggedCollectionProgress = completionRatio
+        }
         engine.updateProgress(completionRatio)
     }
 

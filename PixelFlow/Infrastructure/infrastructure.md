@@ -84,14 +84,18 @@ protocol GenerationCoordinatorProtocol {
     func generateParticles(from image: CGImage,
                           config: ParticleGenerationConfig,
                           screenSize: CGSize,
-                          progress: ((Double, GenerationStage) -> Void)?) async throws -> [Particle]
+                          progress: @escaping (Float, String) -> Void) async throws -> [Particle]
 }
 
 protocol ParticleGenerationDelegate: AnyObject {
-    func generationDidStart()
-    func generationDidProgress(_ progress: Double, stage: GenerationStage)
-    func generationDidComplete(_ particles: [Particle])
-    func generationDidFail(_ error: Error)
+    func generation(_ generation: ParticleGenerationServiceProtocol,
+                   didUpdateProgress progress: Float,
+                   stage: String)
+    func generation(_ generation: ParticleGenerationServiceProtocol,
+                   didEncounterError error: Error)
+    func generation(_ generation: ParticleGenerationServiceProtocol,
+                   didFinishWithParticles particles: [Particle])
+    func generationDidCancel(_ generation: ParticleGenerationServiceProtocol)
 }
 ```
 
@@ -118,15 +122,31 @@ protocol SimulationEngineProtocol {
 **Протоколы для системы частиц**
 
 ```swift
-protocol ParticleSystemAdapterProtocol {
-    var particleCount: Int { get }
+@MainActor
+protocol ParticleSystemControlling {
     var hasActiveSimulation: Bool { get }
     var isHighQuality: Bool { get }
+    var particleCount: Int { get }
+    var sourceImage: CGImage? { get }
+    var particleBuffer: MTLBuffer? { get }
 
-    func toggleState()
+    func initialize(with image: CGImage,
+                    particleCount: Int,
+                    config: ParticleGenerationConfig)
     func startSimulation()
-    func initializeWithFastPreview()
+    func stopSimulation()
+    func toggleSimulation()
+    func startCollecting()
+    func collectHighQualityImage()
+    func startLightningStorm()
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
+    func updateSimulation(deltaTime: Float)
+    func checkCollectionCompletion()
+    func cleanup()
+    func handleWillResignActive()
+    func handleDidBecomeActive()
+    func updateRenderViewLayout(frame: CGRect, scale: CGFloat)
+    func setRenderPaused(_ paused: Bool)
 }
 ```
 
@@ -147,7 +167,11 @@ public final class Logger {
 
 ```swift
 protocol ImageLoaderProtocol {
+    func loadImage(named name: String) -> CGImage?
+    func loadImage(from url: URL) async throws -> CGImage
+    func createTestImage() -> CGImage?
     func loadImageWithFallback() -> CGImage?
+    func loadImageInfoWithFallback() -> LoadedImage?
 }
 
 class ImageLoader: ImageLoaderProtocol {

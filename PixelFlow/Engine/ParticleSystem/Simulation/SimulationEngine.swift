@@ -53,12 +53,10 @@ final class SimulationEngine {
                 // HQ not ready yet; skip collecting updates
                 return
             }
-            particleStorage.updateHighQualityTransition(deltaTime: deltaTime)
-            let progress = particleStorage.getTransitionProgress()
-            updateProgress(progress)
+            // Progress now comes from GPU collectedCounterBuffer to avoid CPU lerp desync.
             
         case .collected:
-            break
+            stateMachine.tickCollected()
             
         case .lightningStorm:
             particleStorage.updateFastPreview(deltaTime: deltaTime)
@@ -109,7 +107,8 @@ extension SimulationEngine: SimulationEngineProtocol {
         }
         
         particleStorage.createScatteredTargets()
-        stateMachine.startCollecting()
+        particleStorage.applyScatteredTargetsToBuffer()
+        stateMachine.startCollecting(mode: .toScatter)
         resetCounterCallback?()
     }
 
@@ -119,7 +118,8 @@ extension SimulationEngine: SimulationEngineProtocol {
         guard hqParticlesReady else {
             return
         }
-        stateMachine.startCollecting()
+        particleStorage.applyHighQualityTargetsToBuffer()
+        stateMachine.startCollecting(mode: .toImage)
         resetCounterCallback?()
     }
     

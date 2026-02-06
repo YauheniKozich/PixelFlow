@@ -66,6 +66,7 @@ final class ParticleSystemController: ParticleSystemControlling {
     private var hasHighQualityTargets: Bool = false
     private var pendingCollectAfterHQ: Bool = false
     private var highQualityReadyCompletion: ((Bool) -> Void)?
+    private var isImageAssembled: Bool = false
     
     // MARK: - Initialization
     
@@ -149,16 +150,65 @@ extension ParticleSystemController {
                 height: (mtkView?.bounds.size.height ?? 0) * fallbackScale
             )
             let targetSize = (viewSize.width > 0 && viewSize.height > 0) ? viewSize : fallbackSize
-            let scaleX = targetSize.width > 0 ? Float(targetSize.width) / Float(w) : 1.0
-            let scaleY = targetSize.height > 0 ? Float(targetSize.height) / Float(h) : 1.0
+
+            // Вычисляем трансформацию для предпросмотра с учетом режима отображения.
+            let imagePixelSize = CGSize(width: w, height: h)
+            let screenSize = targetSize
+
+            // Use raw pixel size for preview mapping to keep pixel-perfect alignment.
+            let baseImageSize = imagePixelSize
+
+            // Масштаб от пикселей изображения к базовому размеру (учет UIImage.scale)
+            let baseScaleX = baseImageSize.width / imagePixelSize.width
+            let baseScaleY = baseImageSize.height / imagePixelSize.height
+
+            let scaleX: CGFloat
+            let scaleY: CGFloat
+            let offsetX: CGFloat
+            let offsetY: CGFloat
+            let aspectImage = baseImageSize.width / baseImageSize.height
+            let aspectScreen = screenSize.width / screenSize.height
+
+            switch config.imageDisplayMode {
+            case .fit:
+                // Масштабируем изображение, чтобы оно полностью помещалось на экране.
+                let modeScale: CGFloat = min(screenSize.width / baseImageSize.width,
+                                             screenSize.height / baseImageSize.height)
+                scaleX = baseScaleX * modeScale
+                scaleY = baseScaleY * modeScale
+                offsetX = (screenSize.width - baseImageSize.width * modeScale) / 2
+                offsetY = (screenSize.height - baseImageSize.height * modeScale) / 2
+            case .fill:
+                let modeScale: CGFloat = (aspectImage > aspectScreen)
+                    ? screenSize.height / baseImageSize.height
+                    : screenSize.width / baseImageSize.width
+                scaleX = baseScaleX * modeScale
+                scaleY = baseScaleY * modeScale
+                offsetX = (screenSize.width - baseImageSize.width * modeScale) / 2
+                offsetY = (screenSize.height - baseImageSize.height * modeScale) / 2
+            case .stretch:
+                let modeScaleX = screenSize.width / baseImageSize.width
+                let modeScaleY = screenSize.height / baseImageSize.height
+                scaleX = baseScaleX * modeScaleX
+                scaleY = baseScaleY * modeScaleY
+                offsetX = 0
+                offsetY = 0
+            case .center:
+                scaleX = baseScaleX
+                scaleY = baseScaleY
+                offsetX = (screenSize.width - baseImageSize.width) / 2
+                offsetY = (screenSize.height - baseImageSize.height) / 2
+            }
             for _ in 0..<particleCount {
                 let x = Int.random(in: 0..<w)
                 let y = Int.random(in: 0..<h)
                 if let c = PixelCacheHelper.getPixelData(atX: x, y: y, from: cache) {
+                    let screenX = offsetX + (CGFloat(x) + 0.5) * scaleX
+                    let screenY = offsetY + (CGFloat(y) + 0.5) * scaleY
                     pixels.append(
                         Pixel(
-                            x: Int((Float(x) * scaleX).rounded()),
-                            y: Int((Float(y) * scaleY).rounded()),
+                            x: Int(screenX.rounded()),
+                            y: Int(screenY.rounded()),
                             r: UInt8(clamping: Int(c.r * 255.0)),
                             g: UInt8(clamping: Int(c.g * 255.0)),
                             b: UInt8(clamping: Int(c.b * 255.0)),
@@ -256,6 +306,7 @@ extension ParticleSystemController {
 
             if pendingCollectAfterHQ {
                 pendingCollectAfterHQ = false
+                isImageAssembled = true
                 simulationEngine.startCollectingToImage()
             }
 
@@ -381,8 +432,22 @@ extension ParticleSystemController {
             return
         }
 
+        if case .collecting = simulationEngine.state {
+            logger.info("Collect already in progress - skipping tap")
+            return
+        }
+
+        if isImageAssembled {
+            // Toggle to scatter (break apart)
+            simulationEngine.startCollecting()
+            isImageAssembled = false
+            mtkView?.isPaused = false
+            return
+        }
+
         if hasHighQualityTargets {
             simulationEngine.startCollectingToImage()
+            isImageAssembled = true
             mtkView?.isPaused = false
             return
         }
@@ -453,15 +518,10 @@ extension ParticleSystemController {
                 return p
             }
 
-            let flippedTargets = preparedParticles.map { particle -> Particle in
-                var p = particle
-                p.position.y *= -1
-                p.targetPosition.y *= -1
-                return p
-            }
-            storage.setHighQualityTargets(flippedTargets)
+            storage.setHighQualityTargets(preparedParticles)
             simulationEngine.setHighQualityReady(true)
             hasHighQualityTargets = true
+            isImageAssembled = true
             simulationEngine.startCollectingToImage()
             mtkView?.isPaused = false
             isHighQualityMode = true
@@ -494,6 +554,7 @@ extension ParticleSystemController {
         sourceImage = nil
         particleCount = 0
         isHighQualityMode = false
+        isImageAssembled = false
         
         logger.info("Controller cleaned up")
     }

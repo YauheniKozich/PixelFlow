@@ -10,7 +10,6 @@ import CoreGraphics
 import Foundation
 import simd
 
-/// Протокол для сервиса генерации частиц
 protocol ParticleGenerationServiceProtocol {
     /// Генерирует частицы асинхронно
     func generateParticles(
@@ -179,9 +178,6 @@ protocol GenerationContextProtocol {
     /// Конфигурация генерации
     var config: ParticleGenerationConfig? { get set }
 
-    /// Целевое количество частиц
-    var targetParticleCount: Int { get set }
-
     /// Прогресс генерации (0.0 - 1.0)
     var progress: Float { get set }
 
@@ -297,6 +293,12 @@ protocol GenerationStrategyProtocol {
 
     /// Валидирует конфигурацию для стратегии
     func validate(config: ParticleGenerationConfig) throws
+
+    /// Оценивает время выполнения для конфигурации
+    func estimateExecutionTime(for config: ParticleGenerationConfig) -> TimeInterval
+
+    /// Проверяет оптимальность стратегии для конфигурации
+    func isOptimal(for config: ParticleGenerationConfig) -> Bool
 }
 
 /// Протокол для координатора генерации частиц

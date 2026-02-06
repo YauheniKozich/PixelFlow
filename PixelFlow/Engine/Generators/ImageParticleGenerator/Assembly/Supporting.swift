@@ -16,7 +16,7 @@ struct TransformationParams {
     let mode: ImageDisplayMode
 }
 
-enum ImageDisplayMode: String, CaseIterable {
+enum ImageDisplayMode: String, CaseIterable, Codable {
     case fit, fill, stretch, center
     
     var description: String {

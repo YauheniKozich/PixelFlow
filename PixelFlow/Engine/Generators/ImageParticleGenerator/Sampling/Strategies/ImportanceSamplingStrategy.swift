@@ -256,19 +256,12 @@ enum ImportanceSamplingStrategy {
                 
                 // Определяем тип пикселя для усиления
                 let neighbors = PixelCacheHelper.getNeighborPixels(atX: x, y: y, from: cache)
-                var importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
+                let importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
                     r: pixel.r, g: pixel.g, b: pixel.b, a: pixel.a,
                     neighbors: neighbors,
                     params: params,
                     dominantColors: dominantColors
                 )
-//                
-                // Минимальное усиление краёв
-//                if isCornerPixel {
-//                    importance *= 1.1
-//                } else if isEdgePixel {
-//                    importance *= 1.05
-//                }
                 
                 // Корректировка яркости для premultiplied alpha: unpremultiply для полупрозрачных пикселей
                 let alpha = pixel.a
@@ -305,7 +298,10 @@ enum ImportanceSamplingStrategy {
         
         // Анти-кластеризация контролируется флагом в params
         if params.applyAntiClustering {
-            candidates = ArtifactPreventionHelper.applyAntiClusteringForCandidates(candidates: candidates)
+            candidates = ArtifactPreventionHelper.applyAntiClusteringForCandidates(
+                candidates: candidates,
+                imageHeight: height
+            )
             Logger.shared.debug("After anti-clustering: candidates.count=\(candidates.count)")
         }
         

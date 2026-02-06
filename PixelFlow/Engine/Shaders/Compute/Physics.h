@@ -28,9 +28,9 @@ using namespace metal;
 // ============================================================================
 
 // Collection physics
-#define COLLECTION_BASE_SPEED          10.0
-#define COLLECTION_MIN_SPEED           5.0
-#define COLLECTION_THRESHOLD          0.5
+#define COLLECTION_BASE_SPEED          30.0   // pixels/sec (scaled by collectionSpeed)
+#define COLLECTION_MIN_SPEED           0.25   // pixels (minimum step)
+#define COLLECTION_SNAP_PIXELS        1.0
 #define COLLECTION_MOVE_THRESHOLD      0.01
 #define COLLECTION_VELOCITY_DAMPING    0.9
 
@@ -101,28 +101,42 @@ static inline float2 calculateCollectionMovement(
     float2 toTarget = target - pos;
     float  distToTarget = length(toTarget);
 
-    float baseSpeed = (params[0].collectionSpeed > 0.0)
+    float2 safeScreen = max(params[0].screenSize, float2(1.0));
+    float2 pixelToNDC = float2(2.0 / safeScreen.x, 2.0 / safeScreen.y);
+    float snapThreshold = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_SNAP_PIXELS;
+
+    if (distToTarget <= snapThreshold) {
+        p.position.xy = target;
+        p.velocity.xy = float2(0.0);
+        if (p.life >= PARTICLE_ALIVE) {
+            p.life = PARTICLE_COLLECTED;
+            atomic_fetch_add_explicit(collectedCounter, 1u, memory_order_relaxed);
+        }
+        return p.velocity.xy;
+    }
+
+    float baseSpeedPixels = (params[0].collectionSpeed > 0.0)
         ? params[0].collectionSpeed * COLLECTION_BASE_SPEED
         : COLLECTION_BASE_SPEED;
 
-    float moveDistance = max(COLLECTION_MIN_SPEED, baseSpeed * safeDt);
-    moveDistance = min(moveDistance, MAX_VELOCITY * safeDt);
+    float distPixels = distToTarget / max(min(pixelToNDC.x, pixelToNDC.y), 1e-6);
+    // Плавное замедление ближе к цели
+    float ease = clamp(distPixels / 12.0, 0.1, 1.0);
+    float moveDistancePixels = baseSpeedPixels * safeDt * ease;
+    float moveDistance = moveDistancePixels * min(pixelToNDC.x, pixelToNDC.y);
+    float minMove = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_MIN_SPEED;
+    moveDistance = max(moveDistance, minMove);
     moveDistance = min(moveDistance, distToTarget);
 
     float2 prevPos = p.position.xy;
 
-    if (distToTarget > COLLECTION_MOVE_THRESHOLD) {
+    if (distToTarget > snapThreshold) {
         float2 direction = safeNormalize2(toTarget);
         p.position.xy += direction * moveDistance;
     }
 
     float2 newVelocity = (p.position.xy - prevPos) / safeDt;
     p.velocity.xy = mix(p.velocity.xy, newVelocity, COLLECTION_VELOCITY_DAMPING);
-
-    if (distToTarget < COLLECTION_THRESHOLD && p.life >= PARTICLE_ALIVE) {
-        p.life = PARTICLE_COLLECTED;
-        atomic_fetch_add_explicit(collectedCounter, 1u, memory_order_relaxed);
-    }
 
     return p.velocity.xy;
 }
@@ -218,10 +232,23 @@ static inline float calculateParticleSize(
 // ============================================================================
 
 static inline void applyBoundaryConditionsForPhysics(
-    thread Particle& p
+    thread Particle& p,
+    constant SimulationParams * params
 ) {
     if (!isFloatSafe(p.position.x)) p.position.x = 0.0;
     if (!isFloatSafe(p.position.y)) p.position.y = 0.0;
+
+    // Во время сбора не ограничиваем частицы "внутренними" границами,
+    // иначе крайние пиксели (близко к NDC ±1.0) никогда не достигаются.
+    if (params[0].state == SIMULATION_STATE_COLLECTING ||
+        params[0].state == SIMULATION_STATE_COLLECTED) {
+        p.position.x = clamp(p.position.x, NDC_MIN_POS, NDC_MAX_POS);
+        p.position.y = clamp(p.position.y, NDC_MIN_POS, NDC_MAX_POS);
+        if (length(p.velocity.xy) > MAX_VELOCITY) {
+            p.velocity.xy = safeNormalize2(p.velocity.xy) * MAX_VELOCITY;
+        }
+        return;
+    }
 
     float repulsionZoneMin = NDC_MIN_POS + REPULSION_ZONE;  // -0.95
     float repulsionZoneMax = NDC_MAX_POS - REPULSION_ZONE;  //  0.95
@@ -360,7 +387,7 @@ kernel void updateParticles(
         }
 
         integrateParticleForPhysics(p, safeDt, float2(0.0));
-        applyBoundaryConditionsForPhysics(p);
+        applyBoundaryConditionsForPhysics(p, params);
         p.size = calculateParticleSize(p, params, id);
 
         if (isFloatSafe(p.life) && p.life >= PARTICLE_ALIVE) {

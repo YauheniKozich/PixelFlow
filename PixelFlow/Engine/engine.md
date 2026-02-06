@@ -68,7 +68,7 @@ Metal шейдеры для GPU-вычислений и рендеринга.
 
 - [ImageParticleGenerator](Generators/ImageParticleGenerator/image-particle-generator.md)
 - [Shaders](Shaders/shaders.md)
-- [ParticleSystem](ParticleSystem/README.md) - основная система симуляции частиц
+- [ParticleSystem](ParticleSystem/particlesystem.md) - основная система симуляции частиц
 
 ## Использование
 

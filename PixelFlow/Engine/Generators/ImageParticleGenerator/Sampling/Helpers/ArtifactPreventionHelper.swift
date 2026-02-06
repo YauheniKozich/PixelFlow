@@ -50,7 +50,8 @@ enum ArtifactPreventionHelper {
         
         // Проверяем кластеризацию сэмплов
         if hasClustering(samples: correctedSamples) {
-            correctedSamples = applyAntiClustering(samples: correctedSamples)
+            correctedSamples = applyAntiClustering(samples: correctedSamples,
+                                                  imageHeight: Int(imageSize.height))
         }
         
         // Проверяем покрытие углов
@@ -226,16 +227,20 @@ enum ArtifactPreventionHelper {
     }
     
     /// Устраняет кластеризацию сэмплов через стратифицированную выборку на C
-    static func applyAntiClustering(samples: [Sample], bands: Int = 16) -> [Sample] {
-        guard !samples.isEmpty else { return [] }
+    static func applyAntiClustering(samples: [Sample], imageHeight: Int, bands: Int = 16) -> [Sample] {
+        guard !samples.isEmpty, imageHeight > 0 else { return samples }
 
-        let imageHeight = samples.map { $0.y }.max() ?? 1
-        return stratifiedSample(samples: samples, targetCount: samples.count, imageHeight: imageHeight, bands: bands)
+        let clampedHeight = max(1, imageHeight)
+        return stratifiedSample(samples: samples,
+                               targetCount: samples.count,
+                               imageHeight: clampedHeight,
+                               bands: bands)
     }
 
     /// Устраняет кластеризацию кандидатов через стратифицированную выборку
     static func applyAntiClusteringForCandidates(
-        candidates: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)]
+        candidates: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)],
+        imageHeight: Int
     ) -> [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)] {
         guard !candidates.isEmpty else { return [] }
 
@@ -243,7 +248,7 @@ enum ArtifactPreventionHelper {
         let samples = candidates.map { Sample(x: $0.x, y: $0.y, color: $0.color) }
 
         // Применяем anti-clustering
-        let antiClusteredSamples = applyAntiClustering(samples: samples)
+        let antiClusteredSamples = applyAntiClustering(samples: samples, imageHeight: imageHeight)
 
         // Конвертируем обратно, сохраняя importance из оригинала
         return antiClusteredSamples.map { sample in

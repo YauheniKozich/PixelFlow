@@ -20,9 +20,14 @@ enum SimulationState: Equatable {
 
 
 final class SimulationStateMachine {
+    enum CollectMode {
+        case toImage
+        case toScatter
+    }
 
     private(set) var state: SimulationState = .idle
     var resetCounterCallback: (() -> Void)?
+    private var collectMode: CollectMode = .toImage
 
     // Таймаут для сбора частиц
     private var collectionStartTime: TimeInterval = 0
@@ -47,7 +52,7 @@ final class SimulationStateMachine {
         state = .chaotic
     }
     
-    func startCollecting() {
+    func startCollecting(mode: CollectMode = .toImage) {
         Logger.shared.info("[StateMachine] startCollecting() → .collecting(0)")
 
         // Сбрасываем счетчик собранных частиц
@@ -58,6 +63,7 @@ final class SimulationStateMachine {
         collectionStartTime = currentTime
         lastProgressUpdateTime = currentTime
         lastProgress = 0
+        collectMode = mode
 
         state = .collecting(progress: 0)
     }
@@ -65,8 +71,7 @@ final class SimulationStateMachine {
     func updateProgress(_ progress: Float) {
         guard case .collecting = state else { return }
 
-        Logger.shared.debug("[StateMachine] updateProgress(\(String(format: "%.3f", progress))) called on thread: \(Thread.isMainThread ? "MAIN" : "BACKGROUND") at \(Date().timeIntervalSince1970)")
-
+        let clampedProgress = min(max(progress, 0), 1)
         let currentTime = ProcessInfo.processInfo.systemUptime
 
         // Проверяем условия завершения сбора
@@ -74,7 +79,7 @@ final class SimulationStateMachine {
         var reason = ""
 
         // 1. Порог готовности достигнут
-        if progress >= 0.99 {
+        if clampedProgress >= 0.99 {
             shouldComplete = true
             reason = "progress >= 99%"
         }
@@ -84,23 +89,29 @@ final class SimulationStateMachine {
             reason = "timeout (\(String(format: "%.1f", maxCollectionTime))s)"
         }
         // 3. Застрявший прогресс (5 секунд без улучшения)
-        else if progress > 0 && progress == lastProgress &&
+        else if clampedProgress >= 0.95 && clampedProgress == lastProgress &&
                   currentTime - lastProgressUpdateTime > progressStagnationTimeout {
             shouldComplete = true
             reason = "stagnation (\(String(format: "%.1f", progressStagnationTimeout))s no progress)"
         }
 
         if shouldComplete {
-            Logger.shared.info("[StateMachine] updateProgress(\(String(format: "%.3f", progress))) → .collected(0) [\(reason)]")
-            state = .collected(frames: 0)
+            lastProgress = 1.0
+            Logger.shared.info("[StateMachine] updateProgress(1.000) → .collected(0) [\(reason)]")
+            switch collectMode {
+            case .toImage:
+                state = .collected(frames: 0)
+            case .toScatter:
+                state = .chaotic
+            }
         } else {
             // Обновляем время последнего прогресса только если он действительно изменился
             let epsilon: Float = 1e-6
-            if abs(progress - lastProgress) > epsilon {
+            if abs(clampedProgress - lastProgress) > epsilon {
                 lastProgressUpdateTime = currentTime
-                lastProgress = progress
+                lastProgress = clampedProgress
             }
-            state = .collecting(progress: progress)
+            state = .collecting(progress: clampedProgress)
         }
     }
     
@@ -108,7 +119,6 @@ final class SimulationStateMachine {
         guard case .collected(let frames) = state else { return }
         let newFrames = frames + 1
         state = .collected(frames: newFrames)
-        Logger.shared.debug("[StateMachine] tickCollected() → frames=\(newFrames)")
     }
     
     func stop() {

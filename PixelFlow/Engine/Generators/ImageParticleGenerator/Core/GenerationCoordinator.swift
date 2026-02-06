@@ -7,6 +7,7 @@
 //
 
 import CoreGraphics
+import CryptoKit
 import Foundation
 
 /// Главный координатор генерации частиц из изображений
@@ -72,16 +73,15 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle] {
 
-        // Проверка состояния
-        guard !isGenerating else {
-            throw GeneratorError.cancelled
-        }
-
-        // Обновление состояния
-        stateQueue.async(flags: .barrier) {
+        let canStart = stateQueue.sync(flags: .barrier) { () -> Bool in
+            guard !self._isGenerating else { return false }
             self._isGenerating = true
             self._currentProgress = 0.0
             self._currentStage = "Starting"
+            return true
+        }
+        guard canStart else {
+            throw GeneratorError.cancelled
         }
 
         logger.info("Starting particle generation for image \(image.width)x\(image.height)")
@@ -94,8 +94,9 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
             }
 
             do {
+                try Task.checkCancellation()
                 // Проверка кэша
-                let cacheKey = self.cacheKey(for: image, config: config)
+                let cacheKey = self.cacheKey(for: image, config: config, screenSize: screenSize)
                 if config.enableCaching,
                    let cachedParticles: [Particle] = try self.cacheManager.retrieve([Particle].self, for: cacheKey) {
 
@@ -141,6 +142,12 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
                 return particles
 
             } catch {
+                if Task.isCancelled || error is CancellationError {
+                    throw GeneratorError.cancelled
+                }
+                if let generatorError = error as? GeneratorError, case .cancelled = generatorError {
+                    throw generatorError
+                }
                 self.errorHandler.handle(error, context: "Generation pipeline execution", recovery: .showToast("Не удалось сгенерировать частицы"))
                 throw error
             }
@@ -167,7 +174,13 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
             stateQueue.async(flags: .barrier) {
                 self._isGenerating = false
                 self._currentProgress = 0.0
-                self._currentStage = "Failed"
+                if Task.isCancelled || error is CancellationError {
+                    self._currentStage = "Cancelled"
+                } else if let generatorError = error as? GeneratorError, case .cancelled = generatorError {
+                    self._currentStage = "Cancelled"
+                } else {
+                    self._currentStage = "Failed"
+                }
             }
             throw error
         }
@@ -193,15 +206,25 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
 
     // MARK: - Private Methods
 
-    private func cacheKey(for image: CGImage, config: ParticleGenerationConfig) -> String {
+    private func cacheKey(for image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) -> String {
+        let configFingerprint = hashConfig(config)
         let components = [
             "\(image.width)x\(image.height)",
-            "\(config.targetParticleCount)",
-            "\(config.qualityPreset)",
-            "\(config.samplingStrategy)",
-            String(format: "%.2f", config.importanceThreshold)
+            "\(Int(screenSize.width))x\(Int(screenSize.height))",
+            configFingerprint
         ]
         return "generation_" + components.joined(separator: "_")
+    }
+
+    private func hashConfig(_ config: ParticleGenerationConfig) -> String {
+        do {
+            let data = try JSONEncoder().encode(config)
+            let hash = SHA256.hash(data: data)
+            return hash.compactMap { String(format: "%02x", $0) }.joined()
+        } catch {
+            logger.warning("Failed to hash config for cache key: \(error)")
+            return "config_fallback"
+        }
     }
 
     func clearCache() {

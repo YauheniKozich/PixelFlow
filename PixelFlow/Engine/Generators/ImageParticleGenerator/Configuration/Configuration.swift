@@ -22,6 +22,44 @@ enum QualityPreset: Codable {
     case ultra     // Максимальное качество
 }
 
+// MARK: - Analysis-driven sampling tuning
+
+struct AnalysisSamplingTuning: Codable {
+    let edgeBiasStrength: Float
+    let importanceThresholdMin: Float
+    let importanceThresholdMax: Float
+    let contrastWeightScale: Float
+    let saturationWeightScale: Float
+    let weightMin: Float
+    let weightMax: Float
+    let complexityMid: Int
+    let complexityHigh: Int
+    let edgeRadiusBoostMid: Int
+    let edgeRadiusBoostHigh: Int
+    let detailBoostScale: Float
+    let detailBoostMax: Float
+    let importantRatioMin: Float
+    let importantRatioMax: Float
+
+    static let `default` = AnalysisSamplingTuning(
+        edgeBiasStrength: 0.6,
+        importanceThresholdMin: 0.05,
+        importanceThresholdMax: 0.9,
+        contrastWeightScale: 0.5,
+        saturationWeightScale: 0.5,
+        weightMin: 0.1,
+        weightMax: 2.0,
+        complexityMid: 4,
+        complexityHigh: 7,
+        edgeRadiusBoostMid: 1,
+        edgeRadiusBoostHigh: 2,
+        detailBoostScale: 0.15,
+        detailBoostMax: 0.2,
+        importantRatioMin: 0.3,
+        importantRatioMax: 0.9
+    )
+}
+
 // MARK: - Performance (параметры нагрузки)
 
 /// Параметры, влияющие на скорость и нагрузку.
@@ -45,14 +83,14 @@ struct PerformanceParams {
 // MARK: - Основная конфигурация генерации частиц
 
 /// Полный набор параметров, который передаётся в `ParticleSystem`.
-struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
+struct ParticleGenerationConfig: Codable, ParticleGeneratorConfigurationWithDisplayMode {
 
     // Параметры сэмплинга
     var samplingStrategy: SamplingStrategy
     var qualityPreset: QualityPreset
 
     // Общие флаги
-    let enableCaching: Bool
+    var enableCaching: Bool
     let maxConcurrentOperations: Int
 
     // Параметры качества
@@ -69,10 +107,22 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
 
     // Параметры отображения
     var targetParticleCount: Int
+    var imageDisplayMode: ImageDisplayMode
+    var particleLifetime: Float
+    var particleSpeed: Float
+    var particleSizeUltra: ClosedRange<Float>?
+    var particleSizeHigh: ClosedRange<Float>?
+    var particleSizeStandard: ClosedRange<Float>?
+    var particleSizeLow: ClosedRange<Float>?
+    // Размер изображения в поинтах (если доступен) и масштаб экрана
+    var imagePointWidth: Float?
+    var imagePointHeight: Float?
+    var screenScale: Float
 
     // Новые параметры сэмплинга
     let importantSamplingRatio: Float
     let topBottomRatio: Float
+    var analysisSamplingTuning: AnalysisSamplingTuning?
 
     // MARK: – Инициализатор
     init(samplingStrategy: SamplingStrategy,
@@ -88,8 +138,19 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
          useSIMD: Bool,
          cacheSizeLimit: Int,
          targetParticleCount: Int,
+         imageDisplayMode: ImageDisplayMode = .fit,
+         particleLifetime: Float = 1.0,
+         particleSpeed: Float = 1.0,
+         particleSizeUltra: ClosedRange<Float>? = nil,
+         particleSizeHigh: ClosedRange<Float>? = nil,
+         particleSizeStandard: ClosedRange<Float>? = nil,
+         particleSizeLow: ClosedRange<Float>? = nil,
+         imagePointWidth: Float? = nil,
+         imagePointHeight: Float? = nil,
+         screenScale: Float = 1.0,
          importantSamplingRatio: Float = 0.7,
-         topBottomRatio: Float = 0.5) {
+         topBottomRatio: Float = 0.5,
+         analysisSamplingTuning: AnalysisSamplingTuning? = .default) {
 
         self.samplingStrategy = samplingStrategy
         self.qualityPreset = qualityPreset
@@ -104,8 +165,19 @@ struct ParticleGenerationConfig: Codable, ParticleGeneratorConfiguration {
         self.useSIMD = useSIMD
         self.cacheSizeLimit = cacheSizeLimit
         self.targetParticleCount = targetParticleCount
+        self.imageDisplayMode = imageDisplayMode
+        self.particleLifetime = particleLifetime
+        self.particleSpeed = particleSpeed
+        self.particleSizeUltra = particleSizeUltra
+        self.particleSizeHigh = particleSizeHigh
+        self.particleSizeStandard = particleSizeStandard
+        self.particleSizeLow = particleSizeLow
+        self.imagePointWidth = imagePointWidth
+        self.imagePointHeight = imagePointHeight
+        self.screenScale = screenScale
         self.importantSamplingRatio = importantSamplingRatio
         self.topBottomRatio = topBottomRatio
+        self.analysisSamplingTuning = analysisSamplingTuning
     }
 
     // MARK: – Пресеты

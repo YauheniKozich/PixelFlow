@@ -201,6 +201,12 @@ protocol ParticleStorageProtocol: AnyObject {
     /// Устанавливает высококачественные целевые частицы для сборки изображения
     func setHighQualityTargets(_ particles: [Particle])
 
+    /// Применяет высококачественные целевые позиции к текущему буферу частиц
+    func applyHighQualityTargetsToBuffer()
+
+    /// Применяет разбросанные цели (scatter) к текущему буферу частиц
+    func applyScatteredTargetsToBuffer()
+
     /// Обновляет частицы новыми данными
     func updateParticles(_ particles: [Particle])
 
@@ -251,6 +257,16 @@ protocol ImageLoaderProtocol {
 
     /// Загружает изображение с fallback к тестовому изображению
     func loadImageWithFallback() -> CGImage?
+
+    /// Загружает изображение вместе с размером в поинтах и масштабом
+    func loadImageInfoWithFallback() -> LoadedImage?
+}
+
+/// Данные о загруженном изображении
+struct LoadedImage {
+    let cgImage: CGImage
+    let pointSize: CGSize
+    let scale: CGFloat
 }
 
 /// Протокол для конфигурационного менеджера

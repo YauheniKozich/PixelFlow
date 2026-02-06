@@ -20,42 +20,24 @@ ParticleSystem/
 
 ## Core - Основные компоненты
 
-### ParticleSystemAdapter
-**Адаптер для совместимости с существующим API**
-
-**Назначение:**
-- Обеспечивает совместимость между новой архитектурой и старым API
-- Управляет жизненным циклом компонентов
-- Координирует Metal рендеринг и симуляцию
-
-**Ключевые свойства:**
-```swift
-var enableIdleChaotic: Bool = true          // Хаотичное движение в idle
-let device: MTLDevice                        // Metal device
-let commandQueue: MTLCommandQueue            // Командная очередь
-let particleCount: Int                       // Количество частиц
-var hasActiveSimulation: Bool                // Активна ли симуляция
-var isHighQuality: Bool                      // Используются ли HQ частицы
-```
-
-**Основные методы:**
-```swift
-func toggleState()                           // Переключение пауза/воспроизведение
-func startSimulation()                       // Запуск симуляции
-func startLightningStorm()                   // Специальный эффект молний
-func initializeWithFastPreview()             // Быстрый превью режим
-func replaceWithHighQualityParticles()       // Замена на HQ частицы
-func cleanup()                               // Очистка ресурсов
-```
-
 ### ParticleSystemController
 **Главный координатор системы**
 
 **Функциональность:**
-- Управление конфигурацией и состоянием
-- Координация между генераторами и рендерером
-- Управление кэшированием и оптимизациями
-- Обработка асинхронных операций генерации
+- Инициализация с изображением и конфигурацией
+- Управление состоянием симуляции
+- Координация между генератором, рендерером и хранилищем
+- Асинхронная генерация HQ‑частиц
+
+**Ключевые методы (фактические):**
+```swift
+func initialize(with image: CGImage, particleCount: Int, config: ParticleGenerationConfig)
+func startSimulation()
+func stopSimulation()
+func toggleSimulation()
+func startLightningStorm()
+func cleanup()
+```
 
 ## Simulation - Логика симуляции
 
@@ -254,13 +236,13 @@ extension SimulationState {
 ## Взаимодействие компонентов
 
 ```
-App → ParticleSystemAdapter → ParticleSystemController
-                              ↓
-                    SimulationEngine ← MetalRenderer
-                              ↓
-                        GPU Shaders (Metal)
-                              ↓
-                    Render View (MTKView) → Display
+App → ParticleSystemController
+                           ↓
+                SimulationEngine ← MetalRenderer
+                           ↓
+                    GPU Shaders (Metal)
+                           ↓
+                Render View (MTKView) → Display
 ```
 
 ## Производительность

@@ -41,13 +41,13 @@ struct CacheEntry: Codable {
 ### 1. Генерация ключа
 ```swift
 private func cacheKey() -> String {
+   let configHash = hashConfig(config)
    let components = [
        "\(image.width)x\(image.height)",  // размеры изображения
-       "\(targetParticleCount)",          // количество частиц
-       "\(config.qualityPreset)",         // пресет качества
-       "\(config.samplingStrategy)"       // стратегия сэмплинга
+       "\(Int(screenSize.width))x\(Int(screenSize.height))", // размер экрана
+       configHash                         // полный отпечаток конфигурации
    ]
-   return "particles_" + components.joined(separator: "_")
+   return "generation_" + components.joined(separator: "_")
 }
 ```
 
@@ -100,8 +100,8 @@ private func cleanupIfNeeded(additionalSize: Int) throws {
 ```
 ~/Library/Caches/ParticleGenerator/
 ├── cache_index.json          # Индекс кэша
-├── a1b2c3d4e5f6.json         # Сериализованные частицы
-├── f7g8h9i0j1k2.json         # Другие записи
+├── a1b2c3d4e5f6.cache        # Сериализованные частицы
+├── f7g8h9i0j1k2.cache        # Другие записи
 └── ...
 ```
 

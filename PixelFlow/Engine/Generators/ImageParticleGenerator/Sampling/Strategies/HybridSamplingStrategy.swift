@@ -147,21 +147,6 @@ enum HybridSamplingStrategy {
                 guard pixel.a > PixelCacheHelper.Constants.alphaThreshold else { continue }
                 
                 _ = PixelCacheHelper.getNeighborPixels(atX: x, y: y, from: cache)
-//                let importance = ArtifactPreventionHelper.calculateEnhancedPixelImportance(
-//                    r: pixel.r, g: pixel.g, b: pixel.b, a: pixel.a,
-//                    neighbors: neighbors,
-//                    params: params,
-//                    dominantColors: dominantColors
-//                )
-                
-//                if importance >= params.importanceThreshold {
-//                    candidates.append((
-//                        x: x,
-//                        y: y,
-//                        color: SIMD4<Float>(pixel.r, pixel.g, pixel.b, pixel.a),
-//                        importance: importance
-//                    ))
-//                }
             }
         }
         

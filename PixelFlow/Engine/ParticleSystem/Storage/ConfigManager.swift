@@ -9,7 +9,6 @@
 import Foundation
 import CoreGraphics
 
-/// Менеджер конфигурации системы частиц
 @MainActor
 final class ConfigurationManager: ConfigurationManagerProtocol {
 
@@ -49,6 +48,11 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
         case .ultra:   density = 0.00020
         }
 
+        let totalPixels = Int(pixelCount)
+        if preset == .ultra && totalPixels > Constants.minParticles && totalPixels <= Constants.maxParticles {
+            return totalPixels
+        }
+
         let raw = Int(pixelCount * density)
         let clamped = max(Constants.minParticles, min(raw, Constants.maxParticles))
 
@@ -72,18 +76,5 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
         var newConfig = currentConfig
         newConfig.samplingStrategy = strategy
         apply(newConfig)
-    }
-
-    func getConfigurationInfo() -> String {
-        """
-        === Configuration ===
-        Preset: \(currentConfig.qualityPreset)
-        Sampling: \(currentConfig.samplingStrategy)
-        Caching: \(currentConfig.enableCaching ? "ON" : "OFF")
-        SIMD: \(currentConfig.useSIMD ? "ON" : "OFF")
-        Concurrent ops: \(currentConfig.maxConcurrentOperations)
-        Cache limit: \(currentConfig.cacheSizeLimit)MB
-        Particle size: \(currentConfig.minParticleSize)-\(currentConfig.maxParticleSize)
-        """
     }
 }

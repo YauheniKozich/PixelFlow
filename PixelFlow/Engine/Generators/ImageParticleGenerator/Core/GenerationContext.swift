@@ -18,7 +18,6 @@ final class GenerationContext: GenerationContextProtocol {
 
     private var _image: CGImage?
     private var _config: ParticleGenerationConfig?
-    private var _targetParticleCount: Int = 0
     private var _isCancelled: Bool = false
     private var _analysis: ImageAnalysis?
     private var _samples: [Sample] = []
@@ -40,7 +39,7 @@ final class GenerationContext: GenerationContextProtocol {
     var image: CGImage? {
         get { stateQueue.sync { _image } }
         set {
-            stateQueue.async(flags: .barrier) {
+            stateQueue.sync(flags: .barrier) {
                 self._image = newValue
                 if let image = newValue {
                     self.logger.debug("Image set in context: \(image.width)x\(image.height)")
@@ -51,49 +50,43 @@ final class GenerationContext: GenerationContextProtocol {
 
     var config: ParticleGenerationConfig? {
         get { stateQueue.sync { _config } }
-        set { stateQueue.async(flags: .barrier) { self._config = newValue } }
-    }
-
-    var targetParticleCount: Int {
-        get { stateQueue.sync { _targetParticleCount } }
-        set { stateQueue.async(flags: .barrier) { self._targetParticleCount = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._config = newValue } }
     }
 
     var isCancelled: Bool {
         get { stateQueue.sync { _isCancelled } }
-        set { stateQueue.async(flags: .barrier) { self._isCancelled = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._isCancelled = newValue } }
     }
 
     var analysis: ImageAnalysis? {
         get { stateQueue.sync { _analysis } }
-        set { stateQueue.async(flags: .barrier) { self._analysis = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._analysis = newValue } }
     }
 
     var samples: [Sample] {
         get { stateQueue.sync { _samples } }
-        set { stateQueue.async(flags: .barrier) { self._samples = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._samples = newValue } }
     }
 
     var particles: [Particle] {
         get { stateQueue.sync { _particles } }
-        set { stateQueue.async(flags: .barrier) { self._particles = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._particles = newValue } }
     }
 
     var progress: Float {
         get { stateQueue.sync { _progress } }
-        set { stateQueue.async(flags: .barrier) { self._progress = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._progress = newValue } }
     }
 
     var currentStage: String {
         get { stateQueue.sync { _currentStage } }
-        set { stateQueue.async(flags: .barrier) { self._currentStage = newValue } }
+        set { stateQueue.sync(flags: .barrier) { self._currentStage = newValue } }
     }
 
     func reset() {
-        stateQueue.async(flags: .barrier) {
+        stateQueue.sync(flags: .barrier) {
             self._image = nil
             self._config = nil
-            self._targetParticleCount = 0
             self._isCancelled = false
             self._analysis = nil
             self._samples.removeAll()
@@ -105,7 +98,7 @@ final class GenerationContext: GenerationContextProtocol {
     }
 
     func updateProgress(_ progress: Float, stage: String) {
-        stateQueue.async(flags: .barrier) {
+        stateQueue.sync(flags: .barrier) {
             self._progress = progress
             self._currentStage = stage
         }

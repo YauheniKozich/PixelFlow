@@ -6,6 +6,11 @@
 
 import Foundation
 import CoreGraphics
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 // MARK: - ParticleViewModel
 
@@ -77,6 +82,16 @@ final class ParticleViewModel {
             resetParticleSystem()
         }
     }
+
+    // MARK: - Public API – Display Mode
+    
+    /// Устанавливает режим отображения изображения и сбрасывает систему для пересборки.
+    func setImageDisplayMode(_ mode: ImageDisplayMode) {
+        guard currentConfig.imageDisplayMode != mode else { return }
+        var updated = currentConfig
+        updated.imageDisplayMode = mode
+        apply(updated)
+    }
     
     private func applyDraftPreset()   { apply(ParticleGenerationConfig.draft)   }
     private func applyStandardPreset() { apply(ParticleGenerationConfig.standard) }
@@ -98,26 +113,60 @@ final class ParticleViewModel {
         
         // Загрузка изображения
         logger.info("Loading source image…")
-        guard let image = imageLoader.loadImageWithFallback() else {
+        guard let loaded = imageLoader.loadImageInfoWithFallback() else {
             logger.error("Failed to load source image")
             errorHandler.handle(PixelFlowError.missingImage,
                                 context: "ParticleViewModel.createSystem",
                                 recovery: .showUserMessage("Не удалось загрузить изображение"))
             return false
         }
+        let image = loaded.cgImage
         logger.info("Loaded image: \(image.width)x\(image.height) pixels")
         
         logger.info("Source image loaded: \(image.width)x\(image.height)")
         
         // Вычисление количества частиц
+        let totalPixels = image.width * image.height
+        let effectivePreset: QualityPreset
+        if currentConfig.qualityPreset != .ultra && totalPixels <= 300_000 {
+            effectivePreset = .ultra
+            logger.info("Promoting preset to ultra for full-res rendering (\(totalPixels) pixels)")
+        } else {
+            effectivePreset = currentConfig.qualityPreset
+        }
         let particleCount = optimalParticleCount(for: image,
-                                                 preset: currentConfig.qualityPreset)
+                                                 preset: effectivePreset)
         logger.info("Using image size: \(image.width)x\(image.height) for particle generation")
         logger.info("Calculated particle count: \(particleCount)")
         
         // Обновляем конфигурацию с правильным количеством частиц
         var config = currentConfig
+        config.qualityPreset = effectivePreset
         config.targetParticleCount = particleCount
+        config.imagePointWidth = Float(loaded.pointSize.width)
+        config.imagePointHeight = Float(loaded.pointSize.height)
+
+        let screenScale: CGFloat
+        #if os(iOS)
+        if let uiView = view as? UIView {
+            if let screen = uiView.window?.windowScene?.screen {
+                screenScale = screen.scale
+            } else {
+                screenScale = uiView.traitCollection.displayScale
+            }
+        } else {
+            screenScale = 1.0
+        }
+        #elseif os(macOS)
+        if let nsView = view as? NSView, let screen = nsView.window?.screen {
+            screenScale = screen.backingScaleFactor
+        } else {
+            screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+        }
+        #else
+        screenScale = 1.0
+        #endif
+        config.screenScale = Float(screenScale)
         
         // Инициализация ParticleSystem
         logger.info("Creating particle system controller…")
@@ -333,6 +382,12 @@ final class ParticleViewModel {
         case .ultra:   density = 0.00020
         }
         
+        let totalPixels = Int(pixelCount)
+        if preset == .ultra && totalPixels > 10_000 && totalPixels <= 300_000 {
+            logger.info("optimalParticleCount – using full-res pixels:\(totalPixels) for preset:\(preset)")
+            return totalPixels
+        }
+
         let raw = Int(pixelCount * density)
         let clamped = max(10_000, min(raw, 300_000))
         

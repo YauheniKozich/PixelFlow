@@ -69,23 +69,30 @@ final class ParticleAssembly {
 **Ключевые методы:**
 
 ```swift
-// Конфигурация
-@MainActor func apply(_ config: ParticleGenerationConfig)
-@MainActor func applyDraftPreset()
-@MainActor func applyStandardPreset()
-@MainActor func applyHighPreset()
-@MainActor func applyUltraPreset()
-
 // Жизненный цикл системы
-@MainActor func createSystem(in view: UIView) async -> Bool
+@MainActor func createSystem(in view: RenderView) async -> Bool
 @MainActor func resetParticleSystem()
 @MainActor func toggleSimulation()
 @MainActor func startLightningStorm()
+@MainActor func handleWillResignActive()
+@MainActor func handleDidBecomeActive()
+@MainActor func initializeWithFastPreview()
+@MainActor func startSimulation()
+@MainActor func pauseRendering()
+@MainActor func resumeRendering()
+@MainActor func handleLowMemory()
+@MainActor func cleanupAllResources()
 
-// Диагностика
-@MainActor func configurationInfo() -> String
-@MainActor func logCurrentConfiguration()
+// Конфигурация отображения
+@MainActor func setImageDisplayMode(_ mode: ImageDisplayMode)
+
+// UI
+@MainActor func makeRenderView(frame: CGRect) -> RenderView
+@MainActor func updateRenderViewLayout(frame: CGRect, scale: CGFloat)
 ```
+
+**Примечание:** `toggleSimulation()` в текущей реализации запускает сбор HQ‑изображения
+через `collectHighQualityImage()` при условии, что не идет генерация HQ‑частиц.
 
 **Управление памятью:**
 - Наблюдение за `UIApplication.didReceiveMemoryWarningNotification`
@@ -100,6 +107,14 @@ final class ParticleAssembly {
 - Обработка пользовательского ввода
 - Отображение прогресса генерации
 - Управление UI состоянием
+
+**Жесты и действия (iOS ViewController):**
+- Одинарный тап: вызывает `toggleSimulation()` и запускает сбор HQ‑изображения
+- Двойной тап: `pauseRendering()` + `resetParticleSystem()` и перезапуск
+- Тройной тап: `startLightningStorm()` и запуск рендера
+
+**Системные события:**
+- `UIApplication.didReceiveMemoryWarningNotification` → `handleLowMemory()`
 
 ## Взаимодействие с Engine
 
@@ -117,7 +132,7 @@ Assembly (MVVM)
 - `ImageLoaderProtocol` - загрузка изображений
 
 **Внутренние компоненты:**
-- `ParticleSystemAdapter` - адаптер для совместимости
+- `ParticleSystemController` (`ParticleSystemControlling`) - фасад/координатор системы частиц
 - `ParticleGenerationConfig` - конфигурация генерации
 - Render view - Metal view для рендеринга
 
@@ -139,18 +154,14 @@ Assembly (MVVM)
 ## Использование
 
 ```swift
-// Базовое использование
-let viewController = ParticleAssembly.assemble()
-let config = ParticleGenerationConfig.standard
-await viewController.viewModel?.apply(config)
+// Базовое использование (ViewController сам создает RenderView и запускает createSystem)
+let viewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
 
-// Расширенное использование
-if let viewModel = viewController.viewModel {
-    let success = await viewModel.createSystem(in: renderView)
-    if success {
-        viewModel.startLightningStorm()
-    }
-}
+// Дальше: показать viewController или использовать его в window/root
+// Внутри ViewController:
+// - makeRenderView(frame:)
+// - createSystem(in:)
+// - обработка жестов и вызовов startLightningStorm / toggleSimulation
 ```
 
 ## Тестирование

@@ -21,6 +21,7 @@
 /// outSamples     — выходной массив (должен быть targetCount)
 void stratifiedSampleC(SampleC* samples, int sampleCount, int targetCount, int imageHeight, int bands, SampleC* outSamples) {
     if (!samples || sampleCount <= 0 || targetCount <= 0 || !outSamples) return;
+    if (bands <= 0 || imageHeight <= 0) return;
 
     int bandHeight = (imageHeight + bands - 1) / bands;
 
@@ -67,6 +68,22 @@ void stratifiedSampleC(SampleC* samples, int sampleCount, int targetCount, int i
     // Распределяем targetCount по полосам пропорционально важности
     int assigned = 0;
     int* quota = (int*)calloc(bands, sizeof(int));
+    if (totalImportance <= 0.0f) {
+        totalImportance = 0.0f;
+        for (int i = 0; i < bands; i++) {
+            bucketImportance[i] = (float)bucketSizes[i];
+            totalImportance += bucketImportance[i];
+        }
+    }
+    if (totalImportance <= 0.0f) {
+        for (int i = 0; i < bands; i++) free(buckets[i]);
+        free(buckets);
+        free(bucketSizes);
+        free(bucketCaps);
+        free(bucketImportance);
+        free(quota);
+        return;
+    }
     for (int i = 0; i < bands; i++) {
         quota[i] = (int)((bucketImportance[i] / totalImportance) * targetCount);
         assigned += quota[i];

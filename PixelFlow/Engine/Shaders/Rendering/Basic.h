@@ -249,12 +249,15 @@ fragment float4 fragmentParticle(
     float2 uv = pointCoord * 2.0 - 1.0;
     float dist = length(uv);  // Расстояние от центра
 
-    // Создаем круглую форму с мягкими краями
-    float alpha = 1.0 - smoothstep(1.0 - PARTICLE_EDGE_SOFTNESS, 1.0, dist);
+    float alpha = 1.0;
+    if (params[0].pixelSizeMode == 0) {
+        // Создаем круглую форму с мягкими краями
+        alpha = 1.0 - smoothstep(1.0 - PARTICLE_EDGE_SOFTNESS, 1.0, dist);
 
-    // Оптимизация: не рисуем почти прозрачные пиксели
-    if (alpha < PARTICLE_ALPHA_THRESHOLD) {
-        discard_fragment();  // GPU пропускает этот пиксель
+        // Оптимизация: не рисуем почти прозрачные пиксели
+        if (alpha < PARTICLE_ALPHA_THRESHOLD) {
+            discard_fragment();  // GPU пропускает этот пиксель
+        }
     }
 
     // ============================================================================
@@ -263,6 +266,12 @@ fragment float4 fragmentParticle(
 
     float3 col;  // Финальный цвет частицы
     float3 baseColor = srgbToLinear(in.color.rgb);
+
+    // Pixel-perfect режим: без освещения и эффектов, только исходный цвет.
+    // Это дает максимально точное соответствие исходному изображению.
+    if (params[0].pixelSizeMode != 0 && params[0].state != SIMULATION_STATE_LIGHTNING_STORM) {
+        return float4(baseColor, in.color.a);
+    }
 
     // СПЕЦИАЛЬНАЯ ОБРАБОТКА ЭЛЕКТРИЧЕСКОЙ БУРИ ⚡
     if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {

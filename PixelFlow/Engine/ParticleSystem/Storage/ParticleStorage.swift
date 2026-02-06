@@ -41,8 +41,11 @@ final class ParticleStorage {
     // Хранит исходные пиксели для сборки частиц (защищен bufferQueue)
     private var sourcePixels: [Pixel] = []
     
-    // Хранит целевые высококачественные частицы для плавного перехода (защищен bufferQueue)
-    private var highQualityParticles: [Particle] = []
+    // Хранит целевые частицы изображения (HQ targets)
+    private var imageTargets: [Particle] = []
+
+    // Хранит целевые частицы для разброса (scatter targets)
+    private var scatterTargets: [Particle] = []
     
     // Прогресс перехода для сбора частиц (защищен bufferQueue)
     private var transitionProgress: Float = 0
@@ -175,7 +178,9 @@ final class ParticleStorage {
         jitterY: Float = 0
     ) -> SIMD3<Float> {
         let normalizedX = ((Float(px.x) + jitterX) / viewWidth) * 2.0 - 1.0
-        let normalizedY = ((Float(px.y) + jitterY) / viewHeight) * 2.0 - 1.0
+        // Pixel coordinates are top-left (UIKit), NDC is bottom-left (Metal).
+        // Invert Y to map correctly into NDC space.
+        let normalizedY = (1.0 - ((Float(px.y) + jitterY) / viewHeight)) * 2.0 - 1.0
         let clampedX = min(max(normalizedX, -1.0 + boundsPadding), 1.0 - boundsPadding)
         let clampedY = min(max(normalizedY, -1.0 + boundsPadding), 1.0 - boundsPadding)
         return SIMD3<Float>(clampedX, clampedY, 0)
@@ -354,8 +359,8 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func createScatteredTargets() {
         bufferQueue.sync {
-            highQualityParticles = []
-            highQualityParticles.reserveCapacity(particleCount)
+            scatterTargets = []
+            scatterTargets.reserveCapacity(particleCount)
             
             if !sourcePixels.isEmpty {
                 // Используем sourcePixels для создания разбросанных целей
@@ -392,17 +397,17 @@ extension ParticleStorage: ParticleStorageProtocol {
                         life: 0.0,
                         idleChaoticMotion: 0
                     )
-                    highQualityParticles.append(particle)
+                    scatterTargets.append(particle)
                 }
                 
                 // Остальные частицы
                 for _ in count..<particleCount {
-                    highQualityParticles.append(createScatteredParticle())
+                    scatterTargets.append(createScatteredParticle())
                 }
             } else {
                 // Fallback: случайные разбросанные позиции
                 for _ in 0..<particleCount {
-                    highQualityParticles.append(createScatteredParticle())
+                    scatterTargets.append(createScatteredParticle())
                 }
             }
             
@@ -413,21 +418,79 @@ extension ParticleStorage: ParticleStorageProtocol {
 
     func setHighQualityTargets(_ particles: [Particle]) {
         bufferQueue.sync {
-            highQualityParticles = []
-            highQualityParticles.reserveCapacity(particleCount)
+            imageTargets = []
+            imageTargets.reserveCapacity(particleCount)
 
             if particles.count >= particleCount {
-                highQualityParticles.append(contentsOf: particles.prefix(particleCount))
+                imageTargets.append(contentsOf: particles.prefix(particleCount))
             } else {
-                highQualityParticles.append(contentsOf: particles)
+                imageTargets.append(contentsOf: particles)
                 let missing = particleCount - particles.count
                 for _ in 0..<missing {
-                    highQualityParticles.append(createScatteredParticle())
+                    imageTargets.append(createScatteredParticle())
                 }
             }
 
             transitionProgress = 0
-            logger.info("High quality targets set: \(highQualityParticles.count)")
+            logger.info("High quality targets set: \(imageTargets.count)")
+        }
+    }
+
+    func applyHighQualityTargetsToBuffer() {
+        bufferQueue.sync {
+            guard let particleBuffer = particleBuffer else {
+                logger.warning("No particle buffer for applying HQ targets")
+                return
+            }
+
+            let count = min(particleCount, imageTargets.count)
+            guard count > 0 else {
+                logger.warning("No high quality targets available to apply")
+                return
+            }
+
+            let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
+
+            for i in 0..<count {
+                let target = imageTargets[i]
+                bufferPointer[i].targetPosition = target.targetPosition
+                bufferPointer[i].color = target.color
+                bufferPointer[i].originalColor = target.originalColor
+                bufferPointer[i].size = target.size
+                bufferPointer[i].baseSize = target.baseSize
+                bufferPointer[i].life = 0.0
+            }
+
+            logger.info("Applied high quality targets to buffer: \(count)")
+        }
+    }
+
+    func applyScatteredTargetsToBuffer() {
+        bufferQueue.sync {
+            guard let particleBuffer = particleBuffer else {
+                logger.warning("No particle buffer for applying scattered targets")
+                return
+            }
+
+            let count = min(particleCount, scatterTargets.count)
+            guard count > 0 else {
+                logger.warning("No scattered targets available to apply")
+                return
+            }
+
+            let bufferPointer = particleBuffer.contents().bindMemory(to: Particle.self, capacity: particleCount)
+
+            for i in 0..<count {
+                let target = scatterTargets[i]
+                bufferPointer[i].targetPosition = target.targetPosition
+                bufferPointer[i].color = target.color
+                bufferPointer[i].originalColor = target.originalColor
+                bufferPointer[i].size = target.size
+                bufferPointer[i].baseSize = target.baseSize
+                bufferPointer[i].life = 0.0
+            }
+
+            logger.info("Applied scattered targets to buffer: \(count)")
         }
     }
     
@@ -484,7 +547,7 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func updateHighQualityTransition(deltaTime: Float) {
         bufferQueue.sync {
-            let count = min(particleCount, highQualityParticles.count)
+            let count = min(particleCount, imageTargets.count)
             guard count > 0, let particleBuffer = particleBuffer else {
                 logger.warning("No high quality particles or buffer for transition")
                 return
@@ -498,7 +561,7 @@ extension ParticleStorage: ParticleStorageProtocol {
             transitionProgress = min(1.0, transitionProgress + lerpFactor)
             
             for i in 0..<count {
-                let target = highQualityParticles[i]
+                let target = imageTargets[i]
                 var current = bufferPointer[i]
                 
                 // Интерполяция всех полей
@@ -527,7 +590,8 @@ extension ParticleStorage: ParticleStorageProtocol {
             particleBuffer = nil
             particleCount = 0
             sourcePixels.removeAll()
-            highQualityParticles.removeAll()
+            imageTargets.removeAll()
+            scatterTargets.removeAll()
             transitionProgress = 0
             
             logger.info("Particle storage cleared")
@@ -588,26 +652,22 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func generateHighQualityParticles(completion: @escaping () -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            // Проверяем self один раз в начале
             guard let self = self else { return }
             
             self.bufferQueue.sync {
-                self.highQualityParticles = []
-                self.highQualityParticles.reserveCapacity(self.particleCount)
+                self.imageTargets = []
+                self.imageTargets.reserveCapacity(self.particleCount)
                 
                 if !self.sourcePixels.isEmpty {
                     let count = min(self.particleCount, self.sourcePixels.count)
                     
                     for i in 0..<count {
                         let px = self.sourcePixels[i]
-                        // Нормализуем экранные координаты в NDC используя viewWidth и viewHeight
-                        let normalizedX = (Float(px.x) / self.viewWidth) * 2.0 - 1.0
-                        let normalizedY = (Float(px.y) / self.viewHeight) * 2.0 - 1.0
-                        let clampedX = min(max(normalizedX, -1.0 + self.boundsPadding), 1.0 - self.boundsPadding)
-                        let clampedY = min(max(normalizedY, -1.0 + self.boundsPadding), 1.0 - self.boundsPadding)
+                        // Нормализуем координаты пикселя в NDC (с учётом инверсии Y)
+                        let pos = self.normalizePixelToNDC(px, viewWidth: self.viewWidth, viewHeight: self.viewHeight)
                         let color = self.pixelToColor(px)
-                        let particle = self.createNDCParticle(x: clampedX, y: clampedY, color: color, size: self.highQualityParticleSize)
-                        self.highQualityParticles.append(particle)
+                        let particle = self.createNDCParticle(x: pos.x, y: pos.y, color: color, size: self.highQualityParticleSize)
+                        self.imageTargets.append(particle)
                     }
                     
                     // Для оставшихся частиц случайные позиции в NDC [-1,1]
@@ -616,7 +676,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                         let randY = Float.random(in: -1.0...1.0)
                         let colour = self.randomSourceColor()
                         let particle = self.createNDCParticle(x: randX, y: randY, color: colour, size: self.highQualityParticleSize)
-                        self.highQualityParticles.append(particle)
+                        self.imageTargets.append(particle)
                     }
                 } else {
                     // Если sourcePixels нет — случайные HQ частицы в NDC [-1,1]
@@ -625,7 +685,7 @@ extension ParticleStorage: ParticleStorageProtocol {
                         let randY = Float.random(in: -1.0...1.0)
                         let colour = self.randomSourceColor()
                         let particle = self.createNDCParticle(x: randX, y: randY, color: colour, size: self.highQualityParticleSize)
-                        self.highQualityParticles.append(particle)
+                        self.imageTargets.append(particle)
                     }
                 }
                 

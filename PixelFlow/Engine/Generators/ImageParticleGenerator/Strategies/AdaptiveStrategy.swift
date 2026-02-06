@@ -93,6 +93,7 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
     private func analyzeWorkload(_ config: ParticleGenerationConfig) -> WorkloadAnalysis {
         let particleCount = config.targetParticleCount
         let complexity = estimateComplexity(config)
+        let concurrency = effectiveConcurrency(for: config)
 
         // Определяем тип workload
         let workloadType: WorkloadType
@@ -108,7 +109,7 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
             type: workloadType,
             particleCount: particleCount,
             complexity: complexity,
-            availableConcurrency: availableConcurrency,
+            availableConcurrency: concurrency,
             deviceCapabilities: deviceCapabilities
         )
     }
@@ -157,6 +158,10 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
     }
 
     // MARK: - Decision Helpers
+
+    private func effectiveConcurrency(for config: ParticleGenerationConfig) -> Int {
+        max(1, min(availableConcurrency, config.maxConcurrentOperations))
+    }
 
     private func shouldParallelizeAnalysis() -> Bool {
         // Анализ можно параллелить если:

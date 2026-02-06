@@ -65,64 +65,15 @@ final class ParallelStrategy: GenerationStrategyProtocol {
 
     func validate(config: ParticleGenerationConfig) throws {
         // Проверяем что есть ресурсы для параллелизма
-        guard maxConcurrentOperations > 1 else {
+        guard effectiveConcurrency(for: config) > 1 else {
             throw ParallelStrategyError.insufficientConcurrency
         }
         logger.debug("ParallelStrategy validation passed")
     }
 
-    // MARK: - Public Methods
-
-    /// Создает группы операций для параллельного выполнения
-    func createOperationGroups(for stages: [GenerationStage]) -> [OperationGroup] {
-        var groups: [OperationGroup] = []
-
-        // Группа 1: Анализ (может выполняться параллельно с другими анализами)
-        let analysisStages = stages.filter { $0 == .analysis }
-        if !analysisStages.isEmpty {
-            groups.append(OperationGroup(
-                stages: analysisStages,
-                allowsParallelExecution: true,
-                priority: .veryHigh
-            ))
-        }
-
-        // Группа 2: Сэмплинг (зависит от анализа, но может быть параллельным)
-        let samplingStages = stages.filter { $0 == .sampling }
-        if !samplingStages.isEmpty {
-            groups.append(OperationGroup(
-                stages: samplingStages,
-                allowsParallelExecution: maxConcurrentOperations > 1,
-                priority: .high
-            ))
-        }
-
-        // Группа 3: Сборка (последовательная)
-        let assemblyStages = stages.filter { $0 == .assembly }
-        if !assemblyStages.isEmpty {
-            groups.append(OperationGroup(
-                stages: assemblyStages,
-                allowsParallelExecution: false,
-                priority: .normal
-            ))
-        }
-
-        // Группа 4: Кэширование (последовательное, низкий приоритет)
-        let cachingStages = stages.filter { $0 == .caching }
-        if !cachingStages.isEmpty {
-            groups.append(OperationGroup(
-                stages: cachingStages,
-                allowsParallelExecution: false,
-                priority: .low
-            ))
-        }
-
-        return groups
-    }
-
     /// Определяет оптимальное количество потоков для этапа
     func optimalConcurrency(for stage: GenerationStage, config: ParticleGenerationConfig) -> Int {
-        let availableConcurrency = min(maxConcurrentOperations, 4) // Максимум 4 потока
+        let availableConcurrency = min(effectiveConcurrency(for: config), 4) // Максимум 4 потока
 
         switch stage {
         case .analysis:
@@ -146,7 +97,7 @@ final class ParallelStrategy: GenerationStrategyProtocol {
     func estimateExecutionTime(for config: ParticleGenerationConfig) -> TimeInterval {
         let imageComplexity = estimateImageComplexity(config)
         let particleCount = Double(config.targetParticleCount)
-        let concurrency = Double(maxConcurrentOperations)
+        let concurrency = Double(effectiveConcurrency(for: config))
 
         // Базовое время с учетом параллелизма
         let analysisTime = 0.05 // Анализ минимально параллелится
@@ -165,12 +116,16 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         // - Доступных ресурсов для параллелизма
 
         let particleCount = config.targetParticleCount
-        let hasConcurrency = maxConcurrentOperations > 1
+        let hasConcurrency = effectiveConcurrency(for: config) > 1
 
-        return (particleCount > 10000 || config.targetParticleCount.isMultiple(of: 1000000)) && hasConcurrency
+        return particleCount > 10000 && hasConcurrency
     }
 
     // MARK: - Private Methods
+
+    private func effectiveConcurrency(for config: ParticleGenerationConfig) -> Int {
+        max(1, min(maxConcurrentOperations, config.maxConcurrentOperations))
+    }
 
     private func estimateImageComplexity(_ config: ParticleGenerationConfig) -> Double {
         var complexity = 1.0
@@ -200,16 +155,3 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         return complexity
     }
 }
-
-/// Группа операций для параллельного выполнения
-struct OperationGroup {
-    let stages: [GenerationStage]
-    let allowsParallelExecution: Bool
-    let priority: Operation.QueuePriority
-
-    var maxConcurrentOperations: Int {
-        allowsParallelExecution ? OperationQueue.defaultMaxConcurrentOperationCount : 1
-    }
-}
-
-

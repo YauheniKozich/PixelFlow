@@ -98,7 +98,8 @@ ImageParticleGenerator/
 
 ```swift
 let coordinator = GenerationCoordinatorFactory.makeCoordinator()
-let config = ParticleGenerationConfig(targetParticleCount: 1000, qualityPreset: .high)
+var config = ParticleGenerationConfig.high
+config.targetParticleCount = 1000
 ```
 
 ### 2. Этап анализа
@@ -198,7 +199,8 @@ CacheManager сохраняет результаты:
 let coordinator = GenerationCoordinatorFactory.makeCoordinator()
 
 // Конфигурация генерации
-let config = ParticleGenerationConfig(targetParticleCount: 1000, qualityPreset: .high)
+var config = ParticleGenerationConfig.high
+config.targetParticleCount = 1000
 
 // Генерация частиц
 let particles = try await coordinator.generateParticles(
@@ -216,9 +218,27 @@ let particles = try await coordinator.generateParticles(
 ```swift
 let coordinator = GenerationCoordinatorFactory.makeCoordinator()
 
-var config = ParticleGenerationConfig(targetParticleCount: 1000, qualityPreset: .high)
+var config = ParticleGenerationConfig.high
+config.targetParticleCount = 1000
 config.samplingStrategy = .importance
 config.enableCaching = true
+config.analysisSamplingTuning = AnalysisSamplingTuning(
+    edgeBiasStrength: 0.6,
+    importanceThresholdMin: 0.05,
+    importanceThresholdMax: 0.9,
+    contrastWeightScale: 0.5,
+    saturationWeightScale: 0.5,
+    weightMin: 0.1,
+    weightMax: 2.0,
+    complexityMid: 4,
+    complexityHigh: 7,
+    edgeRadiusBoostMid: 1,
+    edgeRadiusBoostHigh: 2,
+    detailBoostScale: 0.15,
+    detailBoostMax: 0.2,
+    importantRatioMin: 0.3,
+    importantRatioMax: 0.9
+)
 
 let particles = try await coordinator.generateParticles(
     from: myImage,
@@ -229,6 +249,18 @@ let particles = try await coordinator.generateParticles(
     }
 )
 ```
+
+**Пояснение параметров `AnalysisSamplingTuning`:**
+- `edgeBiasStrength` — насколько сильно плотность важности зависит от `edgeDensity` (0–1).
+- `importanceThresholdMin/Max` — границы порога важности после корректировок.
+- `contrastWeightScale` — усиление веса контраста (0–1).
+- `saturationWeightScale` — усиление веса насыщенности (0–1).
+- `weightMin/Max` — границы весов контраста/насыщенности.
+- `complexityMid/High` — пороги сложности (0–10) для увеличения `edgeRadius`.
+- `edgeRadiusBoostMid/High` — насколько увеличивать `edgeRadius` при сложности.
+- `detailBoostScale` — сила повышения `importantSamplingRatio` от деталей.
+- `detailBoostMax` — максимальный прирост `importantSamplingRatio`.
+- `importantRatioMin/Max` — границы для `importantSamplingRatio`.
 
 ## Тестирование
 

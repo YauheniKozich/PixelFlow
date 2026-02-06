@@ -95,4 +95,34 @@ final class ImageLoader: ImageLoaderProtocol {
         logger.info("No bundled image found – generating test pattern")
         return createTestImage()
     }
+
+    /// Загружает изображение вместе с размером в поинтах и масштабом
+    func loadImageInfoWithFallback() -> LoadedImage? {
+        let possibleNames = ["steve"]
+
+        for name in possibleNames {
+            if let uiImage = UIImage(named: name),
+               let cgImage = uiImage.cgImage {
+                logger.info("Loaded bundled image '\(name)' – \(uiImage.size.width)x\(uiImage.size.height) pts")
+                return LoadedImage(cgImage: cgImage, pointSize: uiImage.size, scale: uiImage.scale)
+            }
+        }
+
+        logger.info("No bundled image found – generating test pattern")
+        if let cgImage = createTestImage() {
+            #if os(iOS)
+            let scale: CGFloat = {
+                let scenes = UIApplication.shared.connectedScenes
+                let windowScene = scenes.compactMap { $0 as? UIWindowScene }.first
+                return windowScene?.screen.scale ?? 1.0
+            }()
+            #else
+            let scale: CGFloat = 1.0
+            #endif
+            let pointSize = CGSize(width: CGFloat(cgImage.width) / scale,
+                                   height: CGFloat(cgImage.height) / scale)
+            return LoadedImage(cgImage: cgImage, pointSize: pointSize, scale: scale)
+        }
+        return nil
+    }
 }

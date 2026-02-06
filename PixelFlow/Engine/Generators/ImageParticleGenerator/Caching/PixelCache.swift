@@ -32,14 +32,6 @@ public final class PixelCache {
     public let byteOrder: ByteOrder
     public let dataCount: Int
     
-    // Доступ к данным
-    public var dataPointer: UnsafeMutableRawPointer {
-        guard let baseAddress = backingData.withUnsafeBytes({ $0.baseAddress }) else {
-            fatalError("PixelCache: unable to access data buffer")
-        }
-        return UnsafeMutableRawPointer(mutating: baseAddress)
-    }
-    
     // Приватные свойства
     private let backingData: Data
     private let accessLock = NSLock()
@@ -66,6 +58,12 @@ public final class PixelCache {
         self.dataCount = backingData.count
         
         debugLog("[PixelCache] создан: \(width)x\(height), stride=\(bytesPerRow), формат=\(byteOrder.description)")
+    }
+
+    // MARK: - Safe byte access
+
+    public func withUnsafeBytes<T>(_ body: (UnsafeRawBufferPointer) throws -> T) rethrows -> T {
+        try backingData.withUnsafeBytes(body)
     }
     
     // MARK: - Создание из изображения
@@ -164,7 +162,7 @@ public final class PixelCache {
             result = SIMD4<Float>(byte1, byte2, byte3, byte0)
         }
         
-        // ⚠️ NOT усиливаем альфа — это искажает исходные данные пикселя
+        // NOT усиливаем альфа — это искажает исходные данные пикселя
         // Правильный подход: использовать реальные значения для сэмплирования,
         // а прозрачность частиц контролировать в рендеринге через ParticleConstants
         
@@ -258,7 +256,7 @@ public final class PixelCache {
     private func debugLog(_ message: String) {
         #if DEBUG
         if PixelCache.debugEnabled {
-            print(message)
+            Logger.shared.debug(message)
         }
         #endif
     }
@@ -266,11 +264,11 @@ public final class PixelCache {
     public func printDebugInfo() {
         guard PixelCache.debugEnabled else { return }
         
-        print("\n=== PixelCache Debug Information ===")
-        print("Размеры: \(width) x \(height)")
-        print("Байтов в строке: \(bytesPerRow)")
-        print("Формат: \(byteOrder.description)")
-        print("Общий размер данных: \(dataCount) байт")
+        Logger.shared.debug("=== PixelCache Debug Information ===")
+        Logger.shared.debug("Размеры: \(width) x \(height)")
+        Logger.shared.debug("Байтов в строке: \(bytesPerRow)")
+        Logger.shared.debug("Формат: \(byteOrder.description)")
+        Logger.shared.debug("Общий размер данных: \(dataCount) байт")
         
         // Проверяем угловые пиксели
         let corners = [
@@ -282,7 +280,7 @@ public final class PixelCache {
         
         for corner in corners {
             let color = self.color(atX: corner.x, y: corner.y)
-            print("\(corner.label) (\(corner.x), \(corner.y)): R=\(color.x) G=\(color.y) B=\(color.z) A=\(color.w)")
+            Logger.shared.debug("\(corner.label) (\(corner.x), \(corner.y)): R=\(color.x) G=\(color.y) B=\(color.z) A=\(color.w)")
         }
     }
     

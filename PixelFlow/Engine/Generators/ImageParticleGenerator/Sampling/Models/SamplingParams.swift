@@ -8,12 +8,12 @@
 import Foundation
 
 struct SamplingParams {
-    let importanceThreshold: Float
-    let contrastWeight: Float
-    let saturationWeight: Float
-    let edgeRadius: Int
-    let importantSamplingRatio: Float
-    let topBottomRatio: Float
+    var importanceThreshold: Float
+    var contrastWeight: Float
+    var saturationWeight: Float
+    var edgeRadius: Int
+    var importantSamplingRatio: Float
+    var topBottomRatio: Float
     var applyAntiClustering: Bool = true
     
     init(importanceThreshold: Float,

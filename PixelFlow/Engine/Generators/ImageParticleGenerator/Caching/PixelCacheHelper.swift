@@ -14,8 +14,8 @@ import simd
 /// Вспомогательные функции для удобного доступа к пикселям,
 /// подсчёта яркости/насыщенности и работы с соседями.
 ///
-/// Всё построено вокруг **нового** `PixelCache`, которое хранит
-/// «живой» указатель `dataPointer` вместо копии массива.
+/// Всё построено вокруг `PixelCache`, которое безопасно отдаёт байты
+/// через `withUnsafeBytes` без утечки указателя.
 enum PixelCacheHelper {
 
     // MARK: - Константы
@@ -61,20 +61,22 @@ enum PixelCacheHelper {
         // отладка «сырых» байтов
         // Если нужен «ручной» просмотр байтов – используем указатель.
         if Constants.debugEnabled && x < 2 && y == 0 {
-            let base = cache.dataPointer.assumingMemoryBound(to: UInt8.self)
-            let i = y * cache.bytesPerRow + x * Constants.bytesPerPixel
-            let raw = (
-                base[i],
-                base[i + 1],
-                base[i + 2],
-                base[i + 3]
-            )
-            Logger.shared.debug("\n🔍 PixelCacheHelper.getPixelData(\(x),\(y)) — сырые байты")
-            Logger.shared.debug("   Индекс в буфере: \(i)")
-            Logger.shared.debug("   Сырые байты: [\(raw.0), \(raw.1), \(raw.2), \(raw.3)]")
-            Logger.shared.debug("   Порядок байтов в кешe: \(cache.byteOrder.description)")
-            Logger.shared.debug("   Интерпретация как RGBA → R=\(raw.0) G=\(raw.1) B=\(raw.2) A=\(raw.3)")
-            Logger.shared.debug("   Интерпретация как BGRA → R=\(raw.2) G=\(raw.1) B=\(raw.0) A=\(raw.3)")
+            cache.withUnsafeBytes { rawBuffer in
+                guard let base = rawBuffer.bindMemory(to: UInt8.self).baseAddress else { return }
+                let i = y * cache.bytesPerRow + x * Constants.bytesPerPixel
+                let raw = (
+                    base[i],
+                    base[i + 1],
+                    base[i + 2],
+                    base[i + 3]
+                )
+                Logger.shared.debug("\n🔍 PixelCacheHelper.getPixelData(\(x),\(y)) — сырые байты")
+                Logger.shared.debug("   Индекс в буфере: \(i)")
+                Logger.shared.debug("   Сырые байты: [\(raw.0), \(raw.1), \(raw.2), \(raw.3)]")
+                Logger.shared.debug("   Порядок байтов в кешe: \(cache.byteOrder.description)")
+                Logger.shared.debug("   Интерпретация как RGBA → R=\(raw.0) G=\(raw.1) B=\(raw.2) A=\(raw.3)")
+                Logger.shared.debug("   Интерпретация как BGRA → R=\(raw.2) G=\(raw.1) B=\(raw.0) A=\(raw.3)")
+            }
         }
 
         // правильный способ
@@ -228,17 +230,19 @@ enum PixelCacheHelper {
     static func comparePixelAccessMethods(atX x: Int,
                                           y: Int,
                                           from cache: PixelCache) {
-        Logger.shared.debug("\n⚖️ СРАВНЕНИЕ МЕТОДОВ ДОСТУПА К ПИКСЕЛЯМ:")
+        Logger.shared.debug("\n СРАВНЕНИЕ МЕТОДОВ ДОСТУПА К ПИКСЕЛЯМ:")
         Logger.shared.debug("   Точка: [\(x),\(y)]")
 
         // Прямой доступ к сырому буферу (для отладки)
         let i = y * cache.bytesPerRow + x * Constants.bytesPerPixel
         if i + 3 < cache.dataCount {
-            let base = cache.dataPointer.assumingMemoryBound(to: UInt8.self)
-            let raw = (base[i], base[i+1], base[i+2], base[i+3])
-            Logger.shared.debug("Прямой доступ (raw bytes): [\(raw.0), \(raw.1), \(raw.2), \(raw.3)]")
-            Logger.shared.debug("RGBA → R=\(raw.0) G=\(raw.1) B=\(raw.2)")
-            Logger.shared.debug("BGRA → R=\(raw.2) G=\(raw.1) B=\(raw.0)")
+            cache.withUnsafeBytes { rawBuffer in
+                guard let base = rawBuffer.bindMemory(to: UInt8.self).baseAddress else { return }
+                let raw = (base[i], base[i+1], base[i+2], base[i+3])
+                Logger.shared.debug("Прямой доступ (raw bytes): [\(raw.0), \(raw.1), \(raw.2), \(raw.3)]")
+                Logger.shared.debug("RGBA → R=\(raw.0) G=\(raw.1) B=\(raw.2)")
+                Logger.shared.debug("BGRA → R=\(raw.2) G=\(raw.1) B=\(raw.0)")
+            }
         }
 
         // cache.color() — правильный» путь

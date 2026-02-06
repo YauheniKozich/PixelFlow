@@ -92,7 +92,6 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
                 originalImageSize: originalImageSize
             )
         } catch {
-            // Log the error for debugging; in production we simply return an empty list.
             Logger.shared.error("Particle assembly failed: \(error)")
             return []
         }
@@ -128,6 +127,12 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
             imageSize: imageSize,
             displayMode: displayMode
         )
+
+        Logger.shared.debug(
+            "Assembler: mode=\(displayMode), screen=\(screenSize.width)x\(screenSize.height), " +
+            "image=\(imageSize.width)x\(imageSize.height), original=\(originalImageSize.width)x\(originalImageSize.height), " +
+            "scale=(\(transformation.scaleX),\(transformation.scaleY)), offset=(\(transformation.offset.x),\(transformation.offset.y))"
+        )
         
         // Подготовка диапазона размеров
         let sizeRange = getSizeRange(for: config.qualityPreset)
@@ -145,6 +150,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
                     sizeRange: sizeRange,
                     sizeVariation: sizeVariation,
                     config: config,
+                    imageSize: imageSize,
                     originalImageSize: originalImageSize,
                     screenSize: screenSize
                 )
@@ -153,6 +159,23 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         
         #if DEBUG
         Logger.shared.debug("Сборка частиц завершена: \(particles.count) частиц")
+        if !particles.isEmpty {
+            var minX = Float.greatestFiniteMagnitude
+            var maxX = -Float.greatestFiniteMagnitude
+            var minY = Float.greatestFiniteMagnitude
+            var maxY = -Float.greatestFiniteMagnitude
+            for p in particles {
+                minX = min(minX, p.position.x)
+                maxX = max(maxX, p.position.x)
+                minY = min(minY, p.position.y)
+                maxY = max(maxY, p.position.y)
+            }
+            let minXStr = String(format: "%.3f", minX)
+            let maxXStr = String(format: "%.3f", maxX)
+            let minYStr = String(format: "%.3f", minY)
+            let maxYStr = String(format: "%.3f", maxY)
+            Logger.shared.debug("Assembler bounds (NDC): x=[\(minXStr), \(maxXStr)] y=[\(minYStr), \(maxYStr)]")
+        }
         if particles.count >= 10 {
             Logger.shared.debug("Первые 10 частиц (КОНТРОЛЬ ЦВЕТОВ):")
             for i in 0..<10 {
@@ -165,7 +188,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
                 let origG = String(format: "%.3f", p.originalColor.y)
                 let origB = String(format: "%.3f", p.originalColor.z)
                 let origA = String(format: "%.3f", p.originalColor.w)
-                Logger.shared.debug("  [\(i)] 🎨 color=(\(r),\(g),\(b),\(a)) originalColor=(\(origR),\(origG),\(origB),\(origA))")
+                Logger.shared.debug("  [\(i)] color=(\(r),\(g),\(b),\(a)) originalColor=(\(origR),\(origG),\(origB),\(origA))")
                 Logger.shared.debug("       pos=(\(String(format: "%.2f", p.position.x)), \(String(format: "%.2f", p.position.y))) vel=(\(String(format: "%.3f", p.velocity.x)), \(String(format: "%.3f", p.velocity.y)))")
             }
         }
@@ -179,10 +202,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     /// Получаем режим отображения из конфигурации
     @inline(__always)
     private func getDisplayMode(from config: ParticleGenerationConfig) -> ImageDisplayMode {
-        if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
-            return configWithDisplayMode.imageDisplayMode
-        }
-        return .fit
+        return config.imageDisplayMode
     }
     
     /// Расчет параметров трансформации координат
@@ -191,8 +211,8 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     private func scaledSizeAndOffset(screenSize: CGSize, imageSize: CGSize, scale: CGFloat) -> (size: CGSize, offset: CGPoint) {
         let scaled = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
         let offset = CGPoint(
-            x: max(0, (screenSize.width - scaled.width) / 2),
-            y: max(0, (screenSize.height - scaled.height) / 2)
+            x: (screenSize.width - scaled.width) / 2,
+            y: (screenSize.height - scaled.height) / 2
         )
         return (scaled, offset)
     }
@@ -208,10 +228,12 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         
         switch displayMode {
         case .fit:
-            let scale: CGFloat = (aspectImage > aspectScreen)
-                ? screenSize.width / imageSize.width
-                : screenSize.height / imageSize.height
-            let (_, offset) = scaledSizeAndOffset(screenSize: screenSize, imageSize: imageSize, scale: scale)
+            // В режиме .fit масштабируем изображение, чтобы оно полностью помещалось на экране.
+            let scale: CGFloat = min(screenSize.width / imageSize.width,
+                                     screenSize.height / imageSize.height)
+            let (_, offset) = scaledSizeAndOffset(screenSize: screenSize,
+                                                  imageSize: imageSize,
+                                                  scale: scale)
             return TransformationParams(scaleX: scale, scaleY: scale, offset: offset, mode: .fit)
         case .fill:
             let scale: CGFloat = (aspectImage > aspectScreen)
@@ -241,6 +263,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         sizeRange: ClosedRange<Float>,
         sizeVariation: Float,
         config: ParticleGenerationConfig,
+        imageSize: CGSize,
         originalImageSize: CGSize,
         screenSize: CGSize
     ) -> Particle {
@@ -254,16 +277,17 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         }
         
         // Используем нормализованные координаты изображения [0…1]
-        let nx = CGFloat(sample.x) / originalImageSize.width
-        let ny = CGFloat(sample.y) / originalImageSize.height
+        let nx = (CGFloat(sample.x) + 0.5) / originalImageSize.width
+        let ny = (CGFloat(sample.y) + 0.5) / originalImageSize.height
 
-        // Применяем масштаб и смещение, полученные из `TransformationParams`
-        // `offset` учитывает центрирование изображения в режимах .fit/.fill.
-        // Позиция уже нормализована относительно оригинального изображения,
-        // поэтому масштабировать её дополнительно не требуется – достаточно добавить
-        // смещение, чтобы частицы правильно позиционировались на экране.
-        let screenX = nx * screenSize.width + transformation.offset.x
-        let screenY = ny * screenSize.height + transformation.offset.y
+        // Применяем масштаб и смещение, полученные из `TransformationParams`.
+        // Нормализованные координаты преобразуем в координаты отображаемого
+        // изображения (с учетом scale и offset), а не во весь экран.
+        // Размер отображаемого изображения на экране с учетом режима
+        let displayedWidth = imageSize.width * transformation.scaleX
+        let displayedHeight = imageSize.height * transformation.scaleY
+        let screenX = transformation.offset.x + nx * displayedWidth
+        let screenY = transformation.offset.y + ny * displayedHeight
 
         // normalized → NDC [-1…1]
         // Инверсия Y: UIKit (Y вниз) → Metal (Y вверх)
@@ -322,34 +346,20 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     }
     
     private func getSizeRange(for preset: QualityPreset) -> ClosedRange<Float> {
-        if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
-            switch preset {
-            case .ultra:
-                return configWithDisplayMode.particleSizeUltra ?? sizeRangeUltra
-            case .high:
-                return configWithDisplayMode.particleSizeHigh ?? sizeRangeHigh
-            case .standard:
-                return configWithDisplayMode.particleSizeStandard ?? sizeRangeStandard
-            case .draft:
-                return configWithDisplayMode.particleSizeLow ?? sizeRangeDraft
-            }
+        switch preset {
+        case .ultra:
+            return config.particleSizeUltra ?? sizeRangeUltra
+        case .high:
+            return config.particleSizeHigh ?? sizeRangeHigh
+        case .standard:
+            return config.particleSizeStandard ?? sizeRangeStandard
+        case .draft:
+            return config.particleSizeLow ?? sizeRangeDraft
         }
-        
-        // Значения по умолчанию (используем константы класса)
-        let defaultRanges: [QualityPreset: ClosedRange<Float>] = [
-            .ultra: sizeRangeUltra,
-            .high: sizeRangeHigh,
-            .standard: sizeRangeStandard,
-            .draft: sizeRangeDraft
-        ]
-        return defaultRanges[preset] ?? sizeRangeStandard
     }
     
     /// Получение скорости частицы
     private func getParticleSpeed(from config: ParticleGenerationConfig) -> Float {
-        if let configWithDisplayMode = config as? ParticleGeneratorConfigurationWithDisplayMode {
-            return configWithDisplayMode.particleSpeed
-        }
-        return 1.0
+        return config.particleSpeed
     }
 }
