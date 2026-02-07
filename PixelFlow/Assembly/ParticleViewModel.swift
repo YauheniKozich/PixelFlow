@@ -134,10 +134,9 @@ final class ParticleViewModel {
         } else {
             effectivePreset = currentConfig.qualityPreset
         }
-        let particleCount = optimalParticleCount(for: image,
-                                                 preset: effectivePreset)
+        let particleCount = totalPixels
         logger.info("Using image size: \(image.width)x\(image.height) for particle generation")
-        logger.info("Calculated particle count: \(particleCount)")
+        logger.info("Full-res particle count (all pixels): \(particleCount)")
         
         // Обновляем конфигурацию с правильным количеством частиц
         var config = currentConfig
@@ -215,8 +214,8 @@ final class ParticleViewModel {
     func toggleSimulation() {
         guard let system = particleSystem else { return }
         
-        if isGeneratingHighQuality {
-            logger.info("High-quality particles are generating, please wait...")
+        if isGeneratingHighQuality || !system.isHighQuality {
+            logger.info("High-quality particles are not ready yet, skipping collect")
             return
         }
         
@@ -371,27 +370,8 @@ final class ParticleViewModel {
     /// Вычисляет количество частиц, учитывая плотность, зависящую от `QualityPreset`.
     private func optimalParticleCount(for image: CGImage,
                                       preset: QualityPreset) -> Int {
-        let pixelCount = Float(image.width * image.height)
-        
-        // Плотности подобраны экспериментально.
-        let density: Float
-        switch preset {
-        case .draft:   density = 0.00004   // ≈ 4 % от 4K‑изображения
-        case .standard: density = 0.00008
-        case .high:    density = 0.00012
-        case .ultra:   density = 0.00020
-        }
-        
-        let totalPixels = Int(pixelCount)
-        if preset == .ultra && totalPixels > 10_000 && totalPixels <= 300_000 {
-            logger.info("optimalParticleCount – using full-res pixels:\(totalPixels) for preset:\(preset)")
-            return totalPixels
-        }
-
-        let raw = Int(pixelCount * density)
-        let clamped = max(10_000, min(raw, 300_000))
-        
-        logger.info("optimalParticleCount – raw:\(raw) clamped:\(clamped) for preset:\(preset)")
-        return clamped
+        let totalPixels = image.width * image.height
+        logger.info("optimalParticleCount – using full-res pixels:\(totalPixels) for preset:\(preset)")
+        return totalPixels
     }
 }

@@ -131,6 +131,8 @@ extension SimulationEngine: SimulationEngineProtocol {
     
     func updateProgress(_ progress: Float) {
         guard case .collecting = stateMachine.state else { return }
+        
+        // StateMachine сам обработает условия завершения
         stateMachine.updateProgress(progress)
     }
     

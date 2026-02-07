@@ -209,6 +209,7 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
     private func cacheKey(for image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) -> String {
         let configFingerprint = hashConfig(config)
         let components = [
+            "v3-fullres-2026-02-07",
             "\(image.width)x\(image.height)",
             "\(Int(screenSize.width))x\(Int(screenSize.height))",
             configFingerprint

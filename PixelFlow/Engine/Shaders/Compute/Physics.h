@@ -372,7 +372,10 @@ kernel void updateParticles(
                 break;
 
             case SIMULATION_STATE_COLLECTED:
+                // Жестко фиксируем частицы на цели, чтобы убрать "недосбор"
+                p.position.xy = p.targetPosition.xy;
                 p.velocity.xy = float2(0.0);
+                p.life = PARTICLE_COLLECTED;
                 break;
 
             case SIMULATION_STATE_LIGHTNING_STORM:

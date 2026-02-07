@@ -195,7 +195,7 @@ class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         qualityUpgradeLabel?.removeFromSuperview()
         
         let label = UILabel()
-        label.text = "Качество улучшено!"
+        label.text = "HQ доступно"
         label.textAlignment = .center
         label.textColor = .systemGreen
         label.font = .systemFont(ofSize: 20, weight: .bold)

@@ -37,26 +37,8 @@ final class ConfigurationManager: ConfigurationManagerProtocol {
     }
 
     func optimalParticleCount(for image: CGImage, preset: QualityPreset) -> Int {
-        let pixelCount = Float(image.width * image.height)
-
-        // Плотности подобраны экспериментально
-        let density: Float
-        switch preset {
-        case .draft:   density = 0.00004   // ≈ 4% от 4K-изображения
-        case .standard: density = 0.00008
-        case .high:    density = 0.00012
-        case .ultra:   density = 0.00020
-        }
-
-        let totalPixels = Int(pixelCount)
-        if preset == .ultra && totalPixels > Constants.minParticles && totalPixels <= Constants.maxParticles {
-            return totalPixels
-        }
-
-        let raw = Int(pixelCount * density)
-        let clamped = max(Constants.minParticles, min(raw, Constants.maxParticles))
-
-        return clamped
+        let totalPixels = image.width * image.height
+        return totalPixels
     }
 
     func resetToDefaults() {

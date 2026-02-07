@@ -13,6 +13,7 @@ struct TransformationParams {
     let scaleX: CGFloat
     let scaleY: CGFloat
     let offset: CGPoint
+    let pixelCenterOffset: CGPoint
     let mode: ImageDisplayMode
 }
 

@@ -271,16 +271,19 @@ extension MetalRenderer: MetalRendererProtocol {
         guard let collectedCounterBuffer = collectedCounterBuffer,
               let engine = simulationEngine else { return }
 
+        // Проверяем состояние collecting
         guard case .collecting = engine.state else { return }
         guard particleCount > 0 else { return }
 
         let collectedCount = Int(collectedCounterBuffer.contents().assumingMemoryBound(to: UInt32.self).pointee)
         let completionRatio = min(1.0, max(0.0, Float(collectedCount) / Float(particleCount)))
 
+        // Логируем прогресс
         if completionRatio >= 1.0 || completionRatio - lastLoggedCollectionProgress >= 0.05 {
             logger.debug("Collection progress: \(collectedCount)/\(particleCount) (\(String(format: "%.2f", completionRatio * 100))%)")
             lastLoggedCollectionProgress = completionRatio
         }
+        
         engine.updateProgress(completionRatio)
     }
 

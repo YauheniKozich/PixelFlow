@@ -143,7 +143,8 @@ final class GenerationPipeline: GenerationPipelineProtocol {
                 from: analysis,
                 targetCount: context.config?.targetParticleCount ?? 1000,
                 config: config,
-                image: image
+                image: image,
+                screenSize: screenSize
             )
             return .samples(samples)
 

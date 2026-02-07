@@ -78,26 +78,20 @@ final class SimulationStateMachine {
         var shouldComplete = false
         var reason = ""
 
-        // 1. Порог готовности достигнут
-        if clampedProgress >= 0.99 {
+        // 1. Полная готовность (100%)
+        if clampedProgress >= 1.0 {
             shouldComplete = true
-            reason = "progress >= 99%"
+            reason = "progress >= 100%"
         }
         // 2. Общий таймаут (30 секунд)
         else if currentTime - collectionStartTime > maxCollectionTime {
             shouldComplete = true
             reason = "timeout (\(String(format: "%.1f", maxCollectionTime))s)"
         }
-        // 3. Застрявший прогресс (5 секунд без улучшения)
-        else if clampedProgress >= 0.95 && clampedProgress == lastProgress &&
-                  currentTime - lastProgressUpdateTime > progressStagnationTimeout {
-            shouldComplete = true
-            reason = "stagnation (\(String(format: "%.1f", progressStagnationTimeout))s no progress)"
-        }
 
         if shouldComplete {
             lastProgress = 1.0
-            Logger.shared.info("[StateMachine] updateProgress(1.000) → .collected(0) [\(reason)]")
+            Logger.shared.info("[StateMachine] Collection complete → .collected(0) [\(reason)]")
             switch collectMode {
             case .toImage:
                 state = .collected(frames: 0)

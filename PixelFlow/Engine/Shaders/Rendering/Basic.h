@@ -154,6 +154,12 @@ vertex VertexOut vertexParticle(
     // Particle.position УЖЕ хранится в нормализованных координатах NDC [-1…1].
     // Это стандартное пространство Normalized Device Coordinates для Metal/GPU.
     float2 ndc = p.position.xy;
+    if (params[0].pixelSizeMode == 2) {
+        float2 safeScreen = max(params[0].screenSize, float2(1.0));
+        float2 screenPos = (ndc * 0.5 + 0.5) * safeScreen;
+        screenPos = floor(screenPos) + 0.5;
+        ndc = (screenPos / safeScreen) * 2.0 - 1.0;
+    }
 
     // ============================================================================
     // ПОДГОТОВКА ВЫХОДНОЙ СТРУКТУРЫ (КООРДИНАТЫ УЖЕ В CLIP SPACE)
@@ -253,11 +259,6 @@ fragment float4 fragmentParticle(
     if (params[0].pixelSizeMode == 0) {
         // Создаем круглую форму с мягкими краями
         alpha = 1.0 - smoothstep(1.0 - PARTICLE_EDGE_SOFTNESS, 1.0, dist);
-
-        // Оптимизация: не рисуем почти прозрачные пиксели
-        if (alpha < PARTICLE_ALPHA_THRESHOLD) {
-            discard_fragment();  // GPU пропускает этот пиксель
-        }
     }
 
     // ============================================================================
@@ -270,7 +271,7 @@ fragment float4 fragmentParticle(
     // Pixel-perfect режим: без освещения и эффектов, только исходный цвет.
     // Это дает максимально точное соответствие исходному изображению.
     if (params[0].pixelSizeMode != 0 && params[0].state != SIMULATION_STATE_LIGHTNING_STORM) {
-        return float4(baseColor, in.color.a);
+        return float4(baseColor, 1.0);
     }
 
     // СПЕЦИАЛЬНАЯ ОБРАБОТКА ЭЛЕКТРИЧЕСКОЙ БУРИ ⚡
@@ -369,7 +370,8 @@ fragment float4 fragmentParticle(
         // ========================================================================
 
         // КРИТИЧНО: В режиме CHAOTIC просто выводим оригинальный цвет с свечением!
-        if (params[0].state == SIMULATION_STATE_CHAOTIC) {
+        if (params[0].state == SIMULATION_STATE_CHAOTIC ||
+            params[0].state == SIMULATION_STATE_COLLECTED) {
             // Берём оригинальный цвет БЕЗ каких-либо модификаций
             col = baseColor;
             
@@ -430,10 +432,8 @@ fragment float4 fragmentParticle(
 
         case SIMULATION_STATE_COLLECTING:
         case SIMULATION_STATE_COLLECTED: {
-            // Режимы сбора: специальная логика прозрачности
-            finalAlpha = (in.collectionSpeed < 0.0 || in.collectionSpeed > 1000.0)
-                ? alpha
-                : (alpha * in.color.a);
+            // Режимы сбора: показываем все пиксели без альфа-отбраковки
+            finalAlpha = 1.0;
             break;
         }
 
@@ -483,9 +483,7 @@ fragment float4 fragmentParticlePerformance(
 
     // Простая круглая форма
     float alpha = 1.0 - smoothstep(1.0 - PARTICLE_EDGE_SOFTNESS, 1.0, dist);
-    if (alpha < PARTICLE_ALPHA_THRESHOLD) {
-        discard_fragment();
-    }
+    // Не отбрасываем пиксели по альфа-порогу
 
     // МИНИМАЛЬНОЕ ОСВЕЩЕНИЕ
     float3 col;
@@ -506,7 +504,7 @@ fragment float4 fragmentParticlePerformance(
         col = clamp(baseColor * in.brightnessBoost, 0.0, 1.0) + glow;
     }
 
-    float finalAlpha = alpha * in.color.a;
+    float finalAlpha = 1.0;
     return float4(col, finalAlpha);
 }
 

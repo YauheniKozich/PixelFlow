@@ -48,7 +48,8 @@ protocol PixelSamplerProtocol {
         from analysis: ImageAnalysis,
         targetCount: Int,
         config: ParticleGenerationConfig,
-        image: CGImage
+        image: CGImage,
+        screenSize: CGSize
     ) throws -> [Sample]
 
     /// Стратегия сэмплинга
@@ -381,7 +382,11 @@ protocol ImageAnalyzer {
 
 /// Протокол для сэмплинга пикселей (внутренний)
 protocol PixelSampler {
-    func samplePixels(from analysis: ImageAnalysis, targetCount: Int, config: ParticleGenerationConfig, image: CGImage) throws -> [Sample]
+    func samplePixels(from analysis: ImageAnalysis,
+                      targetCount: Int,
+                      config: ParticleGenerationConfig,
+                      image: CGImage,
+                      screenSize: CGSize) throws -> [Sample]
 }
 
 /// Протокол для сборки частиц (внутренний)

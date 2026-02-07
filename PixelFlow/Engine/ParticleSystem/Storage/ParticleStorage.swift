@@ -653,8 +653,13 @@ extension ParticleStorage: ParticleStorageProtocol {
     func generateHighQualityParticles(completion: @escaping () -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            
+
+            var shouldSkip = false
             self.bufferQueue.sync {
+                if !self.imageTargets.isEmpty {
+                    shouldSkip = true
+                    return
+                }
                 self.imageTargets = []
                 self.imageTargets.reserveCapacity(self.particleCount)
                 
@@ -691,6 +696,14 @@ extension ParticleStorage: ParticleStorageProtocol {
                 
                 self.transitionProgress = 0
                 self.logger.info("High quality particles generated")
+            }
+
+            if shouldSkip {
+                self.logger.info("High quality targets already set - skipping generation")
+                DispatchQueue.main.async {
+                    completion()
+                }
+                return
             }
             
             DispatchQueue.main.async {

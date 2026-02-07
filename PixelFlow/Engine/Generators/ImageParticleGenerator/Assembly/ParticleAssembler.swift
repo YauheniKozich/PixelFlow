@@ -122,16 +122,19 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         let displayMode = getDisplayMode(from: config)
         
         // Предварительный расчет параметров трансформации
+        let isFullRes = config.targetParticleCount >= Int(imageSize.width * imageSize.height)
         let transformation = calculateTransformation(
             screenSize: screenSize,
             imageSize: imageSize,
-            displayMode: displayMode
+            displayMode: displayMode,
+            snapToIntScale: isFullRes
         )
 
         Logger.shared.debug(
             "Assembler: mode=\(displayMode), screen=\(screenSize.width)x\(screenSize.height), " +
             "image=\(imageSize.width)x\(imageSize.height), original=\(originalImageSize.width)x\(originalImageSize.height), " +
-            "scale=(\(transformation.scaleX),\(transformation.scaleY)), offset=(\(transformation.offset.x),\(transformation.offset.y))"
+            "scale=(\(transformation.scaleX),\(transformation.scaleY)), offset=(\(transformation.offset.x),\(transformation.offset.y)), " +
+            "centerOffset=(\(transformation.pixelCenterOffset.x),\(transformation.pixelCenterOffset.y))"
         )
         
         // Подготовка диапазона размеров
@@ -164,17 +167,50 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
             var maxX = -Float.greatestFiniteMagnitude
             var minY = Float.greatestFiniteMagnitude
             var maxY = -Float.greatestFiniteMagnitude
+            var minNdcY = Float.greatestFiniteMagnitude
+            var maxNdcY = -Float.greatestFiniteMagnitude
+            var minPixelY = Int.max
+            var maxPixelY = Int.min
+            var outOfRangeY = 0
+            var uniquePixelY = Set<Int>()
             for p in particles {
                 minX = min(minX, p.position.x)
                 maxX = max(maxX, p.position.x)
                 minY = min(minY, p.position.y)
                 maxY = max(maxY, p.position.y)
+
+                let ndcY = p.position.y
+                minNdcY = min(minNdcY, ndcY)
+                maxNdcY = max(maxNdcY, ndcY)
+
+                let py = Int(round((1.0 - ndcY) * 0.5 * Float(screenSize.height)))
+                minPixelY = min(minPixelY, py)
+                maxPixelY = max(maxPixelY, py)
+                if py < 0 || py >= Int(screenSize.height) {
+                    outOfRangeY += 1
+                } else {
+                    uniquePixelY.insert(py)
+                }
             }
             let minXStr = String(format: "%.3f", minX)
             let maxXStr = String(format: "%.3f", maxX)
             let minYStr = String(format: "%.3f", minY)
             let maxYStr = String(format: "%.3f", maxY)
             Logger.shared.debug("Assembler bounds (NDC): x=[\(minXStr), \(maxXStr)] y=[\(minYStr), \(maxYStr)]")
+
+            let minNdcYStr = String(format: "%.5f", minNdcY)
+            let maxNdcYStr = String(format: "%.5f", maxNdcY)
+            let screenH = max(1, Int(screenSize.height))
+            let uniqueCount = uniquePixelY.count
+            var maxGap = 0
+            if uniqueCount > 1 {
+                let sorted = uniquePixelY.sorted()
+                for i in 1..<sorted.count {
+                    let gap = sorted[i] - sorted[i - 1]
+                    if gap > maxGap { maxGap = gap }
+                }
+            }
+            Logger.shared.debug("Assembler ndcY: min=\(minNdcYStr) max=\(maxNdcYStr), screenH=\(screenH), pxY=[\(minPixelY)..\(maxPixelY)] uniquePxY=\(uniqueCount), maxGap=\(maxGap), outOfRangeY=\(outOfRangeY)")
         }
         if particles.count >= 10 {
             Logger.shared.debug("Первые 10 частиц (КОНТРОЛЬ ЦВЕТОВ):")
@@ -221,7 +257,8 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     private func calculateTransformation(
         screenSize: CGSize,
         imageSize: CGSize,
-        displayMode: ImageDisplayMode
+        displayMode: ImageDisplayMode,
+        snapToIntScale: Bool
     ) -> TransformationParams {
         let aspectImage  = imageSize.width / imageSize.height
         let aspectScreen = screenSize.width / screenSize.height
@@ -229,28 +266,44 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         switch displayMode {
         case .fit:
             // В режиме .fit масштабируем изображение, чтобы оно полностью помещалось на экране.
-            let scale: CGFloat = min(screenSize.width / imageSize.width,
+            var scale: CGFloat = min(screenSize.width / imageSize.width,
                                      screenSize.height / imageSize.height)
-            let (_, offset) = scaledSizeAndOffset(screenSize: screenSize,
-                                                  imageSize: imageSize,
-                                                  scale: scale)
-            return TransformationParams(scaleX: scale, scaleY: scale, offset: offset, mode: .fit)
+            if snapToIntScale, scale >= 1.0 {
+                scale = floor(scale)
+            }
+            let (_, rawOffset) = scaledSizeAndOffset(screenSize: screenSize,
+                                                     imageSize: imageSize,
+                                                     scale: scale)
+            let offset = snapToIntScale
+                ? CGPoint(x: rawOffset.x.rounded(), y: rawOffset.y.rounded())
+                : rawOffset
+            let centerOffset = snapToIntScale ? CGPoint(x: 0.5, y: 0.5) : .zero
+            return TransformationParams(scaleX: scale, scaleY: scale, offset: offset, pixelCenterOffset: centerOffset, mode: .fit)
         case .fill:
-            let scale: CGFloat = (aspectImage > aspectScreen)
+            var scale: CGFloat = (aspectImage > aspectScreen)
                 ? screenSize.height / imageSize.height
                 : screenSize.width  / imageSize.width
-            let (_, offset) = scaledSizeAndOffset(screenSize: screenSize, imageSize: imageSize, scale: scale)
-            return TransformationParams(scaleX: scale, scaleY: scale, offset: offset, mode: .fill)
+            if snapToIntScale, scale >= 1.0 {
+                scale = ceil(scale)
+            }
+            let (_, rawOffset) = scaledSizeAndOffset(screenSize: screenSize, imageSize: imageSize, scale: scale)
+            let offset = snapToIntScale
+                ? CGPoint(x: rawOffset.x.rounded(), y: rawOffset.y.rounded())
+                : rawOffset
+            let centerOffset = snapToIntScale ? CGPoint(x: 0.5, y: 0.5) : .zero
+            return TransformationParams(scaleX: scale, scaleY: scale, offset: offset, pixelCenterOffset: centerOffset, mode: .fill)
         case .stretch:
             let scaleX = screenSize.width  / imageSize.width
             let scaleY = screenSize.height / imageSize.height
-            return TransformationParams(scaleX: scaleX, scaleY: scaleY, offset: .zero, mode: .stretch)
+            let centerOffset = snapToIntScale ? CGPoint(x: 0.5, y: 0.5) : .zero
+            return TransformationParams(scaleX: scaleX, scaleY: scaleY, offset: .zero, pixelCenterOffset: centerOffset, mode: .stretch)
         case .center:
             let offset = CGPoint(
                 x: (screenSize.width  - imageSize.width)  / 2,
                 y: (screenSize.height - imageSize.height) / 2
             )
-            return TransformationParams(scaleX: 1.0, scaleY: 1.0, offset: offset, mode: .center)
+            let centerOffset = snapToIntScale ? CGPoint(x: 0.5, y: 0.5) : .zero
+            return TransformationParams(scaleX: 1.0, scaleY: 1.0, offset: offset, pixelCenterOffset: centerOffset, mode: .center)
         }
     }
     
@@ -286,8 +339,8 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         // Размер отображаемого изображения на экране с учетом режима
         let displayedWidth = imageSize.width * transformation.scaleX
         let displayedHeight = imageSize.height * transformation.scaleY
-        let screenX = transformation.offset.x + nx * displayedWidth
-        let screenY = transformation.offset.y + ny * displayedHeight
+        let screenX = transformation.offset.x + nx * displayedWidth + transformation.pixelCenterOffset.x
+        let screenY = transformation.offset.y + ny * displayedHeight + transformation.pixelCenterOffset.y
 
         // normalized → NDC [-1…1]
         // Инверсия Y: UIKit (Y вниз) → Metal (Y вверх)
@@ -304,7 +357,9 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         // Размер частицы привязан к реальному размеру пикселя изображения на экране
         let pixelWidth  = Float(transformation.scaleX)
         let pixelHeight = Float(transformation.scaleY)
-        let pixelSize   = min(pixelWidth, pixelHeight)
+        var pixelSize   = min(pixelWidth, pixelHeight)
+        // В pixel-perfect режиме используем целочисленный размер >= 1px
+        pixelSize = max(1.0, ceil(pixelSize))
 
         // Применяем возможное увеличение для качества (Ultra / High / Draft)
         let qualityMultiplier: Float
