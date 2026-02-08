@@ -160,5 +160,3 @@ PixelFlow/
 MIT License - см. файл LICENSE
 
 ---
-
-**Создано с ❤️ для демонстрации возможностей Metal и Swift**
