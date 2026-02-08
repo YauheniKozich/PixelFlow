@@ -97,7 +97,7 @@ ImageParticleGenerator/
 ### 1. Инициализация
 
 ```swift
-let coordinator = GenerationCoordinatorFactory.makeCoordinator()
+let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
 var config = ParticleGenerationConfig.high
 config.targetParticleCount = 1000
 ```
@@ -196,7 +196,7 @@ CacheManager сохраняет результаты:
 
 ```swift
 // Создание координатора
-let coordinator = GenerationCoordinatorFactory.makeCoordinator()
+let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
 
 // Конфигурация генерации
 var config = ParticleGenerationConfig.high
@@ -216,7 +216,7 @@ let particles = try await coordinator.generateParticles(
 ### С кастомной конфигурацией
 
 ```swift
-let coordinator = GenerationCoordinatorFactory.makeCoordinator()
+let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
 
 var config = ParticleGenerationConfig.high
 config.targetParticleCount = 1000

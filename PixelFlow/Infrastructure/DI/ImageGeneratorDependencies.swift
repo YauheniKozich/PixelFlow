@@ -96,19 +96,7 @@ final class ImageGeneratorDependencies {
         container.register(DefaultCacheManager(cacheSizeLimit: 100 * 1024 * 1024), for: CacheManagerProtocol.self) // 100 MB
         
         // Координатор генерации
-        let operationManager = container.resolve(OperationManagerProtocol.self)!
-        let memoryManager = container.resolve(MemoryManagerProtocol.self)!
-        let cacheManager = container.resolve(CacheManagerProtocol.self)!
-        let errorHandler = container.resolve(ErrorHandlerProtocol.self)!
-        
-        let coordinator = GenerationCoordinator(
-            pipeline: pipeline,
-            operationManager: operationManager,
-            memoryManager: memoryManager,
-            cacheManager: cacheManager,
-            logger: logger,
-            errorHandler: errorHandler
-        )
+        let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: container)
         container.register(coordinator, for: GenerationCoordinatorProtocol.self)
         
         // Адаптер генератора частиц

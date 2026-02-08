@@ -8,7 +8,7 @@
 // Создание приложения через Assembly (MVVM паттерн)
 let viewController = ParticleAssembly.assemble()
 // Или прямая работа с Engine
-let coordinator = GenerationCoordinatorFactory.makeCoordinator()
+let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
 let config = ParticleGenerationConfig.standard
 let particles = try await coordinator.generateParticles(
     from: image,

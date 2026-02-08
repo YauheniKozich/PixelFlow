@@ -214,7 +214,7 @@ register(Logger.shared, for: LoggerProtocol.self)
 register(ImageLoader(), for: ImageLoaderProtocol.self)
 
 // В engine-коде (EngineContainer)
-registerEngine(GenerationCoordinatorFactory.makeCoordinator(),
+registerEngine(GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared),
                for: GenerationCoordinatorProtocol.self)
 ```
 

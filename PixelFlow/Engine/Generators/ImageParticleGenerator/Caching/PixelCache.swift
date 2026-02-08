@@ -9,9 +9,9 @@ import CoreGraphics
 import Foundation
 import simd
 
-public final class PixelCache {
+final class PixelCache {
     
-    public enum ByteOrder {
+    enum ByteOrder {
         case rgba
         case bgra
         case argb
@@ -26,21 +26,20 @@ public final class PixelCache {
     }
     
     // Основные свойства
-    public let width: Int
-    public let height: Int
-    public let bytesPerRow: Int
-    public let byteOrder: ByteOrder
-    public let dataCount: Int
+    let width: Int
+    let height: Int
+    let bytesPerRow: Int
+    let byteOrder: ByteOrder
+    let dataCount: Int
     
-    // Приватные свойства
     private let backingData: Data
     private let accessLock = NSLock()
     
-    #if DEBUG
-    public static var debugEnabled = true
-    #else
-    public static var debugEnabled = false
-    #endif
+#if DEBUG
+    static var debugEnabled = true
+#else
+    static var debugEnabled = false
+#endif
     
     // MARK: - Инициализация
     
@@ -59,16 +58,16 @@ public final class PixelCache {
         
         debugLog("[PixelCache] создан: \(width)x\(height), stride=\(bytesPerRow), формат=\(byteOrder.description)")
     }
-
+    
     // MARK: - Safe byte access
-
-    public func withUnsafeBytes<T>(_ body: (UnsafeRawBufferPointer) throws -> T) rethrows -> T {
+    
+    func withUnsafeBytes<T>(_ body: (UnsafeRawBufferPointer) throws -> T) rethrows -> T {
         try backingData.withUnsafeBytes(body)
     }
     
     // MARK: - Создание из изображения
     
-    public static func create(from image: CGImage) throws -> PixelCache {
+    static func create(from image: CGImage) throws -> PixelCache {
         guard image.width > 0 && image.height > 0 else {
             throw GeneratorError.invalidImage
         }
@@ -101,10 +100,10 @@ public final class PixelCache {
         
         // Создаем кеш
         let cache = PixelCache(width: width,
-                              height: height,
-                              bytesPerRow: stride,
-                              byteOrder: byteOrder,
-                              backingData: pixelData)
+                               height: height,
+                               bytesPerRow: stride,
+                               byteOrder: byteOrder,
+                               backingData: pixelData)
         
         // Отладочная информация
         if debugEnabled {
@@ -123,7 +122,7 @@ public final class PixelCache {
     
     // MARK: - Получение цвета пикселя
     
-    public func color(atX x: Int, y: Int) -> SIMD4<Float> {
+    func color(atX x: Int, y: Int) -> SIMD4<Float> {
         guard x >= 0 && x < width && y >= 0 && y < height else {
             fatalError("Координаты пикселя вне границ: (\(x), \(y))")
         }
@@ -140,7 +139,7 @@ public final class PixelCache {
         // Блокируем доступ для потокобезопасности
         accessLock.lock()
         defer { accessLock.unlock() }
-
+        
         guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
             return SIMD4<Float>(0, 0, 0, 1)
         }
@@ -171,32 +170,32 @@ public final class PixelCache {
     
     // MARK: - Получение сырых значений
     
-    public func rawColor(atX x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
+    func rawColor(atX x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
         guard x >= 0 && x < width && y >= 0 && y < height else {
             return nil
         }
-
+        
         let rowOffset = y * bytesPerRow
         let pixelOffset = x * 4
         let byteIndex = rowOffset + pixelOffset
-
+        
         guard byteIndex + 3 < dataCount else {
             return nil
         }
-
+        
         accessLock.lock()
         defer { accessLock.unlock() }
-
+        
         guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
             return nil
         }
-
+        
         // Читаем байты с учетом порядка байтов
         let byte0 = bytes[byteIndex]
         let byte1 = bytes[byteIndex + 1]
         let byte2 = bytes[byteIndex + 2]
         let byte3 = bytes[byteIndex + 3]
-
+        
         // Преобразуем в зависимости от порядка байтов
         switch byteOrder {
         case .rgba:
@@ -210,7 +209,7 @@ public final class PixelCache {
     
     // MARK: - Работа с областями
     
-    public func colors(in rect: CGRect, step: Int = 1) -> [SIMD4<Float>] {
+    func colors(in rect: CGRect, step: Int = 1) -> [SIMD4<Float>] {
         // Ограничиваем прямоугольник границами изображения
         let minX = max(0, Int(rect.minX.rounded(.down)))
         let maxX = min(width - 1, Int(rect.maxX.rounded(.down)))
@@ -237,7 +236,7 @@ public final class PixelCache {
         return result
     }
     
-    public func averageColor(in rect: CGRect) -> SIMD4<Float> {
+    func averageColor(in rect: CGRect) -> SIMD4<Float> {
         let colors = self.colors(in: rect, step: 2)
         guard !colors.isEmpty else {
             return SIMD4<Float>(0, 0, 0, 1)
@@ -254,14 +253,14 @@ public final class PixelCache {
     // MARK: - Отладочные методы
     
     private func debugLog(_ message: String) {
-        #if DEBUG
+#if DEBUG
         if PixelCache.debugEnabled {
             Logger.shared.debug(message)
         }
-        #endif
+#endif
     }
     
-    public func printDebugInfo() {
+    func printDebugInfo() {
         guard PixelCache.debugEnabled else { return }
         
         Logger.shared.debug("=== PixelCache Debug Information ===")
@@ -286,7 +285,7 @@ public final class PixelCache {
     
     // MARK: - Валидация
     
-    public func validate() -> Bool {
+    func validate() -> Bool {
         // Проверяем базовые параметры
         guard width > 0 && height > 0 else {
             return false

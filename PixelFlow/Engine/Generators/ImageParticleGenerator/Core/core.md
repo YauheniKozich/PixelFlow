@@ -19,7 +19,7 @@
 - `cancelGeneration()` - отмена процесса
 - `clearCache()` - очистка кэша
 
-**Фабрика:** `GenerationCoordinatorFactory.makeCoordinator()`
+**Фабрика:** `GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)`
 
 ### GenerationPipeline.swift
 **Конвейер выполнения этапов генерации**

@@ -555,7 +555,7 @@ extension ParticleSystemController {
         if generationTask != nil {
             // Добавляем completion в очередь
             let previousCompletion = highQualityReadyCompletion
-            highQualityReadyCompletion = { [weak self] success in
+            highQualityReadyCompletion = { success in
                 previousCompletion?(success)
                 completion(success)
             }
@@ -564,11 +564,25 @@ extension ParticleSystemController {
 
         // Запускаем новую генерацию
         highQualityReadyCompletion = completion
+        
         generationTask = Task { [weak self] in
-            await self?.generateAndStartSimulation()
+            guard let self = self else {
+                await MainActor.run {
+                    self?.highQualityReadyCompletion?(false)
+                    self?.highQualityReadyCompletion = nil
+                    self?.generationTask = nil
+                }
+                return
+            }
+            
+            await self.generateAndStartSimulation()
+            
+            await MainActor.run {
+                self.generationTask = nil
+            }
         }
     }
-
+    
     func collectHighQualityImage() {
         // Запрещаем сборку до готовности HQ-частиц
         guard hasHighQualityTargets else {

@@ -217,11 +217,9 @@ enum PixelCacheHelper {
             }
 
             if Constants.debugEnabled && idx < 3 {
-                Logger.shared.debug("   Точка \(idx): [\(p.x),\(p.y)] → \(c)")
+                Logger.shared.debug("Точка \(idx): [\(p.x),\(p.y)] → \(c)")
             }
         }
-
-    //    Logger.shared.debug("PixelCache валиден для \(points.count) точек")
         return true
     }
 
@@ -231,7 +229,7 @@ enum PixelCacheHelper {
                                           y: Int,
                                           from cache: PixelCache) {
         Logger.shared.debug("\n СРАВНЕНИЕ МЕТОДОВ ДОСТУПА К ПИКСЕЛЯМ:")
-        Logger.shared.debug("   Точка: [\(x),\(y)]")
+        Logger.shared.debug("Точка: [\(x),\(y)]")
 
         // Прямой доступ к сырому буферу (для отладки)
         let i = y * cache.bytesPerRow + x * Constants.bytesPerPixel
@@ -243,15 +241,6 @@ enum PixelCacheHelper {
                 Logger.shared.debug("RGBA → R=\(raw.0) G=\(raw.1) B=\(raw.2)")
                 Logger.shared.debug("BGRA → R=\(raw.2) G=\(raw.1) B=\(raw.0)")
             }
-        }
-
-        // cache.color() — правильный» путь
-        _ = cache.color(atX: x, y: y)
-     //   Logger.shared.debug("cache.color(): R=\(String(format: "%.3f", c.x)), G=\(String(format: "%.3f", c.y)), B=\(String(format: "%.3f", c.z))")
-
-        // getPixelData() (обёртка над cache.color())
-        if getPixelData(atX: x, y: y, from: cache) != nil {
-       //     Logger.shared.debug("getPixelData(): R=\(String(format: "%.3f", pd.r)), G=\(String(format: "%.3f", pd.g)), B=\(String(format: "%.3f", pd.b))")
         }
     }
 }

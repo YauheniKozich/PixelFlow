@@ -482,8 +482,7 @@ fragment float4 fragmentParticlePerformance(
     float dist = length(uv);
 
     // Простая круглая форма
-    float alpha = 1.0 - smoothstep(1.0 - PARTICLE_EDGE_SOFTNESS, 1.0, dist);
-    // Не отбрасываем пиксели по альфа-порогу
+    // Форма частицы учитывается через dist в освещении ниже
 
     // МИНИМАЛЬНОЕ ОСВЕЩЕНИЕ
     float3 col;
@@ -507,5 +506,4 @@ fragment float4 fragmentParticlePerformance(
     float finalAlpha = 1.0;
     return float4(col, finalAlpha);
 }
-
 #endif /* Basic_h */

@@ -11,7 +11,7 @@ import simd
 
 final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
 
-    // MARK: - Свойства
+    // MARK: - Properties
 
     private let config: ParticleGenerationConfig
 
@@ -23,80 +23,43 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
 
     var supportsAdaptiveSampling: Bool { true }
     
-    // MARK: - Инициализация
+    // MARK: - Initialization
     
     init(config: ParticleGenerationConfig) {
         self.config = config
     }
     
-    // MARK: - Публичный интерфейс
+    // MARK: - Public Interface
     
-    func samplePixels(from analysis: ImageAnalysis,
-                      targetCount: Int,
-                      config: ParticleGenerationConfig,
-                      image: CGImage,
-                      screenSize: CGSize) throws -> [Sample] {
+    func samplePixels(
+        from analysis: ImageAnalysis,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        image: CGImage,
+        screenSize: CGSize
+    ) throws -> [Sample] {
         
-        // Создаем кэш пикселей из изображения с обработкой ошибок
-        let cache: PixelCache
-        do {
-            cache = try PixelCacheHelper.createPixelCache(from: image)
-        } catch {
-            Logger.shared.error("Failed to create pixel cache: \(error)")
-            throw SamplingError.cacheCreationFailed(underlying: error)
+        let cache = try createPixelCache(from: image)
+        try validateTargetCount(targetCount)
+        
+        // Если требуется больше сэмплов, чем пикселей - вернуть все пиксели
+        if shouldReturnAllPixels(targetCount: targetCount, cache: cache) {
+            return sampleAllPixels(from: cache)
         }
         
-        // Валидация targetCount
-        guard targetCount > 0 else {
-            throw SamplingError.invalidConfiguration
-        }
-
-        let totalPixels = cache.width * cache.height
-        if targetCount >= totalPixels {
-            // Вариант 1: берем все пиксели изображения без фильтрации и дедупликации.
-            // TODO: Реализовать coverage-first (сеткой гарантировать покрытие, затем добирать importance) при targetCount < totalPixels.
-            var allSamples: [Sample] = []
-            allSamples.reserveCapacity(totalPixels)
-            for y in 0..<cache.height {
-                for x in 0..<cache.width {
-                    allSamples.append(Sample(x: x, y: y, color: cache.color(atX: x, y: y)))
-                }
-            }
-            return allSamples
-        }
-        
-        // Выбираем стратегию семплирования
-        let samples = try selectSamplingStrategy(
+        let samples = try generateSamples(
             analysis: analysis,
             targetCount: targetCount,
             config: config,
             cache: cache
         )
         
-        // Проверяем результат
-        guard !samples.isEmpty else {
-            throw SamplingError.insufficientSamples
-        }
+        let validatedSamples = validateSamples(samples, cache: cache, targetCount: targetCount)
         
-        // ВАЖНО: Importance стратегия уже включает внутреннюю балансировку через
-        // selectBalancedSamples и применяет topBottomRatio, поэтому дополнительная
-        // валидация может нарушить тщательно рассчитанное распределение.
-        // Остальные стратегии требуют дополнительной проверки и коррекции.
-        let validatedSamples: [Sample]
-//        if config.samplingStrategy == .importance {
-//            validatedSamples = samples
-//        } else {
-            validatedSamples = ArtifactPreventionHelper.validateAndCorrectSamples(  // Внимание
-                samples: samples,
-                cache: cache,
-                targetCount: targetCount,
-                imageSize: CGSize(width: cache.width, height: cache.height)
-            )
-  //      }
-
         #if DEBUG
-     //   logSampleDistribution(validatedSamples, cacheHeight: cache.height)
+        // logSampleDistribution(validatedSamples, cacheHeight: cache.height)
         #endif
+        
         return filterSamplesForDisplay(
             samples: validatedSamples,
             cache: cache,
@@ -106,7 +69,91 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         )
     }
     
-    // MARK: - Приватные методы
+    // MARK: - Pixel Cache Creation
+    
+    private func createPixelCache(from image: CGImage) throws -> PixelCache {
+        do {
+            return try PixelCacheHelper.createPixelCache(from: image)
+        } catch {
+            Logger.shared.error("Failed to create pixel cache: \(error)")
+            throw SamplingError.cacheCreationFailed(underlying: error)
+        }
+    }
+    
+    // MARK: - Validation
+    
+    private func validateTargetCount(_ targetCount: Int) throws {
+        guard targetCount > 0 else {
+            throw SamplingError.invalidConfiguration
+        }
+    }
+    
+    private func shouldReturnAllPixels(targetCount: Int, cache: PixelCache) -> Bool {
+        let totalPixels = cache.width * cache.height
+        return targetCount >= totalPixels
+    }
+    
+    // MARK: - Sampling
+    
+    private func sampleAllPixels(from cache: PixelCache) -> [Sample] {
+        let totalPixels = cache.width * cache.height
+        var allSamples: [Sample] = []
+        allSamples.reserveCapacity(totalPixels)
+        
+        for y in 0..<cache.height {
+            for x in 0..<cache.width {
+                let color = cache.color(atX: x, y: y)
+                allSamples.append(Sample(x: x, y: y, color: color))
+            }
+        }
+        
+        return allSamples
+    }
+    
+    private func generateSamples(
+        analysis: ImageAnalysis,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        cache: PixelCache
+    ) throws -> [Sample] {
+        
+        let samples = try selectSamplingStrategy(
+            analysis: analysis,
+            targetCount: targetCount,
+            config: config,
+            cache: cache
+        )
+        
+        guard !samples.isEmpty else {
+            throw SamplingError.insufficientSamples
+        }
+        
+        return samples
+    }
+    
+    private func validateSamples(
+        _ samples: [Sample],
+        cache: PixelCache,
+        targetCount: Int
+    ) -> [Sample] {
+        // ВАЖНО: Importance стратегия уже включает внутреннюю балансировку через
+        // selectBalancedSamples и применяет topBottomRatio, поэтому дополнительная
+        // валидация может нарушить тщательно рассчитанное распределение.
+        // Остальные стратегии требуют дополнительной проверки и коррекции.
+        
+        // if config.samplingStrategy == .importance {
+        //     return samples
+        // }
+        
+        return ArtifactPreventionHelper.validateAndCorrectSamples(
+            samples: samples,
+            cache: cache,
+            targetCount: targetCount,
+            imageSize: CGSize(width: cache.width, height: cache.height)
+        )
+    }
+    
+    // MARK: - Sampling Strategy Selection
     
     /// Выбирает стратегию семплирования в зависимости от конфигурации
     private func selectSamplingStrategy(
@@ -118,60 +165,124 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         
         switch config.samplingStrategy {
         case .uniform:
-            return try UniformSamplingStrategy.sample(
-                width: cache.width,
-                height: cache.height,
-                targetCount: targetCount,
-                cache: cache
-            )
+            return try sampleUniform(cache: cache, targetCount: targetCount)
             
         case .importance:
-            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
-            return try ImportanceSamplingStrategy.sample(
-                width: cache.width,
-                height: cache.height,
-                targetCount: targetCount,
-                params: params,
+            return try sampleImportance(
                 cache: cache,
-                dominantColors: analysis.dominantColors // SIMD3<Float>
+                targetCount: targetCount,
+                config: config,
+                analysis: analysis
             )
-
+            
         case .adaptive:
-            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
-            return try AdaptiveSamplingStrategy.sample(
-                width: cache.width,
-                height: cache.height,
-                targetCount: targetCount,
-                params: params,
+            return try sampleAdaptive(
                 cache: cache,
-                dominantColors: analysis.dominantColors // SIMD3<Float>
+                targetCount: targetCount,
+                config: config,
+                analysis: analysis
             )
             
         case .hybrid:
-            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
-            return try HybridSamplingStrategy.sample(
-                width: cache.width,
-                height: cache.height,
-                targetCount: targetCount,
-                params: params,
+            return try sampleHybrid(
                 cache: cache,
-                dominantColors: analysis.dominantColors // SIMD3<Float>
+                targetCount: targetCount,
+                config: config,
+                analysis: analysis
             )
             
         case .advanced(let algorithm):
-            // ВАЖНО: AdvancedPixelSampler требует SIMD4<Float> для dominantColors
-            // Конвертируем только здесь, когда действительно необходимо
-            let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
-            let dominantColors4 = convertDominantColors(analysis.dominantColors)
-
-            return try AdvancedPixelSampler.samplePixels(
+            return try sampleAdvanced(
                 algorithm: algorithm,
                 cache: cache,
                 targetCount: targetCount,
-                params: params,
-                dominantColors: dominantColors4 // SIMD4<Float>
+                config: config,
+                analysis: analysis
             )
         }
+    }
+    
+    // MARK: - Individual Sampling Strategies
+    
+    private func sampleUniform(cache: PixelCache, targetCount: Int) throws -> [Sample] {
+        return try UniformSamplingStrategy.sample(
+            width: cache.width,
+            height: cache.height,
+            targetCount: targetCount,
+            cache: cache
+        )
+    }
+    
+    private func sampleImportance(
+        cache: PixelCache,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        analysis: ImageAnalysis
+    ) throws -> [Sample] {
+        let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
+        return try ImportanceSamplingStrategy.sample(
+            width: cache.width,
+            height: cache.height,
+            targetCount: targetCount,
+            params: params,
+            cache: cache,
+            dominantColors: analysis.dominantColors
+        )
+    }
+    
+    private func sampleAdaptive(
+        cache: PixelCache,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        analysis: ImageAnalysis
+    ) throws -> [Sample] {
+        let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
+        return try AdaptiveSamplingStrategy.sample(
+            width: cache.width,
+            height: cache.height,
+            targetCount: targetCount,
+            params: params,
+            cache: cache,
+            dominantColors: analysis.dominantColors
+        )
+    }
+    
+    private func sampleHybrid(
+        cache: PixelCache,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        analysis: ImageAnalysis
+    ) throws -> [Sample] {
+        let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
+        return try HybridSamplingStrategy.sample(
+            width: cache.width,
+            height: cache.height,
+            targetCount: targetCount,
+            params: params,
+            cache: cache,
+            dominantColors: analysis.dominantColors
+        )
+    }
+    
+    private func sampleAdvanced(
+        algorithm: SamplingAlgorithm,
+        cache: PixelCache,
+        targetCount: Int,
+        config: ParticleGenerationConfig,
+        analysis: ImageAnalysis
+    ) throws -> [Sample] {
+        // ВАЖНО: AdvancedPixelSampler требует SIMD4<Float> для dominantColors
+        // Конвертируем только здесь, когда действительно необходимо
+        let params = SamplingParameters.samplingParams(from: config, analysis: analysis)
+        let dominantColors4 = convertDominantColors(analysis.dominantColors)
+        
+        return try AdvancedPixelSampler.samplePixels(
+            algorithm: algorithm,
+            cache: cache,
+            targetCount: targetCount,
+            params: params,
+            dominantColors: dominantColors4
+        )
     }
     
     /// Конвертирует доминирующие цвета из SIMD3<Float> в SIMD4<Float>
@@ -201,43 +312,97 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         let aspectImage = imageSize.width / imageSize.height
         let aspectScreen = screenSize.width / screenSize.height
 
-        let scaleX: CGFloat
-        let scaleY: CGFloat
-        let offsetX: CGFloat
-        let offsetY: CGFloat
-
         switch mode {
         case .fit:
-            let modeScale = min(screenSize.width / imageSize.width,
-                                screenSize.height / imageSize.height)
-            scaleX = modeScale
-            scaleY = modeScale
-            offsetX = (screenSize.width - imageSize.width * modeScale) / 2
-            offsetY = (screenSize.height - imageSize.height * modeScale) / 2
-
+            return calculateFitTransform(
+                imageSize: imageSize,
+                screenSize: screenSize
+            )
+            
         case .fill:
-            let modeScale = (aspectImage > aspectScreen)
-                ? screenSize.height / imageSize.height
-                : screenSize.width / imageSize.width
-            scaleX = modeScale
-            scaleY = modeScale
-            offsetX = (screenSize.width - imageSize.width * modeScale) / 2
-            offsetY = (screenSize.height - imageSize.height * modeScale) / 2
-
+            return calculateFillTransform(
+                imageSize: imageSize,
+                screenSize: screenSize,
+                aspectImage: aspectImage,
+                aspectScreen: aspectScreen
+            )
+            
         case .stretch:
-            scaleX = screenSize.width / imageSize.width
-            scaleY = screenSize.height / imageSize.height
-            offsetX = 0
-            offsetY = 0
-
+            return calculateStretchTransform(
+                imageSize: imageSize,
+                screenSize: screenSize
+            )
+            
         case .center:
-            scaleX = 1.0
-            scaleY = 1.0
-            offsetX = (screenSize.width - imageSize.width) / 2
-            offsetY = (screenSize.height - imageSize.height) / 2
+            return calculateCenterTransform(
+                imageSize: imageSize,
+                screenSize: screenSize
+            )
         }
-
-        return DisplayTransform(scaleX: scaleX, scaleY: scaleY, offsetX: offsetX, offsetY: offsetY)
+    }
+    
+    private func calculateFitTransform(
+        imageSize: CGSize,
+        screenSize: CGSize
+    ) -> DisplayTransform {
+        let scale = min(
+            screenSize.width / imageSize.width,
+            screenSize.height / imageSize.height
+        )
+        let offsetX = (screenSize.width - imageSize.width * scale) / 2
+        let offsetY = (screenSize.height - imageSize.height * scale) / 2
+        
+        return DisplayTransform(
+            scaleX: scale,
+            scaleY: scale,
+            offsetX: offsetX,
+            offsetY: offsetY
+        )
+    }
+    
+    private func calculateFillTransform(
+        imageSize: CGSize,
+        screenSize: CGSize,
+        aspectImage: CGFloat,
+        aspectScreen: CGFloat
+    ) -> DisplayTransform {
+        let scale = (aspectImage > aspectScreen)
+            ? screenSize.height / imageSize.height
+            : screenSize.width / imageSize.width
+        
+        let offsetX = (screenSize.width - imageSize.width * scale) / 2
+        let offsetY = (screenSize.height - imageSize.height * scale) / 2
+        
+        return DisplayTransform(
+            scaleX: scale,
+            scaleY: scale,
+            offsetX: offsetX,
+            offsetY: offsetY
+        )
+    }
+    
+    private func calculateStretchTransform(
+        imageSize: CGSize,
+        screenSize: CGSize
+    ) -> DisplayTransform {
+        return DisplayTransform(
+            scaleX: screenSize.width / imageSize.width,
+            scaleY: screenSize.height / imageSize.height,
+            offsetX: 0,
+            offsetY: 0
+        )
+    }
+    
+    private func calculateCenterTransform(
+        imageSize: CGSize,
+        screenSize: CGSize
+    ) -> DisplayTransform {
+        return DisplayTransform(
+            scaleX: 1.0,
+            scaleY: 1.0,
+            offsetX: (screenSize.width - imageSize.width) / 2,
+            offsetY: (screenSize.height - imageSize.height) / 2
+        )
     }
 
     private func visibleImageRect(
@@ -245,23 +410,32 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         screenSize: CGSize,
         mode: ImageDisplayMode
     ) -> CGRect {
-        guard imageSize.width > 0,
-              imageSize.height > 0,
-              screenSize.width > 0,
-              screenSize.height > 0 else {
+        guard isValidSize(imageSize) && isValidSize(screenSize) else {
             return CGRect(origin: .zero, size: imageSize)
         }
 
-        let transform = calculateTransform(imageSize: imageSize, screenSize: screenSize, mode: mode)
-        let scaledSize = CGSize(width: imageSize.width * transform.scaleX,
-                                height: imageSize.height * transform.scaleY)
-        let imageOnScreen = CGRect(x: transform.offsetX,
-                                   y: transform.offsetY,
-                                   width: scaledSize.width,
-                                   height: scaledSize.height)
+        let transform = calculateTransform(
+            imageSize: imageSize,
+            screenSize: screenSize,
+            mode: mode
+        )
+        
+        let scaledSize = CGSize(
+            width: imageSize.width * transform.scaleX,
+            height: imageSize.height * transform.scaleY
+        )
+        
+        let imageOnScreen = CGRect(
+            x: transform.offsetX,
+            y: transform.offsetY,
+            width: scaledSize.width,
+            height: scaledSize.height
+        )
+        
         let screenRect = CGRect(origin: .zero, size: screenSize)
         let visibleScreen = imageOnScreen.intersection(screenRect)
-        if visibleScreen.isNull || visibleScreen.width <= 0 || visibleScreen.height <= 0 {
+        
+        guard isValidRect(visibleScreen) else {
             return CGRect(origin: .zero, size: imageSize)
         }
 
@@ -274,6 +448,14 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
 
         return visibleImage.intersection(CGRect(origin: .zero, size: imageSize))
     }
+    
+    private func isValidSize(_ size: CGSize) -> Bool {
+        return size.width > 0 && size.height > 0
+    }
+    
+    private func isValidRect(_ rect: CGRect) -> Bool {
+        return !rect.isNull && rect.width > 0 && rect.height > 0
+    }
 
     private func filterSamplesForDisplay(
         samples: [Sample],
@@ -282,7 +464,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         config: ParticleGenerationConfig,
         screenSize: CGSize
     ) -> [Sample] {
-        guard screenSize.width > 0, screenSize.height > 0 else {
+        guard isValidSize(screenSize) else {
             return samples
         }
 
@@ -294,137 +476,189 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         )
 
         // Быстрый путь: весь кадр видим
-        if visibleRect.minX <= 0,
-           visibleRect.minY <= 0,
-           visibleRect.maxX >= imageSize.width - 1,
-           visibleRect.maxY >= imageSize.height - 1 {
+        if isEntireImageVisible(visibleRect: visibleRect, imageSize: imageSize) {
             return samples
         }
 
-        let minX = max(0, Int(floor(visibleRect.minX)))
-        let minY = max(0, Int(floor(visibleRect.minY)))
-        let maxX = min(cache.width - 1, Int(ceil(visibleRect.maxX)) - 1)
-        let maxY = min(cache.height - 1, Int(ceil(visibleRect.maxY)) - 1)
-
-        guard minX <= maxX, minY <= maxY else {
+        let bounds = calculateVisibleBounds(
+            visibleRect: visibleRect,
+            cache: cache
+        )
+        
+        guard isValidBounds(bounds, cache: cache) else {
             return samples
         }
 
-        var filtered = samples.filter { sample in
-            sample.x >= minX && sample.x <= maxX && sample.y >= minY && sample.y <= maxY
-        }
+        var filtered = filterSamplesInBounds(samples: samples, bounds: bounds)
 
         if filtered.count < targetCount {
-            var used = PixelCacheHelper.usedPositions(from: filtered)
-            addUniformSamplesInRect(
-                to: &filtered,
-                used: &used,
+            fillMissingSamples(
+                samples: &filtered,
                 cache: cache,
-                minX: minX,
-                minY: minY,
-                maxX: maxX,
-                maxY: maxY,
+                bounds: bounds,
                 targetCount: targetCount
             )
         }
 
         return filtered
     }
+    
+    private func isEntireImageVisible(visibleRect: CGRect, imageSize: CGSize) -> Bool {
+        return visibleRect.minX <= 0 &&
+               visibleRect.minY <= 0 &&
+               visibleRect.maxX >= imageSize.width - 1 &&
+               visibleRect.maxY >= imageSize.height - 1
+    }
+    
+    private struct VisibleBounds {
+        let minX: Int
+        let minY: Int
+        let maxX: Int
+        let maxY: Int
+    }
+    
+    private func calculateVisibleBounds(
+        visibleRect: CGRect,
+        cache: PixelCache
+    ) -> VisibleBounds {
+        return VisibleBounds(
+            minX: max(0, Int(floor(visibleRect.minX))),
+            minY: max(0, Int(floor(visibleRect.minY))),
+            maxX: min(cache.width - 1, Int(ceil(visibleRect.maxX)) - 1),
+            maxY: min(cache.height - 1, Int(ceil(visibleRect.maxY)) - 1)
+        )
+    }
+    
+    private func isValidBounds(_ bounds: VisibleBounds, cache: PixelCache) -> Bool {
+        return bounds.minX <= bounds.maxX && bounds.minY <= bounds.maxY
+    }
+    
+    private func filterSamplesInBounds(
+        samples: [Sample],
+        bounds: VisibleBounds
+    ) -> [Sample] {
+        return samples.filter { sample in
+            sample.x >= bounds.minX &&
+            sample.x <= bounds.maxX &&
+            sample.y >= bounds.minY &&
+            sample.y <= bounds.maxY
+        }
+    }
+    
+    private func fillMissingSamples(
+        samples: inout [Sample],
+        cache: PixelCache,
+        bounds: VisibleBounds,
+        targetCount: Int
+    ) {
+        var used = PixelCacheHelper.usedPositions(from: samples)
+        addUniformSamplesInRect(
+            to: &samples,
+            used: &used,
+            cache: cache,
+            bounds: bounds,
+            targetCount: targetCount
+        )
+    }
 
     private func addUniformSamplesInRect(
         to samples: inout [Sample],
         used: inout Set<UInt64>,
         cache: PixelCache,
-        minX: Int,
-        minY: Int,
-        maxX: Int,
-        maxY: Int,
+        bounds: VisibleBounds,
         targetCount: Int
     ) {
         let needed = targetCount - samples.count
         guard needed > 0 else { return }
 
-        let rectWidth = maxX - minX + 1
-        let rectHeight = maxY - minY + 1
+        let rectWidth = bounds.maxX - bounds.minX + 1
+        let rectHeight = bounds.maxY - bounds.minY + 1
         guard rectWidth > 0, rectHeight > 0 else { return }
 
+        addGridSamples(
+            to: &samples,
+            used: &used,
+            cache: cache,
+            bounds: bounds,
+            rectWidth: rectWidth,
+            rectHeight: rectHeight,
+            needed: needed,
+            targetCount: targetCount
+        )
+
+        if samples.count < targetCount {
+            addRandomSamples(
+                to: &samples,
+                used: &used,
+                cache: cache,
+                bounds: bounds,
+                needed: needed,
+                targetCount: targetCount
+            )
+        }
+    }
+    
+    private func addGridSamples(
+        to samples: inout [Sample],
+        used: inout Set<UInt64>,
+        cache: PixelCache,
+        bounds: VisibleBounds,
+        rectWidth: Int,
+        rectHeight: Int,
+        needed: Int,
+        targetCount: Int
+    ) {
         let aspectRatio = Double(rectWidth) / Double(rectHeight)
         let gridHeight = max(1, Int(sqrt(Double(needed) / aspectRatio)))
         let gridWidth = max(1, Int(ceil(Double(needed) / Double(gridHeight))))
 
-        @inline(__always)
-        func gridCoord(_ index: Int, _ gridSize: Int, _ maxCoord: Int) -> Int {
-            guard gridSize > 1 else { return maxCoord / 2 }
-            let t = Double(index) / Double(gridSize - 1)
-            return Int((t * Double(maxCoord)).rounded())
-        }
-
         outerLoop: for gy in 0..<gridHeight {
             for gx in 0..<gridWidth {
                 if samples.count >= targetCount { break outerLoop }
-                let x = minX + gridCoord(gx, gridWidth, rectWidth - 1)
-                let y = minY + gridCoord(gy, gridHeight, rectHeight - 1)
+                
+                let x = bounds.minX + gridCoordinate(gx, gridWidth, rectWidth - 1)
+                let y = bounds.minY + gridCoordinate(gy, gridHeight, rectHeight - 1)
                 let key = PixelCacheHelper.positionKey(x, y)
+                
                 if used.contains(key) { continue }
+                
                 let color = cache.color(atX: x, y: y)
                 samples.append(Sample(x: x, y: y, color: color))
                 used.insert(key)
             }
         }
-
-        if samples.count >= targetCount { return }
-
-        // Рандом-дозаполнение, если не хватило
+    }
+    
+    @inline(__always)
+    private func gridCoordinate(_ index: Int, _ gridSize: Int, _ maxCoord: Int) -> Int {
+        guard gridSize > 1 else { return maxCoord / 2 }
+        let t = Double(index) / Double(gridSize - 1)
+        return Int((t * Double(maxCoord)).rounded())
+    }
+    
+    private func addRandomSamples(
+        to samples: inout [Sample],
+        used: inout Set<UInt64>,
+        cache: PixelCache,
+        bounds: VisibleBounds,
+        needed: Int,
+        targetCount: Int
+    ) {
         var attempts = 0
         let maxAttempts = needed * 10
+        
         while samples.count < targetCount && attempts < maxAttempts {
-            let x = Int.random(in: minX...maxX)
-            let y = Int.random(in: minY...maxY)
+            let x = Int.random(in: bounds.minX...bounds.maxX)
+            let y = Int.random(in: bounds.minY...bounds.maxY)
             let key = PixelCacheHelper.positionKey(x, y)
+            
             if !used.contains(key) {
                 let color = cache.color(atX: x, y: y)
                 samples.append(Sample(x: x, y: y, color: color))
                 used.insert(key)
             }
+            
             attempts += 1
         }
     }
-    
-    #if DEBUG
-    /// Логирует распределение сэмплов по вертикали (один проход)
-    /// - Parameters:
-    ///   - samples: Массив сэмплов для анализа
-    ///   - cacheHeight: Высота изображения
-//    private func logSampleDistribution(_ samples: [Sample], cacheHeight: Int) {
-//        guard !samples.isEmpty else {
-//            Logger.shared.debug("No samples to analyze")
-//            return
-//        }
-//        
-//        var topCount = 0
-//        var bottomCount = 0
-//        var minY = Int.max
-//        var maxY = Int.min
-//        
-//        // Один проход для всех метрик
-//        for sample in samples {
-//            if sample.y < cacheHeight / 2 {
-//                topCount += 1
-//            } else {
-//                bottomCount += 1
-//            }
-//            minY = min(minY, sample.y)
-//            maxY = max(maxY, sample.y)
-//        }
-//        
-//        Logger.shared.debug("Samples from sampler - Total: \(samples.count), Top: \(topCount), Bottom: \(bottomCount)")
-//        Logger.shared.debug("Sample Y range: \(minY) - \(maxY) (cache height: \(cacheHeight))")
-//        
-//        // Предупреждение о дисбалансе
-//        let ratio = Float(topCount) / Float(samples.count)
-//        if ratio < 0.3 || ratio > 0.7 {
-//            Logger.shared.warning("Sample distribution may be unbalanced: \(Int(ratio * 100))% in top half")
-//        }
-//    }
-    #endif
 }

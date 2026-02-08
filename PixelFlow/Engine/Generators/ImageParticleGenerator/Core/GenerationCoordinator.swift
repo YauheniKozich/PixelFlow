@@ -10,7 +10,31 @@ import CoreGraphics
 import CryptoKit
 import Foundation
 
-/// Главный координатор генерации частиц из изображений
+// MARK: - Factory
+
+enum GenerationCoordinatorFactory {
+    static func makeCoordinator(in container: DIContainer) -> GenerationCoordinator {
+        // Получить зависимости из DI контейнера
+        guard let pipeline = container.resolve(GenerationPipelineProtocol.self),
+              let operationManager = container.resolve(OperationManagerProtocol.self),
+              let memoryManager = container.resolve(MemoryManagerProtocol.self),
+              let cacheManager = container.resolve(CacheManagerProtocol.self),
+              let logger = container.resolve(LoggerProtocol.self),
+              let errorHandler = container.resolve(ErrorHandlerProtocol.self) else {
+            fatalError("Failed to resolve GenerationCoordinator dependencies")
+        }
+        
+        return GenerationCoordinator(
+            pipeline: pipeline,
+            operationManager: operationManager,
+            memoryManager: memoryManager,
+            cacheManager: cacheManager,
+            logger: logger,
+            errorHandler: errorHandler
+        )
+    }
+}
+
 final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoordinatorProtocol {
 
     // MARK: - Dependencies
@@ -231,30 +255,5 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
     func clearCache() {
         logger.info("Clearing generation cache")
         cacheManager.clear()
-    }
-}
-
-// MARK: - Factory
-
-enum GenerationCoordinatorFactory {
-    static func makeCoordinator() -> GenerationCoordinator {
-        // Получить зависимости из DI контейнера
-        guard let pipeline = resolveEngine(GenerationPipelineProtocol.self),
-              let operationManager = resolveEngine(OperationManagerProtocol.self),
-              let memoryManager = resolveEngine(MemoryManagerProtocol.self),
-              let cacheManager = resolveEngine(CacheManagerProtocol.self),
-              let logger = resolveEngine(LoggerProtocol.self),
-              let errorHandler = resolveEngine(ErrorHandlerProtocol.self) else {
-            fatalError("Failed to resolve GenerationCoordinator dependencies")
-        }
-
-        return GenerationCoordinator(
-            pipeline: pipeline,
-            operationManager: operationManager,
-            memoryManager: memoryManager,
-            cacheManager: cacheManager,
-            logger: logger,
-            errorHandler: errorHandler
-        )
     }
 }
