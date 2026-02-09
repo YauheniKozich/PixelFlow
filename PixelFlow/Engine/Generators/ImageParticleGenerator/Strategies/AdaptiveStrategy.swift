@@ -8,7 +8,6 @@
 
 import Foundation
 
-/// Адаптивная стратегия генерации - анализирует условия и выбирает оптимальный подход
 final class AdaptiveStrategy: GenerationStrategyProtocol {
 
     // MARK: - Properties
@@ -76,7 +75,6 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
 
     func validate(config: ParticleGenerationConfig) throws {
         // Adaptive стратегия всегда валидна - адаптируется к условиям
-        logger.debug("AdaptiveStrategy validation passed - will adapt to conditions")
     }
 
     // MARK: - Adaptive Logic

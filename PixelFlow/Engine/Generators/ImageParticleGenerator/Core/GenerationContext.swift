@@ -41,9 +41,6 @@ final class GenerationContext: GenerationContextProtocol {
         set {
             stateQueue.sync(flags: .barrier) {
                 self._image = newValue
-                if let image = newValue {
-                    self.logger.debug("Image set in context: \(image.width)x\(image.height)")
-                }
             }
         }
     }
@@ -94,7 +91,6 @@ final class GenerationContext: GenerationContextProtocol {
             self._progress = 0.0
             self._currentStage = "Idle"
         }
-        logger.debug("GenerationContext reset")
     }
 
     func updateProgress(_ progress: Float, stage: String) {
@@ -102,7 +98,6 @@ final class GenerationContext: GenerationContextProtocol {
             self._progress = progress
             self._currentStage = stage
         }
-        logger.debug("Progress updated: \(progress) - \(stage)")
     }
 
     // MARK: - Additional Methods

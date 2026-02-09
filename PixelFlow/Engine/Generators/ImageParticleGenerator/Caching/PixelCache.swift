@@ -35,12 +35,6 @@ final class PixelCache {
     private let backingData: Data
     private let accessLock = NSLock()
     
-#if DEBUG
-    static var debugEnabled = true
-#else
-    static var debugEnabled = false
-#endif
-    
     // MARK: - Инициализация
     
     private init(width: Int,
@@ -56,7 +50,6 @@ final class PixelCache {
         self.backingData = backingData
         self.dataCount = backingData.count
         
-        debugLog("[PixelCache] создан: \(width)x\(height), stride=\(bytesPerRow), формат=\(byteOrder.description)")
     }
     
     // MARK: - Safe byte access
@@ -104,11 +97,6 @@ final class PixelCache {
                                bytesPerRow: stride,
                                byteOrder: byteOrder,
                                backingData: pixelData)
-        
-        // Отладочная информация
-        if debugEnabled {
-            cache.printDebugInfo()
-        }
         
         return cache
     }
@@ -248,39 +236,6 @@ final class PixelCache {
         }
         
         return sum / Float(colors.count)
-    }
-    
-    // MARK: - Отладочные методы
-    
-    private func debugLog(_ message: String) {
-#if DEBUG
-        if PixelCache.debugEnabled {
-            Logger.shared.debug(message)
-        }
-#endif
-    }
-    
-    func printDebugInfo() {
-        guard PixelCache.debugEnabled else { return }
-        
-        Logger.shared.debug("=== PixelCache Debug Information ===")
-        Logger.shared.debug("Размеры: \(width) x \(height)")
-        Logger.shared.debug("Байтов в строке: \(bytesPerRow)")
-        Logger.shared.debug("Формат: \(byteOrder.description)")
-        Logger.shared.debug("Общий размер данных: \(dataCount) байт")
-        
-        // Проверяем угловые пиксели
-        let corners = [
-            (x: 0, y: 0, label: "Верхний левый"),
-            (x: width - 1, y: 0, label: "Верхний правый"),
-            (x: 0, y: height - 1, label: "Нижний левый"),
-            (x: width - 1, y: height - 1, label: "Нижний правый")
-        ]
-        
-        for corner in corners {
-            let color = self.color(atX: corner.x, y: corner.y)
-            Logger.shared.debug("\(corner.label) (\(corner.x), \(corner.y)): R=\(color.x) G=\(color.y) B=\(color.z) A=\(color.w)")
-        }
     }
     
     // MARK: - Валидация

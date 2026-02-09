@@ -8,7 +8,6 @@
 
 import Foundation
 
-/// Параллельная стратегия генерации - позволяет выполнять независимые этапы параллельно
 final class ParallelStrategy: GenerationStrategyProtocol {
 
     // MARK: - Properties
@@ -68,7 +67,6 @@ final class ParallelStrategy: GenerationStrategyProtocol {
         guard effectiveConcurrency(for: config) > 1 else {
             throw ParallelStrategyError.insufficientConcurrency
         }
-        logger.debug("ParallelStrategy validation passed")
     }
 
     /// Определяет оптимальное количество потоков для этапа

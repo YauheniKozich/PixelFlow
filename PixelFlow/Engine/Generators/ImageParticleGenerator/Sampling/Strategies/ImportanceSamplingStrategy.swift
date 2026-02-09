@@ -48,7 +48,6 @@ enum ImportanceSamplingStrategy {
         }
         
         let scanStride = calculateScanStride(width: width, height: height)
-        Logger.shared.debug("Сканирование изображения \(width)x\(height) с шагом \(scanStride.x)x\(scanStride.y)")
         
         var candidates = gatherImportantPixels(
             cache: cache,
@@ -61,7 +60,6 @@ enum ImportanceSamplingStrategy {
         )
         
         logImportanceMetrics(candidates)
-        Logger.shared.debug("Найдено \(candidates.count) важных пикселей")
         
         candidates = ensureSufficientCandidates(
             candidates: candidates,
@@ -178,7 +176,6 @@ enum ImportanceSamplingStrategy {
         var candidates: [Candidate] = []
         candidates.reserveCapacity(estimatedCapacity)
         
-        Logger.shared.debug("GatherImportantPixels: strideX=\(scanStride.x), strideY=\(scanStride.y), estimatedCapacity=\(estimatedCapacity)")
         
         candidates = scanImageForCandidates(
             cache: cache,
@@ -310,7 +307,6 @@ enum ImportanceSamplingStrategy {
             candidates: candidates,
             imageHeight: height
         )
-        Logger.shared.debug("After anti-clustering: candidates.count=\(result.count)")
         return result
     }
     
@@ -464,14 +460,12 @@ enum ImportanceSamplingStrategy {
         
         let (topHalf, bottomHalf) = partitionCandidates(candidates, height: height)
         
-        Logger.shared.debug("TopHalf=\(topHalf.count), BottomHalf=\(bottomHalf.count), desiredCount=\(desiredCount), topBottomRatio=\(topBottomRatio)")
         
         guard !topHalf.isEmpty || !bottomHalf.isEmpty else {
             return []
         }
         
         #if DEBUG
-        Logger.shared.debug("Кандидаты - Верх: \(topHalf.count), Низ: \(bottomHalf.count)")
         #endif
         
         let targetCounts = calculateTargetCounts(
@@ -485,7 +479,6 @@ enum ImportanceSamplingStrategy {
             targetCounts: targetCounts
         )
         
-        Logger.shared.debug("Selected top \(sortedTop.count), bottom \(sortedBottom.count)")
         
         var result = combineCandidatesIntoSamples(
             sortedTop: sortedTop,
@@ -585,11 +578,7 @@ enum ImportanceSamplingStrategy {
         for candidate in sortedBottom {
             result.append(Sample(x: candidate.x, y: candidate.y, color: candidate.color))
         }
-        
-        #if DEBUG
-        Logger.shared.debug("Взято: \(sortedTop.count) сверху, \(sortedBottom.count) снизу")
-        #endif
-        
+    
         return result
     }
     
@@ -622,12 +611,6 @@ enum ImportanceSamplingStrategy {
             from: sortedRemaining,
             count: needed
         )
-        
-        Logger.shared.debug("Added extra pixels from remaining candidates: count=\(min(needed, sortedRemaining.count))")
-        
-        #if DEBUG
-        Logger.shared.debug("Добавлено ещё \(min(needed, sortedRemaining.count)) из оставшихся")
-        #endif
     }
     
     private struct PixelCoord: Hashable {
@@ -683,20 +666,10 @@ enum ImportanceSamplingStrategy {
         let importanceValues = candidates.map { $0.importance }
         
         guard !importanceValues.isEmpty else { return }
-        
-        let minImp = importanceValues.min() ?? 0
-        let maxImp = importanceValues.max() ?? 0
-        let meanImp = importanceValues.reduce(0, +) / Float(importanceValues.count)
-        
-        Logger.shared.debug("Importance metrics: min=\(String(format: "%.3f", minImp)), max=\(String(format: "%.3f", maxImp)), mean=\(String(format: "%.3f", meanImp)), count=\(importanceValues.count)")
     }
     
     #if DEBUG
-    private static func logFinalDistribution(_ samples: [Sample], height: Int) {
-        let finalTop = samples.filter { $0.y < height / 2 }
-        let finalBottom = samples.filter { $0.y >= height / 2 }
-        Logger.shared.debug("Финальное распределение - Верх: \(finalTop.count), Низ: \(finalBottom.count)")
-    }
+    private static func logFinalDistribution(_ samples: [Sample], height: Int) { }
     #endif
 }
 

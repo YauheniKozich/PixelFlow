@@ -83,7 +83,6 @@ final class OperationManager: OperationManagerProtocol {
         }
 
         operationQueue.addOperation(operation)
-        logger.debug("Added operation: \(operation.name ?? "unnamed")")
     }
 
     func cancelAllOperations() {
@@ -143,7 +142,6 @@ final class OperationManager: OperationManagerProtocol {
             self.activeOperations.remove(operation)
         }
 
-        logger.debug("Removed operation: \(operation.name ?? "unnamed")")
     }
 }
 

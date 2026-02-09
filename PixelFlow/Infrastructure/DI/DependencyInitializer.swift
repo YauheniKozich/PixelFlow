@@ -25,7 +25,6 @@ final class DependencyInitializer {
 
         guard !isCoreInitialized else {
             // Logger может быть еще не зарегистрирован, используем прямой доступ
-            Logger.shared.debug("Core dependencies already initialized")
             return
         }
 
@@ -63,7 +62,6 @@ final class DependencyInitializer {
         }
 
         guard needsViewInit else {
-            Logger.shared.debug("View-dependent dependencies already initialized")
             return
         }
 

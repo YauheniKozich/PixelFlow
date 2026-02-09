@@ -8,7 +8,6 @@
 
 import Foundation
 
-/// Последовательная стратегия генерации - все этапы выполняются по порядку
 final class SequentialStrategy: GenerationStrategyProtocol {
 
     // MARK: - Properties
@@ -57,7 +56,6 @@ final class SequentialStrategy: GenerationStrategyProtocol {
 
     func validate(config: ParticleGenerationConfig) throws {
         // Sequential стратегия всегда валидна - не имеет специфических требований
-        logger.debug("SequentialStrategy validation passed")
     }
 
     // MARK: - Public Methods

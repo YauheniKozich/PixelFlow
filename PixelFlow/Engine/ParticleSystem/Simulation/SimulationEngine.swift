@@ -9,7 +9,6 @@
 import Foundation
 import QuartzCore
 
-/// Движок симуляции частиц
 final class SimulationEngine {
     
     // MARK: - Properties

@@ -27,5 +27,3 @@ struct ImageAnalysis: Codable {
 }
 
 // MARK: - Image Analysis
-
-

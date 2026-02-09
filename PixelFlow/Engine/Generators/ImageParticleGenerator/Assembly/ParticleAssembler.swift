@@ -130,14 +130,6 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
             snapToIntScale: isFullRes
         )
         
-        logTransformationInfo(
-            displayMode: displayMode,
-            screenSize: screenSize,
-            imageSize: imageSize,
-            originalImageSize: originalImageSize,
-            transformation: transformation
-        )
-        
         let assemblyContext = createAssemblyContext(
             config: config,
             transformation: transformation,
@@ -150,10 +142,6 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
             from: samples,
             context: assemblyContext
         )
-        
-        #if DEBUG
-        logAssemblyResults(particles, screenSize: screenSize)
-        #endif
         
         return particles
     }
@@ -586,117 +574,6 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         return x
     }
     
-    // MARK: - Logging
-    
-    private func logTransformationInfo(
-        displayMode: ImageDisplayMode,
-        screenSize: CGSize,
-        imageSize: CGSize,
-        originalImageSize: CGSize,
-        transformation: TransformationParams
-    ) {
-        Logger.shared.debug(
-            "Assembler: mode=\(displayMode), " +
-            "screen=\(screenSize.width)x\(screenSize.height), " +
-            "image=\(imageSize.width)x\(imageSize.height), " +
-            "original=\(originalImageSize.width)x\(originalImageSize.height), " +
-            "scale=(\(transformation.scaleX),\(transformation.scaleY)), " +
-            "offset=(\(transformation.offset.x),\(transformation.offset.y)), " +
-            "centerOffset=(\(transformation.pixelCenterOffset.x),\(transformation.pixelCenterOffset.y))"
-        )
-    }
-    
-    #if DEBUG
-    private func logAssemblyResults(_ particles: [Particle], screenSize: CGSize) {
-        Logger.shared.debug("Сборка частиц завершена: \(particles.count) частиц")
-        
-        guard !particles.isEmpty else { return }
-        
-        logParticleBounds(particles, screenSize: screenSize)
-        logParticleDetails(particles)
-    }
-    
-    private func logParticleBounds(_ particles: [Particle], screenSize: CGSize) {
-        var bounds = ParticleBounds()
-        var uniquePixelY = Set<Int>()
-        var outOfRangeY = 0
-        
-        for particle in particles {
-            bounds.update(with: particle)
-            
-            let pixelY = Int(round((1.0 - particle.position.y) * 0.5 * Float(screenSize.height)))
-            bounds.updatePixelY(pixelY)
-            
-            if pixelY < 0 || pixelY >= Int(screenSize.height) {
-                outOfRangeY += 1
-            } else {
-                uniquePixelY.insert(pixelY)
-            }
-        }
-        
-        bounds.log(screenHeight: Int(screenSize.height), uniquePixelYCount: uniquePixelY.count, outOfRangeY: outOfRangeY)
-        
-        if uniquePixelY.count > 1 {
-            let maxGap = calculateMaxGap(in: uniquePixelY)
-            Logger.shared.debug("maxGap=\(maxGap)")
-        }
-    }
-    
-    private func calculateMaxGap(in pixelSet: Set<Int>) -> Int {
-        let sorted = pixelSet.sorted()
-        var maxGap = 0
-        
-        for i in 1..<sorted.count {
-            let gap = sorted[i] - sorted[i - 1]
-            if gap > maxGap {
-                maxGap = gap
-            }
-        }
-        
-        return maxGap
-    }
-    
-    private func logParticleDetails(_ particles: [Particle]) {
-        guard particles.count >= 10 else { return }
-        
-        Logger.shared.debug("Первые 10 частиц (КОНТРОЛЬ ЦВЕТОВ):")
-        
-        for i in 0..<10 {
-            let p = particles[i]
-            logSingleParticle(p, index: i)
-        }
-    }
-    
-    private func logSingleParticle(_ particle: Particle, index: Int) {
-        let color = formatColor(particle.color)
-        let originalColor = formatColor(particle.originalColor)
-        let position = formatPosition(particle.position)
-        let velocity = formatVelocity(particle.velocity)
-        
-        Logger.shared.debug("  [\(index)] color=\(color) originalColor=\(originalColor)")
-        Logger.shared.debug("       pos=\(position) vel=\(velocity)")
-    }
-    
-    private func formatColor(_ color: SIMD4<Float>) -> String {
-        let r = String(format: "%.3f", color.x)
-        let g = String(format: "%.3f", color.y)
-        let b = String(format: "%.3f", color.z)
-        let a = String(format: "%.3f", color.w)
-        return "(\(r),\(g),\(b),\(a))"
-    }
-    
-    private func formatPosition(_ position: SIMD3<Float>) -> String {
-        let x = String(format: "%.2f", position.x)
-        let y = String(format: "%.2f", position.y)
-        return "(\(x), \(y))"
-    }
-    
-    private func formatVelocity(_ velocity: SIMD3<Float>) -> String {
-        let x = String(format: "%.3f", velocity.x)
-        let y = String(format: "%.3f", velocity.y)
-        return "(\(x), \(y))"
-    }
-    
     // MARK: - Particle Bounds Helper
     
     private struct ParticleBounds {
@@ -723,14 +600,10 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
             maxPixelY = max(maxPixelY, pixelY)
         }
         
-        func log(screenHeight: Int, uniquePixelYCount: Int, outOfRangeY: Int) {
-            Logger.shared.debug("Assembler bounds (NDC): x=[\(format(minX)), \(format(maxX))] y=[\(format(minY)), \(format(maxY))]")
-            Logger.shared.debug("Assembler ndcY: min=\(format(minNdcY, precision: 5)) max=\(format(maxNdcY, precision: 5)), screenH=\(max(1, screenHeight)), pxY=[\(minPixelY)..\(maxPixelY)] uniquePxY=\(uniquePixelYCount), outOfRangeY=\(outOfRangeY)")
-        }
+        func log(screenHeight: Int, uniquePixelYCount: Int, outOfRangeY: Int) { }
         
         private func format(_ value: Float, precision: Int = 3) -> String {
             return String(format: "%.\(precision)f", value)
         }
     }
-    #endif
 }

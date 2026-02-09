@@ -142,8 +142,6 @@ public final class ErrorHandler: ErrorHandlerProtocol {
         logger.info("Retrying operation \(maxRetryCount - count + 1)/\(maxRetryCount)")
 
         // Здесь можно реализовать логику retry с exponential backoff
-        // Для демонстрации просто логируем
-        logger.debug("Would retry operation with exponential backoff")
     }
 
     private func handleFallback(error: Error, context: String?) {
@@ -151,7 +149,6 @@ public final class ErrorHandler: ErrorHandlerProtocol {
 
         // Здесь можно реализовать fallback логику
         // Например, переключение на CPU вместо GPU, или упрощенную версию алгоритма
-        logger.debug("Would activate fallback implementation")
     }
 
     private func showUserAlert(message: String, style: UIAlertController.Style, error: Error) {

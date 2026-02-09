@@ -59,7 +59,6 @@ struct GraphicsUtils {
         
         let bytesPerRow = bytesPerRow(forWidth: width)
         
-        Logger.shared.debug("Создание контекста: ширина=\(width), высота=\(height), рассчитанные bytesPerRow=\(bytesPerRow)")
         
         let context = CGContext(data: nil,
                                 width: width,
@@ -70,7 +69,6 @@ struct GraphicsUtils {
                                 bitmapInfo: bitmapInfo)
         
         if let context = context {
-            Logger.shared.debug("Контекст создан. Фактические bytesPerRow: \(context.bytesPerRow)")
             
             // Очищаем контекст белым цветом чтобы избежать артефактов
             if let whiteColor = CGColor(colorSpace: colorSpace, components: [1.0, 1.0, 1.0, 1.0]) {

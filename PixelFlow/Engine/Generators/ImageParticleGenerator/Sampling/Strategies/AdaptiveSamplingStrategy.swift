@@ -206,27 +206,6 @@ enum AdaptiveSamplingStrategy {
         let needed = targetCount - samples.count
         guard needed > 0 else { return }
         
-        let distribution = calculateTargetDistribution(
-            samples: samples,
-            height: height,
-            targetCount: targetCount,
-            topBottomRatio: topBottomRatio
-        )
-        
-        let gridParams = calculateGridParameters(needed: needed, width: width, height: height)
-        
-        let addedCounts = addGridSamples(
-            to: &samples,
-            used: &used,
-            width: width,
-            height: height,
-            distribution: distribution,
-            gridParams: gridParams,
-            colorCache: colorCache
-        )
-        
-        Logger.shared.debug("Добавлено uniform сэмплов: Top \(addedCounts.top), Bottom \(addedCounts.bottom)")
-        
         if samples.count < targetCount {
             try addRemainingRandomSamples(
                 to: &samples,
@@ -433,8 +412,6 @@ enum AdaptiveSamplingStrategy {
             ratio: ratio,
             colorCache: colorCache
         )
-        
-        Logger.shared.debug("Random добавлено сэмплов: Top \(addedCounts.top), Bottom \(addedCounts.bottom)")
         
         if addedCounts.total < needed {
             Logger.shared.warning("Не удалось добавить все случайные сэмплы (\(addedCounts.total)/\(needed))")

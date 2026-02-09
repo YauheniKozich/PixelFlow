@@ -38,7 +38,6 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
                 config: config,
                 screenSize: screenSize,
                 progress: { progress, stage in
-                    self.logger.debug("Generation progress: \(String(format: "%.1f%%", progress * 100)) - \(stage)")
                 }
             )
 
@@ -53,7 +52,6 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
 
 
     func clearCache() {
-        logger.debug("Clearing cache")
         coordinator.cancelGeneration()
         // Очистка кэша генератора
         coordinator.clearCache()

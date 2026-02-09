@@ -63,7 +63,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
         // Выполнение этапов согласно стратегии (с учётом зависимостей и параллелизма)
         let stages = effectiveStages(for: config)
         let executionPlan = try buildExecutionPlan(stages: stages, strategy: strategy)
-        logger.debug("Execution plan: \(executionPlan.map { $0.map(\.description) })")
         let totalStages = stages.count
         var completedStages = 0
 
@@ -137,7 +136,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
             guard let image = context.image else {
                 throw GenerationPipelineError.missingImage
             }
-            logger.debug("Image available: \(image.width)x\(image.height)")
 
             let samples = try sampler.samplePixels(
                 from: analysis,
@@ -181,7 +179,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
 
     func cleanupIntermediateData() {
         context.reset()
-        logger.debug("Intermediate data cleaned up")
     }
 
     // MARK: - Private Methods
@@ -223,16 +220,14 @@ final class GenerationPipeline: GenerationPipelineProtocol {
 
         case (.sampling, .samples(let samples)):
             context.samples = samples
-            if let first = samples.first {
-                logger.debug("Sampling produced \(samples.count) samples. First: (\(first.x), \(first.y)) color=\(String(format: "%.2f", first.color.x)),\(String(format: "%.2f", first.color.y)),\(String(format: "%.2f", first.color.z)) a=\(String(format: "%.2f", first.color.w))")
+            if samples.first != nil {
             } else {
                 logger.warning("Sampling produced 0 samples")
             }
 
         case (.assembly, .particles(let particles)):
             context.particles = particles
-            if let first = particles.first {
-                logger.debug("Assembly produced \(particles.count) particles. First: pos=(\(String(format: "%.3f", first.position.x)), \(String(format: "%.3f", first.position.y))) size=\(String(format: "%.2f", first.size)) a=\(String(format: "%.2f", first.color.w))")
+            if particles.first != nil {
             } else {
                 logger.warning("Assembly produced 0 particles")
             }
@@ -332,7 +327,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
             let output = try await executeStage(stage, input: input, config: config, screenSize: screenSize)
             try processOutput(output, for: stage)
             reportProgress(stage)
-            logger.debug("Completed stage: \(stage)")
         } catch {
             if Task.isCancelled || error is CancellationError {
                 throw GeneratorError.cancelled
@@ -369,7 +363,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
 
             for try await stage in group {
                 reportProgress(stage)
-                logger.debug("Completed stage: \(stage)")
             }
         }
     }

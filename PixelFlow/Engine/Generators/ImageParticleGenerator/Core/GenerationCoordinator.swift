@@ -109,7 +109,6 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
         }
 
         logger.info("Starting particle generation for image \(image.width)x\(image.height)")
-        logger.debug("Image passed to coordinator: \(image.width)x\(image.height)")
 
         // Создание задачи генерации
         let generationTask = Task { [weak self] () -> [Particle] in
@@ -133,7 +132,6 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
                         self.logger.info("Loaded \(cachedParticles.count) particles from cache")
                         return cachedParticles
                     } else {
-                        self.logger.debug("Cached particle count (\(cachedParticles.count)) doesn't match target (\(config.targetParticleCount)), regenerating")
                     }
                 }
 
@@ -156,7 +154,6 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
                 // Кэширование результата
                 if config.enableCaching {
                     try self.cacheManager.cache(particles, for: cacheKey)
-                    self.logger.debug("Cached \(particles.count) particles")
                 }
 
                 // Отслеживание памяти

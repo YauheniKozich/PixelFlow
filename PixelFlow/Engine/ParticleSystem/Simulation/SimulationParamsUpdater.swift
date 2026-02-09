@@ -30,7 +30,7 @@ final class SimulationParamsUpdater {
         
         var p = SimulationParams()
         
-        // === Основные параметры симуляции ===
+        // Основные параметры симуляции
         p.time = clock.time
         p.deltaTime = clock.deltaTime
         p.particleCount = UInt32(particleCount)
@@ -41,7 +41,7 @@ final class SimulationParamsUpdater {
         p.screenSize = .init(safeWidth, safeHeight)
         p.state = state.shaderValue
         
-        // === Параметры рендеринга частиц ===
+        // Параметры рендеринга частиц
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
@@ -51,7 +51,7 @@ final class SimulationParamsUpdater {
         p.maxParticleSize = maxSize
 
         
-        // === Параметры анимации и эффектов ===
+        // Параметры анимации и эффектов
         p.collectionSpeed = collectionSpeed  // Множитель скорости сбора
         p.brightnessBoost = brightnessBoost  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
         // 0 = плавный (с субпиксельным джиттером)
@@ -61,14 +61,14 @@ final class SimulationParamsUpdater {
         p.pixelSizeMode = 2
         p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
         
-        // === ПОДДЕРЖКА ХАОТИЧНОГО ДВИЖЕНИЯ В IDLE ===
+        // ПОДДЕРЖКА ХАОТИЧНОГО ДВИЖЕНИЯ В IDLE
         if case .idle = state, enableIdleChaotic {
             p.idleChaoticMotion = 1 // Enabled
         } else {
             p.idleChaoticMotion = 0 // Disabled
         }
 
-        // === РАЗМЕР THREADGROUP ДЛЯ COMPUTE SHADER ===
+        // РАЗМЕР THREADGROUP ДЛЯ COMPUTE SHADER 
         p.threadsPerThreadgroup = threadsPerThreadgroup
         
         buffer.contents()

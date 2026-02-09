@@ -29,7 +29,6 @@ enum UniformSamplingStrategy {
                     result.append(Sample(x: x, y: y, color: cache.color(atX: x, y: y)))
                 }
             }
-            Logger.shared.debug("Униформное сэмплирование: взяты все \(totalPixels) пикселей.")
             return result
         }
         
@@ -67,7 +66,6 @@ enum UniformSamplingStrategy {
             }
         }
         
-        Logger.shared.debug("Униформное сэмплирование: сгенерировано \(result.count) сэмплов (сетка: \(gridWidth)×\(gridHeight))")
         return result
     }
 }
