@@ -73,6 +73,7 @@ final class ParticleStorage {
         label: "com.particleflow.buffer",
         qos: .userInitiated
     )
+    private let bufferQueueKey = DispatchSpecificKey<Void>()
     
     private var sourcePixels: [Pixel] = []
     private var imageTargets: [Particle] = []
@@ -90,6 +91,7 @@ final class ParticleStorage {
         self.logger = logger
         self.viewWidth = Float(viewSize.width)
         self.viewHeight = Float(viewSize.height)
+        self.bufferQueue.setSpecific(key: bufferQueueKey, value: ())
         logger.info("ParticleStorage initialized")
     }
     
@@ -101,16 +103,23 @@ final class ParticleStorage {
             return
         }
         
+        // Проверяем границы
+        guard particles.count <= particleCount else {
+            logger.warning("Too many particles to copy: \(particles.count) > \(particleCount)")
+            return
+        }
+        
         let bufferPointer = particleBuffer.contents().bindMemory(
             to: Particle.self,
             capacity: particleCount
         )
         
+        // Простое копирование поэлементно
         for (index, particle) in particles.enumerated() {
             bufferPointer[index] = particle
         }
     }
-    
+
     // MARK: - Particle Creation
     
     private func createNDCParticle(
@@ -261,7 +270,14 @@ final class ParticleStorage {
     // MARK: - Utility
     
     private func clamp<T: Comparable>(_ value: T, min minValue: T, max maxValue: T) -> T {
-        return Swift.min(Swift.max(value, minValue), maxValue)
+        return min(max(value, minValue), maxValue)
+    }
+
+    private func withBufferQueueSync<T>(_ work: () -> T) -> T {
+        if DispatchQueue.getSpecific(key: bufferQueueKey) != nil {
+            return work()
+        }
+        return bufferQueue.sync { work() }
     }
 }
 
@@ -273,16 +289,36 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     func initialize(with particleCount: Int) {
         logger.info("Initializing storage for \(particleCount) particles")
-        
-        self.particleCount = particleCount
-        
-        let bufferSize = MemoryLayout<Particle>.stride * particleCount
-        particleBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared)
-        
-        if let buffer = particleBuffer {
-            memset(buffer.contents(), 0, bufferSize)
-        } else {
-            logger.error("Failed to create particle buffer")
+
+        withBufferQueueSync {
+            if particleCount <= 0 {
+                self.particleCount = 0
+                particleBuffer = nil
+                logger.warning("Particle count <= 0; storage cleared")
+                return
+            }
+
+            let stride = MemoryLayout<Particle>.stride
+            let (bufferSize, overflow) = stride.multipliedReportingOverflow(by: particleCount)
+            guard !overflow, bufferSize > 0 else {
+                logger.error("Particle buffer size overflow for count: \(particleCount)")
+                return
+            }
+
+            if let buffer = particleBuffer, buffer.length >= bufferSize {
+                self.particleCount = particleCount
+                memset(buffer.contents(), 0, bufferSize)
+                return
+            }
+
+            guard let newBuffer = device.makeBuffer(length: bufferSize, options: .storageModeShared) else {
+                logger.error("Failed to create particle buffer (\(bufferSize) bytes)")
+                return
+            }
+
+            particleBuffer = newBuffer
+            self.particleCount = particleCount
+            memset(newBuffer.contents(), 0, bufferSize)
         }
     }
     
@@ -329,7 +365,6 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     private func generatePreviewParticles(context: PreviewContext) -> [Particle] {
         var particles: [Particle] = []
-        particles.reserveCapacity(particleCount)
         
         if !context.sourcePixels.isEmpty {
             particles = generateParticlesFromSource(context: context)
@@ -337,8 +372,32 @@ extension ParticleStorage: ParticleStorageProtocol {
             particles = generateRandomPreviewParticles()
         }
         
-        precondition(particles.count == particleCount)
+        // Убедиться что количество правильное
+        if particles.count < particleCount {
+            // Добавляем недостающие частицы
+            let missingCount = particleCount - particles.count
+            for _ in 0..<missingCount {
+                particles.append(createRandomPreviewParticle())
+            }
+        } else if particles.count > particleCount {
+            // Обрезаем лишние
+            particles = Array(particles.prefix(particleCount))
+        }
+        
         return particles
+    }
+    
+    private func createRandomPreviewParticle() -> Particle {
+        let x = Float.random(in: -Constants.previewRandomRangeNDC...Constants.previewRandomRangeNDC)
+        let y = Float.random(in: -Constants.previewRandomRangeNDC...Constants.previewRandomRangeNDC)
+        let color = randomSourceColor()
+        
+        return createNDCParticle(
+            x: x,
+            y: y,
+            color: color,
+            size: Constants.highQualityParticleSize
+        )
     }
     
     private func generateParticlesFromSource(context: PreviewContext) -> [Particle] {
@@ -648,37 +707,33 @@ extension ParticleStorage: ParticleStorageProtocol {
         particle.position.x += particle.velocity.x * deltaTime
         particle.position.y += particle.velocity.y * deltaTime
         
-        // Ограничение границами
-        particle.position.x = clamp(
+        // Ограничение границами (можно объединить)
+        let clampedX = clamp(
             particle.position.x,
             min: NDCBounds.minWithPadding,
             max: NDCBounds.maxWithPadding
         )
-        particle.position.y = clamp(
+        let clampedY = clamp(
             particle.position.y,
             min: NDCBounds.minWithPadding,
             max: NDCBounds.maxWithPadding
         )
         
+        particle.position = SIMD3<Float>(clampedX, clampedY, particle.position.z)
+        
         // Обработка столкновений с границами
-        handleBoundaryCollisions(particle: &particle)
+        if particle.position.x != clampedX {
+            particle.velocity.x *= Constants.velocityReboundFactor
+        }
+        
+        if particle.position.y != clampedY {
+            particle.velocity.y *= Constants.velocityReboundFactor
+        }
         
         // Защита от залипания
         preventStuckParticles(particle: &particle)
         
         bufferPointer[index] = particle
-    }
-    
-    private func handleBoundaryCollisions(particle: inout Particle) {
-        if particle.position.x <= NDCBounds.minWithPadding ||
-           particle.position.x >= NDCBounds.maxWithPadding {
-            particle.velocity.x *= Constants.velocityReboundFactor
-        }
-        
-        if particle.position.y <= NDCBounds.minWithPadding ||
-           particle.position.y >= NDCBounds.maxWithPadding {
-            particle.velocity.y *= Constants.velocityReboundFactor
-        }
     }
     
     private func preventStuckParticles(particle: inout Particle) {
