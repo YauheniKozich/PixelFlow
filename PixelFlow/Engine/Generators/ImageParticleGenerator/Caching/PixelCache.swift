@@ -5,6 +5,10 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable large_tuple identifier_name
+// Pixel caching code uses tuples for color storage
+// Graphics code uses short variable names for mathematical readability
+
 import CoreGraphics
 import Foundation
 import simd
@@ -266,7 +270,9 @@ final class PixelCache {
                 return false
             }
         }
-        
+
         return true
     }
 }
+
+// swiftlint:enable large_tuple identifier_name

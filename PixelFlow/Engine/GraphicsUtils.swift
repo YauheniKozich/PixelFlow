@@ -58,8 +58,7 @@ struct GraphicsUtils {
         let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         
         let bytesPerRow = bytesPerRow(forWidth: width)
-        
-        
+
         let context = CGContext(data: nil,
                                 width: width,
                                 height: height,

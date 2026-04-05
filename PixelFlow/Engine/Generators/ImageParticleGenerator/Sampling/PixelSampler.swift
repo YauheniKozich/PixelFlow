@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name function_parameter_count
+// Graphics code uses short variable names for mathematical readability
+
 import CoreGraphics
 import Foundation
 import simd
@@ -662,3 +665,5 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         }
     }
 }
+
+// swiftlint:enable identifier_name function_parameter_count

@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name vertical_parameter_alignment
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import CoreGraphics
 import simd
@@ -69,3 +72,5 @@ enum UniformSamplingStrategy {
         return result
     }
 }
+
+// swiftlint:enable identifier_name vertical_parameter_alignment

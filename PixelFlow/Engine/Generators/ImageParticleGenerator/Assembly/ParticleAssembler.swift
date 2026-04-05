@@ -8,6 +8,9 @@
 //  - Настройка цветов и размеров
 //
 
+// swiftlint:disable identifier_name
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import simd
 import CoreGraphics
@@ -607,3 +610,5 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         }
     }
 }
+
+// swiftlint:enable identifier_name

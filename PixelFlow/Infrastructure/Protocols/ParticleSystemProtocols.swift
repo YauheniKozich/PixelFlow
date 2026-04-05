@@ -9,42 +9,42 @@
 import MetalKit
 import CoreGraphics
 
-/// Протокол для контроллера системы частиц
-//@MainActor
-//protocol ParticleSystemControlling: AnyObject {
-//    /// Начинает симуляцию частиц
+// Протокол для контроллера системы частиц
+// @MainActor
+// protocol ParticleSystemControlling: AnyObject {
+//    Начинает симуляцию частиц
 //    func startSimulation()
 //
-//    /// Останавливает симуляцию частиц
+//    Останавливает симуляцию частиц
 //    func stopSimulation()
 //
-//    /// Переключает состояние симуляции
+//    Переключает состояние симуляции
 //    func toggleSimulation()
 //
-//    /// Запускает специальный эффект "молниеносная буря"
+//    Запускает специальный эффект "молниеносная буря"
 //    func startLightningStorm()
 //
-//    /// Обновляет конфигурацию системы частиц
-// //   func updateConfiguration(_ config: ParticleGenerationConfig) async
+//    Обновляет конфигурацию системы частиц
+//    func updateConfiguration(_ config: ParticleGenerationConfig) async
 //
-//    /// Обновляет симуляцию с учётом времени
+//    Обновляет симуляцию с учётом времени
 //    func updateSimulation(deltaTime: Float)
 //
-//    /// Выполняет замену частиц на высококачественные асинхронно
-//  //  func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
+//    Выполняет замену частиц на высококачественные асинхронно
+//    func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
 //
-//    /// Инициализирует систему с быстрой превью
-// //   func initializeFastPreview()
+//    Инициализирует систему с быстрой превью
+//    func initializeFastPreview()
 //
-//    /// Очищает все ресурсы
+//    Очищает все ресурсы
 //    func cleanup()
 //
-//    /// Возвращает текущее состояние симуляции
+//    Возвращает текущее состояние симуляции
 //    var hasActiveSimulation: Bool { get }
 //
-//    /// Возвращает буфер частиц для рендерера
+//    Возвращает буфер частиц для рендерера
 //    var particleBuffer: MTLBuffer? { get }
-//}
+// }
 
 /// Протокол для рендерера Metal
 @MainActor
@@ -67,8 +67,8 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
     /// Проверяет завершение сбора частиц
     func checkCollectionCompletion()
 
-    /// Кодирует render команды
-  //  func encodeRender(into commandBuffer: MTLCommandBuffer, pass: MTLRenderPassDescriptor)
+    // Кодирует render команды
+    // func encodeRender(into commandBuffer: MTLCommandBuffer, pass: MTLRenderPassDescriptor)
 
     /// Очищает Metal ресурсы
     func cleanup()
@@ -141,8 +141,8 @@ protocol SimulationEngineProtocol: AnyObject {
     /// Часы симуляции
     var clock: SimulationClockProtocol { get }
 
-    /// Обновляет часы симуляции
-  //  func updateClock()
+    // Обновляет часы симуляции
+    // func updateClock()
 
     /// Колбек для сброса счетчика
     var resetCounterCallback: (() -> Void)? { get set }
@@ -164,15 +164,15 @@ protocol StateManagerProtocol: AnyObject {
 }
 
 /// Протокол для физического движка
-protocol PhysicsEngineProtocol: AnyObject{
-    /// Обновляет физику частиц
-  //  func update(deltaTime: Float)
+protocol PhysicsEngineProtocol: AnyObject {
+    // Обновляет физику частиц
+    // func update(deltaTime: Float)
 
     /// Применяет силы к частицам
     func applyForces()
 
-    /// Сбрасывает физику
- //   func reset()
+    // Сбрасывает физику
+    // func reset()
 }
 
 /// Протокол для хранилища частиц
@@ -234,8 +234,8 @@ protocol ParticleGeneratorProtocol: AnyObject {
     /// Генерирует частицы из изображения
     func generateParticles(from image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) async throws -> [Particle]
 
-    /// Обновляет размер экрана
- //   func updateScreenSize(_ size: CGSize)
+    // Обновляет размер экрана
+    // func updateScreenSize(_ size: CGSize)
 
     /// Очищает кэш
     func clearCache()

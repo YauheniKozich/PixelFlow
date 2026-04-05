@@ -103,22 +103,23 @@ struct Particle: Codable {
 
 // КРИТИЧНО: Должен точно соответствовать SimulationParams в Common.h (Shaders/Core/Common.h) по порядку полей, типам и выравниванию
 // Общий размер (stride) составляет 272 байта из-за выравнивания компилятора - НЕ МЕНЯЙТЕ ПОРЯДОК ПОЛЕЙ ИЛИ ТИПЫ
+// swiftlint:disable identifier_name large_tuple
 struct SimulationParams {
     // ---- 0 .. 15 (скаляры)
     var state: UInt32 = 0                    // 4
     var pixelSizeMode: UInt32 = 0            // 4
     var colorsLocked: UInt32 = 0             // 4 - предотвращает изменение цветов шейдером
-    var _pad1: UInt32 = 0                     // 4
+    var _pad1: UInt32 = 0                    // 4
 
     // ---- 16 .. 31 (float)
     var deltaTime: Float = 0                  // 4
     var collectionSpeed: Float = 0            // 4
     var brightnessBoost: Float = 1            // 4
-    var _pad2: Float = 0                       // 4
+    var _pad2: Float = 0                      // 4 - Выравнивание для GPU
 
     // ---- 32 .. 47 (SIMD2)
     var screenSize: SIMD2<Float> = .zero      // 8
-    var _pad3: SIMD2<Float> = .zero            // 8
+    var _pad3: SIMD2<Float> = .zero           // 8
 
     // ---- 48 .. 67 (критические параметры шейдера)
     var minParticleSize: Float = 1            // 4 - USED by shader
@@ -128,26 +129,31 @@ struct SimulationParams {
     var idleChaoticMotion: UInt32 = 0         // 4 - флаг для хаотичного движения в idle
     var threadsPerThreadgroup: UInt32 = 256   // 4 - размер threadgroup для compute shader
     var padding: UInt32 = 0                   // 4 - padding для выравнивания
-    // ---- 68 .. 255 (padding для достижения 256 байт)
+
+    // ---- 68 .. 255 (reserved array для достижения 272 bytes stride)
     // Разбивка структуры:
     // - uint fields (0-15): 4*4 = 16 bytes
-    // - float fields (16-31): 4*4 = 16 bytes
+    // - float fields (16-31): 4*4 = 16 bytes  
     // - float2 fields (32-47): 2*8 = 16 bytes
     // - particle params (48-67): 7 fields = 28 bytes (4 float + 3 uint)
     // - reserved array (68-243): 11*16 = 176 bytes
-    // - final padding (244-255): 4 bytes to align to 256
-    // Total: 16+16+16+28+176+4 = 256 bytes exactly
+    // - compiler stride padding: +16 bytes to reach 272
+    // Total actual fields: 16+16+16+28+176 = 252 bytes
+    // Stride: 272 bytes (compiler rounds up for alignment)
     var _reserved: (
-           SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
-           SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
-           SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
-           SIMD4<Float>, SIMD4<Float>
-       ) = (
-           .zero, .zero, .zero,
-           .zero, .zero, .zero,
-           .zero, .zero, .zero,
-           .zero, .zero
-       )
-    var finalPadding: UInt32 = 0  // 4 bytes for 256-byte alignment
-    // Общий размер: 256 байт (проверяется assert в ParticleSystem+MetalSetup.swift)
+        SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
+        SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
+        SIMD4<Float>, SIMD4<Float>, SIMD4<Float>,
+        SIMD4<Float>, SIMD4<Float>
+    ) = (
+        .zero, .zero, .zero,
+        .zero, .zero, .zero,
+        .zero, .zero, .zero,
+        .zero, .zero
+    )
+    var _stridePadding: UInt32 = 0  // Padding to reach 272-byte stride for Metal alignment
+    var _pad4: UInt32 = 0
+    var _pad5: UInt32 = 0
+    var _pad6: UInt32 = 0
 }
+// swiftlint:enable identifier_name large_tuple

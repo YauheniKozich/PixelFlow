@@ -83,7 +83,7 @@ struct PerformanceParams {
 // MARK: - Основная конфигурация генерации частиц
 
 /// Полный набор параметров, который передаётся в `ParticleSystem`.
-struct ParticleGenerationConfig: Codable, ParticleGeneratorConfigurationWithDisplayMode {
+struct ParticleGenerationConfig: Codable, GeneratorConfigWithDisplayMode {
 
     // Параметры сэмплинга
     var samplingStrategy: SamplingStrategy

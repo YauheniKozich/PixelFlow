@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name large_tuple function_parameter_count
+// Graphics code uses short variable names (x, y, r, g, b, etc.) for mathematical readability
+
 import Foundation
 import CoreGraphics
 import simd
@@ -370,9 +373,7 @@ enum ArtifactPreventionHelper {
     }
     
     // MARK: - Расширенные алгоритмы
-    
-    
-    
+
     /// Выбирает сэмплы с учетом их важности
     static func selectWeightedSamples(
         from candidates: [(x: Int, y: Int, color: SIMD4<Float>, importance: Float)],
@@ -614,7 +615,7 @@ extension ArtifactPreventionHelper {
                     a: p.color.w)
         }
 
-        var outCSamples = [SampleC](repeating: SampleC(x:0, y:0, r:0, g:0, b:0, a:0), count: targetCount)
+        var outCSamples = [SampleC](repeating: SampleC(x: 0, y: 0, r: 0, g: 0, b: 0, a: 0), count: targetCount)
 
         stratifiedSampleC(&cSamples,
                           Int32(cSamples.count),
@@ -637,3 +638,5 @@ extension ArtifactPreventionHelper {
         }
     }
 }
+
+// swiftlint:enable identifier_name large_tuple function_parameter_count

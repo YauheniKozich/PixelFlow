@@ -37,8 +37,7 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
                 from: image,
                 config: config,
                 screenSize: screenSize,
-                progress: { progress, stage in
-                }
+                progress: { _, _ in }
             )
 
             logger.info("Successfully generated \(particles.count) particles")
@@ -48,8 +47,6 @@ final class ImageParticleGeneratorToParticleSystemAdapter: ParticleGeneratorProt
             throw error
         }
     }
-
-
 
     func clearCache() {
         coordinator.cancelGeneration()

@@ -10,6 +10,7 @@ import MetalKit
 
 final class SimulationParamsUpdater {
     
+// swiftlint:disable:next function_parameter_count
     func fill(
         buffer: MTLBuffer,
         state: SimulationState,
@@ -27,52 +28,52 @@ final class SimulationParamsUpdater {
             assertionFailure("Buffer is too small for SimulationParams")
             return
         }
-        
-        var p = SimulationParams()
-        
+
+        var params = SimulationParams()
+
         // Основные параметры симуляции
-        p.time = clock.time
-        p.deltaTime = clock.deltaTime
-        p.particleCount = UInt32(particleCount)
-        
+        params.time = clock.time
+        params.deltaTime = clock.deltaTime
+        params.particleCount = UInt32(particleCount)
+
         // Валидация размеров экрана
         let safeWidth = max(Float(screenSize.width), 1.0)
         let safeHeight = max(Float(screenSize.height), 1.0)
-        p.screenSize = .init(safeWidth, safeHeight)
-        p.state = state.shaderValue
-        
+        params.screenSize = .init(safeWidth, safeHeight)
+        params.state = state.shaderValue
+
         // Параметры рендеринга частиц
         // Использовать значения по умолчанию из инициализации структуры (minParticleSize: 1.0, maxParticleSize: 6.0)
         // Они используются шейдерами для ограничения размеров частиц
+        // swiftlint:disable:next todo
         // TODO: Рассмотреть возможность настройки через ParticleSystem API
         let minSize = max(Float(config.minParticleSize) * displayScale, 0.5)
         let maxSize = max(Float(config.maxParticleSize) * displayScale, minSize)
-        p.minParticleSize = minSize
-        p.maxParticleSize = maxSize
+        params.minParticleSize = minSize
+        params.maxParticleSize = maxSize
 
-        
         // Параметры анимации и эффектов
-        p.collectionSpeed = collectionSpeed  // Множитель скорости сбора
-        p.brightnessBoost = brightnessBoost  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
+        params.collectionSpeed = collectionSpeed  // Множитель скорости сбора
+        params.brightnessBoost = brightnessBoost  // Увеличение яркости по умолчанию (используется фрагментным шейдером)
         // 0 = плавный (с субпиксельным джиттером)
         // 1 = пиксельно-точный (снап к пиксельной сетке, если будет включен)
         // 2 = full-res квадраты без джиттера (для 1:1 пиксельной сетки изображения)
         // Фиксируем pixelSizeMode=2 для всех режимов, чтобы исключить субпиксельные отличия
-        p.pixelSizeMode = 2
-        p.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
-        
+        params.pixelSizeMode = 2
+        params.colorsLocked = 0       // 0 = шейдеры могут изменять цвета, 1 = заблокировано на оригинальные
+
         // ПОДДЕРЖКА ХАОТИЧНОГО ДВИЖЕНИЯ В IDLE
         if case .idle = state, enableIdleChaotic {
-            p.idleChaoticMotion = 1 // Enabled
+            params.idleChaoticMotion = 1 // Enabled
         } else {
-            p.idleChaoticMotion = 0 // Disabled
+            params.idleChaoticMotion = 0 // Disabled
         }
 
-        // РАЗМЕР THREADGROUP ДЛЯ COMPUTE SHADER 
-        p.threadsPerThreadgroup = threadsPerThreadgroup
-        
+        // РАЗМЕР THREADGROUP ДЛЯ COMPUTE SHADER
+        params.threadsPerThreadgroup = threadsPerThreadgroup
+
         buffer.contents()
             .assumingMemoryBound(to: SimulationParams.self)
-            .pointee = p
+            .pointee = params
     }
 }

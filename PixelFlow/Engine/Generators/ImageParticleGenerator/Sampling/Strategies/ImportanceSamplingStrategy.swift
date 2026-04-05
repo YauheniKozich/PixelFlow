@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name large_tuple function_parameter_count
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import CoreGraphics
 import simd
@@ -175,8 +178,7 @@ enum ImportanceSamplingStrategy {
         
         var candidates: [Candidate] = []
         candidates.reserveCapacity(estimatedCapacity)
-        
-        
+
         candidates = scanImageForCandidates(
             cache: cache,
             width: width,
@@ -459,8 +461,7 @@ enum ImportanceSamplingStrategy {
     ) -> [Sample] {
         
         let (topHalf, bottomHalf) = partitionCandidates(candidates, height: height)
-        
-        
+
         guard !topHalf.isEmpty || !bottomHalf.isEmpty else {
             return []
         }
@@ -478,8 +479,7 @@ enum ImportanceSamplingStrategy {
             bottomHalf: bottomHalf,
             targetCounts: targetCounts
         )
-        
-        
+
         var result = combineCandidatesIntoSamples(
             sortedTop: sortedTop,
             sortedBottom: sortedBottom,
@@ -721,3 +721,5 @@ private extension Array {
         }
     }
 }
+
+// swiftlint:enable identifier_name large_tuple function_parameter_count

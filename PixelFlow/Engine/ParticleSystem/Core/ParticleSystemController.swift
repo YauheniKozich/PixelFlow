@@ -6,6 +6,9 @@
 //  Главный координатор системы частиц - реализация паттерна Facade
 //
 
+// swiftlint:disable identifier_name
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import MetalKit
 import CoreGraphics
@@ -188,9 +191,9 @@ extension ParticleSystemController {
     ) -> [Pixel] {
         var pixels: [Pixel] = []
         pixels.reserveCapacity(particleCount)
-        
-        let w = cache.width
-        let h = cache.height
+
+        let imageWidth = cache.width
+        let imageHeight = cache.height
         let viewSize = mtkView?.drawableSize ?? .zero
         let fallbackScale = mtkView?.contentScaleFactor ?? 1.0
         let fallbackSize = CGSize(
@@ -200,13 +203,13 @@ extension ParticleSystemController {
         let targetSize = (viewSize.width > 0 && viewSize.height > 0) ? viewSize : fallbackSize
 
         // Вычисляем трансформацию для предпросмотра
-        let imagePixelSize = CGSize(width: w, height: h)
+        let imagePixelSize = CGSize(width: imageWidth, height: imageHeight)
         let baseImageSize = imagePixelSize
 
         let baseScaleX = baseImageSize.width / imagePixelSize.width
         let baseScaleY = baseImageSize.height / imagePixelSize.height
 
-        let isFullRes = particleCount >= w * h
+        let isFullRes = particleCount >= imageWidth * imageHeight
         let transform = calculateTransform(
             imageSize: baseImageSize,
             screenSize: targetSize,
@@ -215,20 +218,20 @@ extension ParticleSystemController {
         )
 
         // Вариант 1: если берем все пиксели, не используем сетку — проходим все координаты.
-        if particleCount >= w * h {
-            for y in 0..<h {
-                for x in 0..<w {
-                    if let c = PixelCacheHelper.getPixelData(atX: x, y: y, from: cache) {
-                        let screenX = transform.offsetX + (CGFloat(x) + 0.5) * transform.scaleX * baseScaleX + transform.pixelCenterOffset
-                        let screenY = transform.offsetY + (CGFloat(y) + 0.5) * transform.scaleY * baseScaleY + transform.pixelCenterOffset
+        if particleCount >= imageWidth * imageHeight {
+            for yPos in 0..<imageHeight {
+                for xPos in 0..<imageWidth {
+                    if let color = PixelCacheHelper.getPixelData(atX: xPos, y: yPos, from: cache) {
+                        let screenX = transform.offsetX + (CGFloat(xPos) + 0.5) * transform.scaleX * baseScaleX + transform.pixelCenterOffset
+                        let screenY = transform.offsetY + (CGFloat(yPos) + 0.5) * transform.scaleY * baseScaleY + transform.pixelCenterOffset
                         pixels.append(
                             Pixel(
                                 x: Int(screenX.rounded()),
                                 y: Int(screenY.rounded()),
-                                r: UInt8(clamping: Int(c.r * 255.0)),
-                                g: UInt8(clamping: Int(c.g * 255.0)),
-                                b: UInt8(clamping: Int(c.b * 255.0)),
-                                a: UInt8(clamping: Int(c.a * 255.0))
+                                r: UInt8(clamping: Int(color.r * 255.0)),
+                                g: UInt8(clamping: Int(color.g * 255.0)),
+                                b: UInt8(clamping: Int(color.b * 255.0)),
+                                a: UInt8(clamping: Int(color.a * 255.0))
                             )
                         )
                     }
@@ -238,44 +241,44 @@ extension ParticleSystemController {
         }
         
         // 2D-сетка для равномерного покрытия
-        let aspectRatio = Double(w) / Double(h)
+        let aspectRatio = Double(imageWidth) / Double(imageHeight)
         let gridHeight = max(1, Int(sqrt(Double(particleCount) / aspectRatio)))
         let gridWidth = max(1, Int(ceil(Double(particleCount) / Double(gridHeight))))
-        
+
         var samplesGenerated = 0
 
         // Равномерные координаты, включая края (чтобы не было "пустых" полос сверху/снизу)
         @inline(__always)
         func gridCoord(_ index: Int, _ gridSize: Int, _ maxCoord: Int) -> Int {
             guard gridSize > 1 else { return maxCoord / 2 }
-            let t = Double(index) / Double(gridSize - 1)
-            return Int((t * Double(maxCoord)).rounded())
+            let time = Double(index) / Double(gridSize - 1)
+            return Int((time * Double(maxCoord)).rounded())
         }
-        
-        outerLoop: for gy in 0..<gridHeight {
-            for gx in 0..<gridWidth {
+
+        outerLoop: for gridY in 0..<gridHeight {
+            for gridX in 0..<gridWidth {
                 guard samplesGenerated < particleCount else { break outerLoop }
-                
+
                 // Координаты по краям включительно (избегаем пропусков сверху/снизу)
-                let x = gridCoord(gx, gridWidth, max(0, w - 1))
-                let y = gridCoord(gy, gridHeight, max(0, h - 1))
-                
+                let xPos = gridCoord(gridX, gridWidth, max(0, imageWidth - 1))
+                let yPos = gridCoord(gridY, gridHeight, max(0, imageHeight - 1))
+
                 // Защита от выхода за границы
-                let clampedX = min(x, w - 1)
-                let clampedY = min(y, h - 1)
-                
-                if let c = PixelCacheHelper.getPixelData(atX: clampedX, y: clampedY, from: cache) {
+                let clampedX = min(xPos, imageWidth - 1)
+                let clampedY = min(yPos, imageHeight - 1)
+
+                if let color = PixelCacheHelper.getPixelData(atX: clampedX, y: clampedY, from: cache) {
                     let screenX = transform.offsetX + (CGFloat(clampedX) + 0.5) * transform.scaleX * baseScaleX + transform.pixelCenterOffset
                     let screenY = transform.offsetY + (CGFloat(clampedY) + 0.5) * transform.scaleY * baseScaleY + transform.pixelCenterOffset
-                    
+
                     pixels.append(
                         Pixel(
                             x: Int(screenX.rounded()),
                             y: Int(screenY.rounded()),
-                            r: UInt8(clamping: Int(c.r * 255.0)),
-                            g: UInt8(clamping: Int(c.g * 255.0)),
-                            b: UInt8(clamping: Int(c.b * 255.0)),
-                            a: UInt8(clamping: Int(c.a * 255.0))
+                            r: UInt8(clamping: Int(color.r * 255.0)),
+                            g: UInt8(clamping: Int(color.g * 255.0)),
+                            b: UInt8(clamping: Int(color.b * 255.0)),
+                            a: UInt8(clamping: Int(color.a * 255.0))
                         )
                     )
                     samplesGenerated += 1
@@ -764,3 +767,5 @@ extension ParticleSystemController {
         storage.particleBuffer
     }
 }
+
+// swiftlint:enable identifier_name

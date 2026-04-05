@@ -24,12 +24,12 @@ class ParticleAssembly {
     @MainActor static func assemble(withDI container: DIContainer) -> PlatformViewController {
         // Безопасное извлечение зависимостей
         guard let logger = container.resolve(LoggerProtocol.self),
-              let imageLoader = container.resolve(ImageLoaderProtocol.self) else {
-            fatalError("ParticleAssembly: Dependencies not registered yet in provided container")
-        }
-
-        guard let errorHandler = container.resolve(ErrorHandlerProtocol.self) else {
-            fatalError("ParticleAssembly: ErrorHandler not registered")
+              let imageLoader = container.resolve(ImageLoaderProtocol.self),
+              let errorHandler = container.resolve(ErrorHandlerProtocol.self) else {
+            preconditionFailure(
+                "ParticleAssembly: Required dependencies (Logger, ImageLoader, ErrorHandler) " +
+                "must be registered in the DI container before assembly"
+            )
         }
 
         let viewModel = ParticleViewModel(
@@ -47,6 +47,8 @@ class ParticleAssembly {
         #if os(iOS)
         let viewController = ViewController(viewModel: viewModel)
         #elseif os(macOS)
+        // macOS: требуется отдельный контроллер, реализованный в MacViewController.swift
+        // Если файл отсутствует — компилятор выдаст ошибку на этапе сборки
         let viewController = MacViewController(viewModel: viewModel)
         #endif
 
@@ -90,7 +92,9 @@ private enum ParticleSystemFactory: ParticleSystemFactoryProtocol {
               let generator = resolveEngine(ParticleGeneratorProtocol.self),
               let logger = resolveEngine(LoggerProtocol.self),
               let clock = resolveEngine(SimulationClockProtocol.self) else {
-            fatalError("Failed to resolve ParticleSystem dependencies")
+            preconditionFailure(
+                "All ParticleSystem dependencies must be registered via DependencyInitializer"
+            )
         }
         let controller = ParticleSystemController(
             renderer: metalRenderer,
@@ -104,7 +108,8 @@ private enum ParticleSystemFactory: ParticleSystemFactoryProtocol {
         do {
             try controller.configureView(metalView)
         } catch {
-            logger.error("Failed to configure Metal view in factory: \(error)")
+            logger.error("Failed to configure Metal view: \(error.localizedDescription)")
+            return nil
         }
         return controller
     }

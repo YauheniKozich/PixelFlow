@@ -8,6 +8,9 @@
 //  для генерации частиц. Каждый алгоритм имеет свои преимущества и недостатки.
 //
 
+// swiftlint:disable identifier_name function_parameter_count
+// Graphics code uses short variable names (x, y, dx, dy, r, g, b, etc.) for mathematical readability
+
 import CoreGraphics
 import Foundation
 import simd
@@ -1136,3 +1139,5 @@ final class AdvancedPixelSampler {
     }
     #endif
 }
+
+// swiftlint:enable identifier_name function_parameter_count

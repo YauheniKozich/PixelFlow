@@ -70,15 +70,10 @@ final class ParticleViewModel {
     }
     
     deinit {
-        let cancellableTask = { [weak self] in
-            await self?.cancelQualityTask()
-        }
-        
-        Task {
-            await cancellableTask()
-        }
+        // Синхронная отмена Task — не создаём новых асинхронных операций
+        qualityTask?.cancel()
         particleSystem = nil
-        logger.info("ParticleViewModel deinit")
+        // Не обращаемся к logger — объект уже deallocating, это data race risk
     }
     
     // MARK: - Configuration
@@ -94,28 +89,12 @@ final class ParticleViewModel {
     
     func setImageDisplayMode(_ mode: ImageDisplayMode) {
         guard currentConfig.imageDisplayMode != mode else { return }
-        
+
         var updated = currentConfig
         updated.imageDisplayMode = mode
         apply(updated)
     }
-    
-    private func applyDraftPreset() {
-        apply(ParticleGenerationConfig.draft)
-    }
-    
-    private func applyStandardPreset() {
-        apply(ParticleGenerationConfig.standard)
-    }
-    
-    private func applyHighPreset() {
-        apply(ParticleGenerationConfig.high)
-    }
-    
-    private func applyUltraPreset() {
-        apply(ParticleGenerationConfig.ultra)
-    }
-    
+
     // MARK: - System Lifecycle
     
     /// Создаёт и запускает `ParticleSystem` в переданном render view.
@@ -192,7 +171,7 @@ final class ParticleViewModel {
         }
         return currentConfig.qualityPreset
     }
-    
+
     private func calculateScreenScale(for view: RenderView) -> CGFloat {
         #if os(iOS)
         return calculateiOSScreenScale(for: view)
@@ -275,10 +254,7 @@ final class ParticleViewModel {
     
     func resetParticleSystem() {
         logger.info("Resetting particle system")
-        cancelQualityTask()
-        particleSystem?.cleanup()
-        particleSystem = nil
-        isConfigured = false
+        cleanupParticleSystem()
     }
     
     // MARK: - System Control
@@ -298,11 +274,7 @@ final class ParticleViewModel {
     func startLightningStorm() {
         particleSystem?.startLightningStorm()
     }
-    
-    func initializeWithFastPreview() {
-        // Оставлено для совместимости с ViewController
-    }
-    
+
     func startSimulation() {
         particleSystem?.startSimulation()
     }
@@ -337,7 +309,8 @@ final class ParticleViewModel {
         if renderView == nil {
             renderView = renderViewFactory(frame)
         }
-        return renderView!
+        // renderViewFactory guaranteed to return non-nil, but use ?? for safety
+        return renderView ?? renderViewFactory(frame)
     }
     
     func updateRenderViewLayout(frame: CGRect, scale: CGFloat) {
@@ -435,16 +408,17 @@ final class ParticleViewModel {
     
     private func clearTemporaryDirectory() {
         let tmp = FileManager.default.temporaryDirectory
-        
+
         do {
             let entries = try FileManager.default.contentsOfDirectory(
                 at: tmp,
                 includingPropertiesForKeys: nil,
                 options: [.skipsHiddenFiles]
             )
-            
+
             removeParticleCacheFiles(from: entries)
         } catch {
+            logger.warning("Failed to list temporary directory: \(error.localizedDescription)")
         }
     }
     
@@ -452,17 +426,5 @@ final class ParticleViewModel {
         for url in urls where url.lastPathComponent.hasPrefix(Constants.tempFilePrefix) {
             try? FileManager.default.removeItem(at: url)
         }
-    }
-    
-    // MARK: - Particle Count Calculation
-    
-    /// Вычисляет количество частиц, учитывая плотность, зависящую от `QualityPreset`.
-    private func optimalParticleCount(
-        for image: CGImage,
-        preset: QualityPreset
-    ) -> Int {
-        let totalPixels = image.width * image.height
-        logger.info("optimalParticleCount – using full-res pixels:\(totalPixels) for preset:\(preset)")
-        return totalPixels
     }
 }

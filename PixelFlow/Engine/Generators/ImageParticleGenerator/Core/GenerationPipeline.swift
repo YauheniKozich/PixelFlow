@@ -368,8 +368,6 @@ final class GenerationPipeline: GenerationPipelineProtocol {
     }
 }
 
-
-
 extension GenerationStage {
     var description: String {
         switch self {

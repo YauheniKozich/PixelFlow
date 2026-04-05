@@ -6,6 +6,9 @@
 //  Metal рендерер для системы частиц
 //
 
+// swiftlint:disable identifier_name
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import Metal
 import MetalKit
@@ -19,15 +22,19 @@ import ParticleSimulation
 // MARK: - Metal Renderer
 
 final class MetalRenderer: NSObject, MTKViewDelegate {
-    
+
     // MARK: - Constants
-    
+
     private enum Constants {
         static let defaultThreadsPerThreadgroup: UInt32 = 256
         static let defaultDisplayScale: Float = 1.0
         static let defaultFPS = 60
         static let collectionProgressLogThreshold: Float = 0.05
+        // 272 bytes — SimulationParams layout (согласовано с Simulation.h)
+        // Включает: state, time, deltaTime, screenSize, particleCount, и др.
         static let expectedSimulationParamsStride = 272
+        static let maxDeltaTime: CFTimeInterval = 0.1 // 100ms cap для предотвращения spiral of death
+        static let fallbackFrameDuration = 1.0 / Double(defaultFPS)
     }
     
     private enum ShaderNames {
@@ -37,58 +44,70 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     
     // MARK: - Dependencies
-    
-    let device: MTLDevice
-    let commandQueue: MTLCommandQueue
+
+    private let _device: MTLDevice
+    private let _commandQueue: MTLCommandQueue
     private let logger: LoggerProtocol
-    
+
+    // MARK: - Protocol Exposed Dependencies
+
+    /// Устройство Metal (для протокола)
+    var device: MTLDevice { _device }
+
+    /// Очередь команд Metal (для протокола)
+    var commandQueue: MTLCommandQueue { _commandQueue }
+
     // MARK: - Metal Resources
-    
+
     var renderPipeline: MTLRenderPipelineState?
     var computePipeline: MTLComputePipelineState?
     private var threadsPerThreadgroup: UInt32 = Constants.defaultThreadsPerThreadgroup
-    
+
     var particleBuffer: MTLBuffer?
     var paramsBuffer: MTLBuffer?
     var collectedCounterBuffer: MTLBuffer?
     private var collectedCounterPointer: UnsafeMutablePointer<UInt32>?
     
     // MARK: - State
-    
+
     private weak var mtkView: MTKView?
     private var particleCount: Int = 0
-    internal var screenSize: CGSize = .zero
+    private(set) var screenSize: CGSize = .zero
     private var currentConfig: ParticleGenerationConfig = .standard
     private var enableIdleChaotic: Bool = false
     private var displayScale: Float = Constants.defaultDisplayScale
-    
+
     private weak var simulationEngine: SimulationEngineProtocol?
     private var paramsUpdater: SimulationParamsUpdater?
     
     // MARK: - Frame Tracking
-    
-    private var frameCounter: Int = 0
+
     private var lastFrameTimestamp: CFTimeInterval = 0
     private var lastLoggedCollectionProgress: Float = 0
-    
+    private var isPipelineConfigured: Bool = false
+
     // MARK: - Synchronization
-    
-    private let collectionProgressQueue = DispatchQueue(label: "com.particle.collection.progress")
+
+    // Сериальная очередь для синхронизации доступа к collectedCounterPointer
+    private let counterAccessQueue = DispatchQueue(
+        label: "com.pixelflow.counter.access",
+        qos: .userInitiated
+    )
     
     // MARK: - Initialization
     
     init(device: MTLDevice, logger: LoggerProtocol) throws {
-        self.device = device
-        
+        self._device = device
+
         guard let commandQueue = device.makeCommandQueue() else {
-            throw MetalError.libraryCreationFailed
+            throw MetalError.commandQueueCreationFailed
         }
-        
-        self.commandQueue = commandQueue
+
+        self._commandQueue = commandQueue
         self.logger = logger
-        
+
         super.init()
-        
+
         self.paramsUpdater = SimulationParamsUpdater()
         logger.info("MetalRenderer initialized with device: \(device.name)")
     }
@@ -128,16 +147,22 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     
     // MARK: - Pipeline Setup
-    
+
     func setupPipelines() throws {
+        guard !isPipelineConfigured else {
+            logger.warning("Pipelines already configured — skipping")
+            return
+        }
+
         guard let library = device.makeDefaultLibrary() else {
             throw MetalError.libraryCreationFailed
         }
-        
+
         try setupComputePipeline(library: library)
         try setupRenderPipeline(library: library)
-        
-        validateStructLayouts()
+        try validateStructLayouts()
+
+        isPipelineConfigured = true
         logger.info("Metal pipelines setup completed")
     }
     
@@ -186,12 +211,22 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
     }
     
-    private func validateStructLayouts() {
+    private func validateStructLayouts() throws {
         let stride = MemoryLayout<SimulationParams>.stride
-        precondition(
+
+        #if DEBUG
+        assert(
             stride == Constants.expectedSimulationParamsStride,
-            "SimulationParams layout changed – stride \(stride)"
+            "SimulationParams layout changed – stride \(stride), expected \(Constants.expectedSimulationParamsStride)"
         )
+        #endif
+
+        guard stride == Constants.expectedSimulationParamsStride else {
+            throw MetalError.structLayoutMismatch(
+                actual: stride,
+                expected: Constants.expectedSimulationParamsStride
+            )
+        }
     }
     
     // MARK: - Buffers
@@ -231,10 +266,14 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     
     private func cleanupBuffers() {
+        // Сначала обнуляем pointer под защитой очереди
+        counterAccessQueue.sync {
+            collectedCounterPointer = nil
+        }
+
         particleBuffer = nil
         paramsBuffer = nil
         collectedCounterBuffer = nil
-        collectedCounterPointer = nil
     }
     
     // MARK: - MTKViewDelegate
@@ -247,34 +286,47 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     
     func draw(in view: MTKView) {
         guard shouldRender(view: view),
-              particleCount > 0,
-              validateRenderingResources(view: view) else {
+              particleCount > 0 else {
             return
         }
-        
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+
+        // Кэшируем drawable — избегаем повторного обращения к view.currentDrawable
+        guard let drawable = view.currentDrawable,
+              let renderPassDesc = view.currentRenderPassDescriptor,
+              let commandBuffer = commandQueue.makeCommandBuffer(),
+              let pipeline = renderPipeline,
+              let particleBuf = particleBuffer,
+              let paramsBuf = paramsBuffer,
+              let counterBuf = collectedCounterBuffer else {
             return
         }
-        
+
         let dt = calculateDeltaTime(view: view)
         simulationEngine?.update(deltaTime: Float(dt))
-        
+
         updateSimulationParams()
         encodeCompute(into: commandBuffer)
-        encodeRender(into: commandBuffer, view: view)
-        
+        encodeRender(into: commandBuffer, renderPassDesc: renderPassDesc, pipeline: pipeline, particleBuf: particleBuf, paramsBuf: paramsBuf)
+
         commandBuffer.addCompletedHandler { [weak self] _ in
             DispatchQueue.main.async {
                 self?.checkCollectionCompletion()
             }
         }
-        
-        if let drawable = view.currentDrawable {
-            commandBuffer.present(drawable)
-        }
-        
+
+        commandBuffer.present(drawable)
         commandBuffer.commit()
-        frameCounter += 1
+    }
+
+    // MARK: - Deinit
+
+    deinit {
+        // Safety net: предотвращает вызов delegate методов после dealloc
+        // Если cleanup() не был вызван — логируем предупреждение
+        if particleBuffer != nil || paramsBuffer != nil {
+            logger.warning("MetalRenderer deallocated without cleanup() — GPU resources may leak")
+        }
+        mtkView?.delegate = nil
     }
     
     private func shouldRender(view: MTKView) -> Bool {
@@ -293,17 +345,17 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     private func calculateDeltaTime(view: MTKView) -> CFTimeInterval {
         let now = CACurrentMediaTime()
         defer { lastFrameTimestamp = now } // всегда обновляем
-        
+
         guard lastFrameTimestamp > 0 else {
-            return 1.0 / Double(max(1, view.preferredFramesPerSecond))
+            return Constants.fallbackFrameDuration
         }
-        
+
         let dt = now - lastFrameTimestamp
-        return min(max(dt, 0), 0.1) // также ограничиваем минимальное значение
+        return min(max(dt, 0), Constants.maxDeltaTime)
     }
     
     // MARK: - Simulation Params
-    
+
     @MainActor
     func updateSimulationParams() {
         guard let updater = paramsUpdater,
@@ -326,81 +378,117 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     
     // MARK: - Compute / Render
-    
+
+    /// Публичный метод для encode compute (совместимость с протоколом)
     func encodeCompute(into commandBuffer: MTLCommandBuffer) {
-        guard let encoder = commandBuffer.makeComputeCommandEncoder(),
-              let pipeline = computePipeline else { return }
-        
+        guard let pipeline = computePipeline,
+              let particleBuf = particleBuffer,
+              let paramsBuf = paramsBuffer,
+              let counterBuf = collectedCounterBuffer else { return }
+
+        encodeComputeInternal(
+            into: commandBuffer,
+            pipeline: pipeline,
+            particleBuf: particleBuf,
+            paramsBuf: paramsBuf,
+            counterBuf: counterBuf
+        )
+    }
+
+    private func encodeComputeInternal(
+        into commandBuffer: MTLCommandBuffer,
+        pipeline: MTLComputePipelineState,
+        particleBuf: MTLBuffer,
+        paramsBuf: MTLBuffer,
+        counterBuf: MTLBuffer
+    ) {
+        guard let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+
         encoder.setComputePipelineState(pipeline)
-        encoder.setBuffer(particleBuffer, offset: 0, index: 0)
-        encoder.setBuffer(paramsBuffer, offset: 0, index: 1)
-        encoder.setBuffer(collectedCounterBuffer, offset: 0, index: 2)
-        
+        encoder.setBuffer(particleBuf, offset: 0, index: 0)
+        encoder.setBuffer(paramsBuf, offset: 0, index: 1)
+        encoder.setBuffer(counterBuf, offset: 0, index: 2)
+
         let w = pipeline.threadExecutionWidth
         let groups = (particleCount + w - 1) / w
-        
+
         encoder.dispatchThreadgroups(
             MTLSize(width: groups, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: w, height: 1, depth: 1)
         )
-        
+
         encoder.endEncoding()
     }
-    
-    private func encodeRender(into commandBuffer: MTLCommandBuffer, view: MTKView) {
-        guard let desc = view.currentRenderPassDescriptor,
-              let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: desc),
-              let pipeline = renderPipeline else { return }
-        
+
+    private func encodeRender(
+        into commandBuffer: MTLCommandBuffer,
+        renderPassDesc: MTLRenderPassDescriptor,
+        pipeline: MTLRenderPipelineState,
+        particleBuf: MTLBuffer,
+        paramsBuf: MTLBuffer
+    ) {
+        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDesc) else { return }
+
         encoder.setRenderPipelineState(pipeline)
-        encoder.setVertexBuffer(particleBuffer, offset: 0, index: 0)
-        encoder.setVertexBuffer(paramsBuffer, offset: 0, index: 1)
-        encoder.setFragmentBuffer(paramsBuffer, offset: 0, index: 1)
+        encoder.setVertexBuffer(particleBuf, offset: 0, index: 0)
+        encoder.setVertexBuffer(paramsBuf, offset: 0, index: 1)
+        encoder.setFragmentBuffer(paramsBuf, offset: 0, index: 1)
         encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: particleCount)
         encoder.endEncoding()
-    }
-    
-    // MARK: - GPU Sync
-    
-    private func waitForGPUIdle() {
-        guard let buffer = commandQueue.makeCommandBuffer() else { return }
-        buffer.commit()
-        buffer.waitUntilCompleted()
     }
 }
 
 // MARK: - MetalRendererProtocol
 
 extension MetalRenderer: MetalRendererProtocol {
-    
+
     func cleanup() {
         logger.info("MetalRenderer cleanup started")
-        
-        waitForGPUIdle()
-        
-        cleanupBuffers()
-        
+
+        // Останавливаем рендеринг
+        mtkView?.isPaused = true
+        mtkView?.delegate = nil
+
+        // Асинхронно ждём GPU — не блокируем @MainActor
+        Task.detached(priority: .userInitiated) { [weak commandQueue] in
+            guard let commandQueue = commandQueue,
+                  let buffer = commandQueue.makeCommandBuffer() else { return }
+            buffer.commit()
+            await buffer.completed()
+        }
+
+        // Обнуляем pointer под защитой и освобождаем буферы
+        counterAccessQueue.sync {
+            collectedCounterPointer = nil
+        }
+
+        particleBuffer = nil
+        paramsBuffer = nil
+        collectedCounterBuffer = nil
+
+        // Сбрасываем состояние
         particleCount = 0
-        frameCounter = 0
         lastFrameTimestamp = 0
         lastLoggedCollectionProgress = 0
+        isPipelineConfigured = false
         simulationEngine = nil
-        
+
         logger.info("MetalRenderer cleanup completed")
     }
-    
+
     func setParticleBuffer(_ buffer: MTLBuffer?) {
-        waitForGPUIdle()
+        // Вызывать только при mtkView?.isPaused = true
+        // Рендеринг должен быть остановлен чтобы избежать гонки с GPU
         particleBuffer = buffer
     }
-    
+
     func updateParticleCount(_ count: Int) {
         guard count >= 0 else {
             logger.error("Invalid particle count: \(count)")
             return
         }
-        
-        waitForGPUIdle()
+
+        // Вызывать только при mtkView?.isPaused = true
         particleCount = count
         resetCollectedCounter()
     }
@@ -408,39 +496,40 @@ extension MetalRenderer: MetalRendererProtocol {
     func setSimulationEngine(_ engine: SimulationEngineProtocol) {
         simulationEngine = engine
         resetCollectedCounter()
-        
-        Task { @MainActor [weak self] in
-            self?.updateSimulationParams()
-        }
+        updateSimulationParams()
     }
     
     func resetCollectedCounter() {
-        collectionProgressQueue.async { [weak self] in
-            guard let self = self,
-                  let ptr = self.collectedCounterPointer else { return }
+        counterAccessQueue.sync {
+            guard let ptr = collectedCounterPointer else { return }
             ptr.pointee = 0
-            self.lastLoggedCollectionProgress = 0
+            lastLoggedCollectionProgress = 0
         }
     }
-    
+
     func checkCollectionCompletion() {
-        guard let engine = simulationEngine,
-              particleCount > 0,
-              let ptr = collectedCounterPointer else { return }
-        
-        let collected = Int(ptr.pointee)
-        let ratio = min(1, Float(collected) / Float(particleCount))
-        
-        // Проверяем состояние в основном потоке
-        Task { @MainActor in
-            guard case .collecting = engine.state else { return }
-            
-            if ratio - lastLoggedCollectionProgress >= Constants.collectionProgressLogThreshold || ratio >= 1 {
-                lastLoggedCollectionProgress = ratio
-                logger.info("Collection progress: \(Int(ratio * 100))% (\(collected)/\(particleCount))")
-            }
-            
-            engine.updateProgress(ratio)
+        // Читаем pointer под защитой очереди
+        let collectedValue: Int? = counterAccessQueue.sync { [weak self] in
+            guard let ptr = self?.collectedCounterPointer else { return nil }
+            return Int(ptr.pointee)
         }
+
+        guard let collected = collectedValue,
+              let engine = simulationEngine,
+              particleCount > 0 else { return }
+
+        let ratio = min(1, Float(collected) / Float(particleCount))
+
+        // Метод вызывается из DispatchQueue.main.async — уже на основном потоке
+        guard case .collecting = engine.state else { return }
+
+        if ratio - lastLoggedCollectionProgress >= Constants.collectionProgressLogThreshold || ratio >= 1 {
+            lastLoggedCollectionProgress = ratio
+            logger.info("Collection progress: \(Int(ratio * 100))% (\(collected)/\(particleCount))")
+        }
+
+        engine.updateProgress(ratio)
     }
 }
+
+// swiftlint:enable identifier_name

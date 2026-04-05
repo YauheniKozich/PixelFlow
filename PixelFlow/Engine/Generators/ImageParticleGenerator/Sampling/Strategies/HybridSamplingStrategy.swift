@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name large_tuple function_parameter_count
+// Graphics code uses short variable names for mathematical readability
+
 import Foundation
 import CoreGraphics
 
@@ -413,3 +416,5 @@ enum HybridSamplingStrategy {
         }
     }
 }
+
+// swiftlint:enable identifier_name large_tuple function_parameter_count

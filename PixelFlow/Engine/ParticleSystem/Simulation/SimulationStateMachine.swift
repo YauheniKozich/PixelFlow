@@ -18,7 +18,6 @@ enum SimulationState: Equatable {
     case lightningStorm
 }
 
-
 final class SimulationStateMachine {
     enum CollectMode {
         case toImage

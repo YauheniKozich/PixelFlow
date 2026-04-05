@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable large_tuple identifier_name vertical_parameter_alignment
+// Pixel caching code uses tuples for color data and short variable names
+
 import Foundation
 import CoreGraphics
 import simd
@@ -210,3 +213,5 @@ enum PixelCacheHelper {
         }
     }
 }
+
+// swiftlint:enable large_tuple identifier_name vertical_parameter_alignment

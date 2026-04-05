@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 13.01.26.
 //
 
+// swiftlint:disable identifier_name
+// Graphics helper uses short variable names
+
 import Foundation
 
 enum SamplingParameters {
@@ -83,3 +86,5 @@ enum SamplingParameters {
         Swift.max(min, Swift.min(max, value))
     }
 }
+
+// swiftlint:enable identifier_name

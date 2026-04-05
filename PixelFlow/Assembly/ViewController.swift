@@ -47,7 +47,7 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     }
     
     // MARK: - Lifecycle
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
@@ -55,6 +55,7 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         setupGestures()
         setupViewModelCallbacks()
         setupMemoryWarningObserver()
+        setNeedsStatusBarAppearanceUpdate()
     }
     
     override func viewDidLayoutSubviews() {
@@ -70,6 +71,8 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        // Очищаем ресурсы только при реальном удалении (не при push/pop или background)
+        guard isMovingFromParent else { return }
         viewModel.cleanupAllResources()
     }
     
@@ -103,9 +106,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         memoryWarningObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didReceiveMemoryWarningNotification,
             object: nil,
-            queue: .main
+            queue: .main // Уже на main queue — без лишнего dispatch
         ) { [weak self] _ in
-            DispatchQueue.main.async {
+            // Явный вызов через Task для MainActor изоляции
+            Task { @MainActor [weak self] in
                 self?.viewModel.handleLowMemory()
             }
         }
@@ -161,23 +165,28 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     }
     
     // MARK: - Gesture Setup
-    
+
     private func setupGestures() {
         let tapGesture = createTapGesture()
         let doubleTap = createDoubleTapGesture()
         let tripleTap = createTripleTapGesture()
-        
+
         configureGestureRecognizers(
             tap: tapGesture,
             doubleTap: doubleTap,
             tripleTap: tripleTap
         )
-        
+
         addGestureRecognizers(
             tap: tapGesture,
             doubleTap: doubleTap,
             tripleTap: tripleTap
         )
+
+        // Accessibility: делаем view доступным для VoiceOver
+        view.isAccessibilityElement = true
+        view.accessibilityLabel = "Экран частиц PixelFlow"
+        view.accessibilityHint = "Коснитесь один раз для запуска, дважды для сброса, трижды для эффекта молнии"
     }
     
     private func createTapGesture() -> UITapGestureRecognizer {
@@ -277,6 +286,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         label.font = .systemFont(ofSize: Constants.restartLabelFontSize, weight: .semibold)
         label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
+        // Accessibility
+        label.isAccessibilityElement = true
+        label.accessibilityLabel = Messages.restart
+        label.accessibilityTraits = .updatesFrequently
         return label
     }
     
@@ -338,6 +351,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         label.font = .systemFont(ofSize: Constants.qualityLabelFontSize, weight: .bold)
         label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
+        // Accessibility
+        label.isAccessibilityElement = true
+        label.accessibilityLabel = Messages.qualityUpgrade
+        label.accessibilityTraits = .updatesFrequently
         return label
     }
     

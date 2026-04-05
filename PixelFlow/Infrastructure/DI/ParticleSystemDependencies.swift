@@ -53,7 +53,11 @@ final class ParticleSystemDependencies {
         }
         
         container.register(device as MTLDevice, for: MTLDevice.self)
-        container.register(device.makeCommandQueue()! as MTLCommandQueue, for: MTLCommandQueue.self)
+        
+        guard let commandQueue = device.makeCommandQueue() else {
+            fatalError("Metal command queue creation failed")
+        }
+        container.register(commandQueue as MTLCommandQueue, for: MTLCommandQueue.self)
         
         // Resolve logger for MetalRenderer
         guard let logger = container.resolve(LoggerProtocol.self) else {

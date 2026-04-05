@@ -6,6 +6,9 @@
 //  Хранилище частиц и управление буферами
 //
 
+// swiftlint:disable identifier_name
+// Graphics code uses short variable names for mathematical readability
+
 import Metal
 import simd
 
@@ -220,8 +223,10 @@ final class ParticleStorage {
         guard !sourcePixels.isEmpty else {
             return SIMD4<Float>(1, 1, 1, 1)
         }
-        
-        let randomPixel = sourcePixels.randomElement()!
+
+        guard let randomPixel = sourcePixels.randomElement() else {
+            return SIMD4<Float>(1, 1, 1, 1)
+        }
         return pixelToColor(randomPixel)
     }
     
@@ -967,3 +972,5 @@ extension ParticleStorage: ParticleStorageProtocol {
         )
     }
 }
+
+// swiftlint:enable identifier_name

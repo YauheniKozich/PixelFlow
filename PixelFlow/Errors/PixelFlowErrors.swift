@@ -21,9 +21,11 @@ enum PixelFlowError: LocalizedError {
 
     // Metal Errors
     case libraryCreationFailed
+    case commandQueueCreationFailed
     case functionNotFound(name: String)
     case bufferCreationFailed
     case pipelineCreationFailed
+    case structLayoutMismatch(actual: Int, expected: Int)
 
     // Sampling Errors
     case cacheCreationFailed(underlying: Error)
@@ -82,12 +84,16 @@ enum PixelFlowError: LocalizedError {
         // Metal
         case .libraryCreationFailed:
             return "Не удалось создать Metal библиотеку"
+        case .commandQueueCreationFailed:
+            return "Не удалось создать Metal command queue"
         case .functionNotFound(let name):
             return "Функция Metal не найдена: \(name)"
         case .bufferCreationFailed:
             return "Не удалось создать буферы Metal"
         case .pipelineCreationFailed:
             return "Не удалось создать pipeline Metal"
+        case .structLayoutMismatch(let actual, let expected):
+            return "Несоответствие структуры: actual=\(actual), expected=\(expected)"
 
         // Sampling
         case .cacheCreationFailed(let underlying):

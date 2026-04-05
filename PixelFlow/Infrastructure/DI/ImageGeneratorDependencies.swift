@@ -71,14 +71,24 @@ final class ImageGeneratorDependencies {
         
         // Контекст генерации
         container.register(GenerationContext(logger: logger), for: GenerationContextProtocol.self)
-        
+
         // Pipeline генерации с adaptive стратегией
-        let analyzer = container.resolve(ImageAnalyzerProtocol.self)!
-        let sampler = container.resolve(PixelSamplerProtocol.self)!
-        let assembler = container.resolve(ParticleAssemblerProtocol.self)!
-        let strategy = container.resolve(GenerationStrategyProtocol.self, name: "adaptive")!
-        let context = container.resolve(GenerationContextProtocol.self)!
-        
+        guard let analyzer = container.resolve(ImageAnalyzerProtocol.self) else {
+            fatalError("ImageAnalyzerProtocol must be registered in DI container")
+        }
+        guard let sampler = container.resolve(PixelSamplerProtocol.self) else {
+            fatalError("PixelSamplerProtocol must be registered in DI container")
+        }
+        guard let assembler = container.resolve(ParticleAssemblerProtocol.self) else {
+            fatalError("ParticleAssemblerProtocol must be registered in DI container")
+        }
+        guard let strategy = container.resolve(GenerationStrategyProtocol.self, name: "adaptive") else {
+            fatalError("GenerationStrategyProtocol 'adaptive' must be registered in DI container")
+        }
+        guard let context = container.resolve(GenerationContextProtocol.self) else {
+            fatalError("GenerationContextProtocol must be registered in DI container")
+        }
+
         let pipeline = GenerationPipeline(
             analyzer: analyzer,
             sampler: sampler,

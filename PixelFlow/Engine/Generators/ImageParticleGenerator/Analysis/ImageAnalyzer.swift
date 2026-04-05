@@ -5,6 +5,9 @@
 //  Created by Yauheni Kozich on 11.01.26.
 //
 
+// swiftlint:disable identifier_name
+// Graphics code uses short variable names for mathematical readability
+
 import CoreGraphics
 import Accelerate
 import simd
@@ -291,3 +294,5 @@ final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
         return sqrt(sumSq / Float(total))
     }
 }
+
+// swiftlint:enable identifier_name

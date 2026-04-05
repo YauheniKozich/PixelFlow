@@ -70,11 +70,11 @@ protocol ParticleAssemblerProtocol {
         originalImageSize: CGSize
     ) -> [Particle]
 
-    /// Валидирует частицы
-   // func validateParticles(_ particles: [Particle]) -> Bool
+    // Валидирует частицы
+    // func validateParticles(_ particles: [Particle]) -> Bool
 
-    /// Размер частиц по умолчанию
- //   var defaultParticleSize: Float { get }
+    // Размер частиц по умолчанию
+    // var defaultParticleSize: Float { get }
 }
 
 /// Протокол для менеджера кэша
@@ -208,16 +208,16 @@ protocol GenerationContextProtocol {
 protocol ParticleGenerationDelegate: AnyObject {
     /// Вызывается при обновлении прогресса
     func generation(_ generation: ParticleGenerationServiceProtocol,
-                   didUpdateProgress progress: Float,
-                   stage: String)
+                    didUpdateProgress progress: Float,
+                    stage: String)
 
     /// Вызывается при возникновении ошибки
     func generation(_ generation: ParticleGenerationServiceProtocol,
-                   didEncounterError error: Error)
+                    didEncounterError error: Error)
 
     /// Вызывается при успешном завершении
     func generation(_ generation: ParticleGenerationServiceProtocol,
-                   didFinishWithParticles particles: [Particle])
+                    didFinishWithParticles particles: [Particle])
 
     /// Вызывается при отмене генерации
     func generationDidCancel(_ generation: ParticleGenerationServiceProtocol)
@@ -413,8 +413,9 @@ protocol ParticleGeneratorConfiguration: Codable {
     var maxConcurrentOperations: Int { get }
 }
 
+// swiftlint:disable:next type_name
 /// Протокол для расширенной конфигурации генератора с режимом отображения (внутренний)
-protocol ParticleGeneratorConfigurationWithDisplayMode: ParticleGeneratorConfiguration {
+protocol GeneratorConfigWithDisplayMode: ParticleGeneratorConfiguration {
     var imageDisplayMode: ImageDisplayMode { get }
     var particleLifetime: Float { get }
     var particleSpeed: Float { get }
