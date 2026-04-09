@@ -1,6 +1,6 @@
 # Assembly - MVVM слой сборки
 
-MVVM архитектурный слой PixelFlow, отвечающий за сборку компонентов, управление жизненным циклом и связь между UI и Engine.
+MVVM архитектурный слой PixelFlow, отвечающий за сборку компонентов, управление жизненным циклом и связь между UI и Engine на текущем iOS target.
 
 ## Архитектура MVVM
 
@@ -19,7 +19,7 @@ PixelFlow использует паттерн Model-View-ViewModel (MVVM) для
 final class ParticleAssembly {
     // MARK: - Public Methods
 
-    static func assemble() -> PlatformViewController {
+    @MainActor static func assemble(withDI container: DIContainer) -> UIViewController {
         let viewModel = ParticleViewModel(
             logger: logger,
             imageLoader: imageLoader,
@@ -32,27 +32,19 @@ final class ParticleAssembly {
             }
         )
 
-        #if os(iOS)
         let viewController = ViewController(viewModel: viewModel)
-        #elseif os(macOS)
-        let viewController = MacViewController(viewModel: viewModel)
-        #endif
 
         return viewController
     }
 
-    static func makeSceneDelegate() -> PlatformSceneDelegate {
-        #if os(iOS)
+    static func makeSceneDelegate() -> UIWindowSceneDelegate {
         return SceneDelegate()
-        #elseif os(macOS)
-        return MacSceneDelegate()
-        #endif
     }
 }
 ```
 
 **Особенности:**
-- Кроссплатформенная поддержка (iOS/macOS)
+- Текущий target: iOS
 - Упрощенная сборка через статические методы
 - Автоматическое разрешение зависимостей через DI
 
@@ -60,8 +52,8 @@ final class ParticleAssembly {
 **Центральный компонент бизнес-логики**
 
 **Основные обязанности:**
-- Управление состоянием частиц (загрузка, генерация, симуляция)
-- Обработка конфигурации (пресеты качества: Draft/Standard/High/Ultra)
+- Управление состоянием частиц
+- Обработка конфигурации качества
 - Управление жизненным циклом ParticleSystem
 - Обработка low-memory ситуаций
 - Мониторинг прогресса генерации
@@ -103,9 +95,9 @@ final class ParticleAssembly {
 **Презентационный слой**
 
 **Функциональность:**
-- Отображение render view для рендеринга частиц
+- Отображение render view
 - Обработка пользовательского ввода
-- Отображение прогресса генерации
+- Отображение прогресса
 - Управление UI состоянием
 
 **Жесты и действия (iOS ViewController):**
@@ -136,33 +128,11 @@ Assembly (MVVM)
 - `ParticleGenerationConfig` - конфигурация генерации
 - Render view - Metal view для рендеринга
 
-## Жизненный цикл
-
-1. **Инициализация**: Создание ViewModel с зависимостями
-2. **Сборка**: Assembly создает ViewController с ViewModel
-3. **Конфигурация**: Применение настроек качества
-4. **Создание системы**: Инициализация ParticleSystem в render view
-5. **Симуляция**: Запуск и управление анимацией
-6. **Очистка**: Ресурсы освобождаются при деинициализации
-
 ## Потокобезопасность
 
 - Все публичные методы помечены `@MainActor`
 - Асинхронные операции используют `Task` и `MainActor.run`
 - Зависимости разрешаются потокобезопасно через DI контейнер
-
-## Использование
-
-```swift
-// Базовое использование (ViewController сам создает RenderView и запускает createSystem)
-let viewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
-
-// Дальше: показать viewController или использовать его в window/root
-// Внутри ViewController:
-// - makeRenderView(frame:)
-// - createSystem(in:)
-// - обработка жестов и вызовов startLightningStorm / toggleSimulation
-```
 
 ## Тестирование
 

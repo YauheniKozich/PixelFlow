@@ -30,7 +30,7 @@ using namespace metal;
 // Collection physics
 #define COLLECTION_BASE_SPEED          30.0   // pixels/sec (scaled by collectionSpeed)
 #define COLLECTION_MIN_SPEED           0.25   // pixels (minimum step)
-#define COLLECTION_SNAP_PIXELS        1.0
+#define COLLECTION_SNAP_PIXELS        2.0
 #define COLLECTION_MOVE_THRESHOLD      0.01
 #define COLLECTION_VELOCITY_DAMPING    0.9
 
@@ -40,10 +40,12 @@ using namespace metal;
 #define CHAOTIC_HIGH_SPEED_THRESHOLD   0.3   // low threshold for NDC
 
 // Storm physics
-#define STORM_ELECTRIC_FORCE          4.0
+#define STORM_ELECTRIC_FORCE          2.6
 #define STORM_ELECTRIC_DAMPING         0.2
-#define STORM_BASE_TURBULENCE          0.5
-#define STORM_VELOCITY_DAMPING        0.98
+#define STORM_BASE_TURBULENCE          0.32
+#define STORM_VELOCITY_DAMPING        0.95
+#define STORM_VORTEX_FORCE            0.85
+#define STORM_VORTEX_PULL             0.12
 
 #define ELECTRIC_HUE_OFFSET_G          2.1
 #define ELECTRIC_HUE_OFFSET_B          4.2
@@ -150,9 +152,14 @@ static inline float2 calculateChaoticMovement(
     constant SimulationParams * params,
     float safeDt
 ) {
-    float2 chaoticMovement = turbulentMotion(p.position.xy,
+    float turbulenceWeight = hash(float(id) * 0.37 + floor(params[0].time * 0.5));
+    float2 turbulentField = turbulentMotion(p.position.xy,
                                             params[0].time,
                                             id);
+    float2 fractalField = fractalChaos(p.position.xy,
+                                       params[0].time,
+                                       id);
+    float2 chaoticMovement = mix(turbulentField, fractalField, turbulenceWeight);
 
     float2 chaoticDir = safeNormalize2(chaoticMovement);
 
@@ -187,6 +194,13 @@ static inline void calculateStormMovement(
     float baseTurbulence = sin(params[0].time * 3.0 + seed) * STORM_BASE_TURBULENCE;
     p.velocity.xy += float2(baseTurbulence, baseTurbulence * 0.7);
 
+    // Вихревой компонент вокруг центра экрана делает бурю более плавной и цельной
+    float2 centerOffset = p.position.xy;
+    float2 tangent = safeNormalize2(float2(-centerOffset.y, centerOffset.x));
+    float spiralPhase = sin(params[0].time * 0.8 + seed * 0.3) * 0.5 + 0.5;
+    p.velocity.xy += tangent * STORM_VORTEX_FORCE * (0.65 + spiralPhase * 0.35);
+    p.velocity.xy += -centerOffset * STORM_VORTEX_PULL * (0.5 + spiralPhase * 0.5);
+
     p.velocity.xy *= STORM_VELOCITY_DAMPING;
 
     float electricHue = hash(seed) * TWO_PI + params[0].time * 2.0;
@@ -196,6 +210,10 @@ static inline void calculateStormMovement(
         0.8 + 0.2 * sin(electricHue + ELECTRIC_HUE_OFFSET_B),
         0.7 + 0.3 * sin(params[0].time * 3.0 + seed)
     );
+
+    // Легкий хаотический jitter делает бурю визуально живее без разрыва траектории
+    float2 stormChaos = randomChaoticMotion(p.position.xy, params[0].time, id);
+    p.velocity.xy += stormChaos * 0.005;
 }
 
 // ============================================================================
@@ -359,6 +377,7 @@ kernel void updateParticles(
 
     bool isFullyCollected = (p.life == PARTICLE_COLLECTED &&
                              params[0].state == SIMULATION_STATE_COLLECTED);
+    bool needsPhysicsIntegration = true;
 
     if (!isFullyCollected) {
         // Restore original color at the start of each update except storm mode
@@ -369,6 +388,7 @@ kernel void updateParticles(
         switch (params[0].state) {
             case SIMULATION_STATE_COLLECTING:
                 calculateCollectionMovement(p, params, safeDt, collectedCounter);
+                needsPhysicsIntegration = false;
                 break;
 
             case SIMULATION_STATE_COLLECTED:
@@ -376,6 +396,7 @@ kernel void updateParticles(
                 p.position.xy = p.targetPosition.xy;
                 p.velocity.xy = float2(0.0);
                 p.life = PARTICLE_COLLECTED;
+                needsPhysicsIntegration = false;
                 break;
 
             case SIMULATION_STATE_LIGHTNING_STORM:
@@ -389,7 +410,9 @@ kernel void updateParticles(
                 break;
         }
 
-        integrateParticleForPhysics(p, safeDt, float2(0.0));
+        if (needsPhysicsIntegration) {
+            integrateParticleForPhysics(p, safeDt, float2(0.0));
+        }
         applyBoundaryConditionsForPhysics(p, params);
         p.size = calculateParticleSize(p, params, id);
 

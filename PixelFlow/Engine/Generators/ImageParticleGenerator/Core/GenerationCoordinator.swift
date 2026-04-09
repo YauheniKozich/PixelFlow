@@ -181,28 +181,21 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
         do {
             let particles = try await generationTask.value
 
-            // Очистка состояния
-            stateQueue.async(flags: .barrier) {
-                self._isGenerating = false
-                self._currentProgress = 1.0
-                self._currentStage = "Completed"
-            }
+            finishGeneration(progress: 1.0, stage: "Completed")
 
             return particles
 
         } catch {
-            // Очистка состояния при ошибке
-            stateQueue.async(flags: .barrier) {
-                self._isGenerating = false
-                self._currentProgress = 0.0
-                if Task.isCancelled || error is CancellationError {
-                    self._currentStage = "Cancelled"
-                } else if let generatorError = error as? GeneratorError, case .cancelled = generatorError {
-                    self._currentStage = "Cancelled"
-                } else {
-                    self._currentStage = "Failed"
-                }
+            let stage: String
+            if Task.isCancelled || error is CancellationError {
+                stage = "Cancelled"
+            } else if let generatorError = error as? GeneratorError, case .cancelled = generatorError {
+                stage = "Cancelled"
+            } else {
+                stage = "Failed"
             }
+
+            finishGeneration(progress: 0.0, stage: stage)
             throw error
         }
     }
@@ -212,20 +205,24 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
 
         // Отмена текущей задачи
         currentTask?.cancel()
-        currentTask = nil
 
         // Обновление состояния
-        stateQueue.async(flags: .barrier) {
-            self._isGenerating = false
-            self._currentProgress = 0.0
-            self._currentStage = "Cancelled"
-        }
+        finishGeneration(progress: 0.0, stage: "Cancelled")
 
         // Отмена в pipeline и operation manager
         operationManager.cancelAllOperations()
     }
 
     // MARK: - Private Methods
+
+    private func finishGeneration(progress: Float, stage: String) {
+        stateQueue.sync(flags: .barrier) {
+            self._isGenerating = false
+            self._currentProgress = progress
+            self._currentStage = stage
+            self.currentTask = nil
+        }
+    }
 
     private func cacheKey(for image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) -> String {
         let configFingerprint = hashConfig(config)

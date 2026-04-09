@@ -66,6 +66,7 @@ static inline float calculateDistanceAttenuation2D(float2 position, float2 light
 
 // ============================================================================
 // GLOBAL LIGHT (NDC)
+// Запасной helper для будущих режимов с направленным общим светом.
 // ============================================================================
 
 static inline float3 applyGlobalLight(
@@ -83,6 +84,7 @@ static inline float3 applyGlobalLight(
 
 // ============================================================================
 // AMBIENT OCCLUSION
+// Оставлено для расширения lighting-моделей, сейчас в основном пути не вызывается.
 // ============================================================================
 
 static inline float calculateAmbientOcclusion2D(float2 position, float particleDensity) {
@@ -107,6 +109,7 @@ static inline float3 applyBloomEffect(float3 color, float dist) {
 
 // ============================================================================
 // LIGHT SCATTERING
+// Базовый helper для будущего рассеяния света и мягких ореолов.
 // ============================================================================
 
 static inline float3 applyLightScattering(
@@ -139,11 +142,14 @@ static inline float3 applyRimLight(float3 baseColor, float dist, float3 rimColor
 static inline float3 applyStateLighting(
     float3 baseColor,
     float2 position,
+    float2 screenSize,
     float dist,
     float time,
     int state
 ) {
     float3 result = baseColor;
+    float2 safeScreen = max(screenSize, float2(1.0));
+    float2 ndcPosition = (position / safeScreen) * 2.0 - 1.0;
 
     switch (state) {
         case SIMULATION_STATE_LIGHTNING_STORM: {
@@ -151,6 +157,14 @@ static inline float3 applyStateLighting(
             float flash = hash(flashSeed) > 0.7 ? 1.0 : 0.0;
             float flashIntensity = flash * STORM_FLASH_INTENSITY * hash(flashSeed + 1.0);
             result *= (1.0 + STORM_AMBIENT_BOOST);
+
+            float2 stormLightSource = safeScreen * float2(
+                0.5 + 0.12 * sin(time * 0.9),
+                0.42 + 0.08 * cos(time * 1.3)
+            );
+            result = applyLightScattering(result, position, stormLightSource, 0.75);
+            result = applyGlobalLight(result, ndcPosition, float3(0.45, 0.65, 1.0), 0.14);
+
             if (flash > 0.5) {
                 float3 flashColor = float3(0.8, 0.9, 1.0) * flashIntensity;
                 result += flashColor * (1.0 - dist);
@@ -160,21 +174,29 @@ static inline float3 applyStateLighting(
         }
         case SIMULATION_STATE_COLLECTING:
         case SIMULATION_STATE_COLLECTED: {
-            result = baseColor;
+            float collectionDensity = 0.85 + (1.0 - saturate(dist)) * 1.2;
+            float occlusion = calculateAmbientOcclusion2D(position, collectionDensity);
+            result = applyGlobalLight(result, ndcPosition, float3(0.95, 0.82, 0.62), 0.07);
+            result *= occlusion;
             float glow = calculateGlow(dist, 2.0, GLOW_BASE_INTENSITY * 0.7);
-            result += float3(glow * 0.2);
+            result += float3(glow * 0.22);
+            if (state == SIMULATION_STATE_COLLECTED) {
+                result = applyRimLight(result, dist, float3(1.0, 0.95, 0.75), 2.4);
+            }
             break;
         }
         case SIMULATION_STATE_CHAOTIC: {
             float pulse = sin(time * 3.0) * 0.5 + 0.5;
             float dynamicIntensity = GLOW_BASE_INTENSITY * (0.8 + pulse * 0.4);
-            result = baseColor;
+            result = applyGlobalLight(result, ndcPosition, float3(0.5, 0.55, 0.85), 0.08);
             result += calculateGlow(dist, GLOW_FALLOFF_POWER, dynamicIntensity);
+            result = applyBloomEffect(result, dist);
             break;
         }
         case SIMULATION_STATE_IDLE:
         default: {
-            result = baseColor;
+            result = applyGlobalLight(result, ndcPosition, float3(0.15, 0.2, 0.32), 0.05);
+            result *= calculateAmbientOcclusion2D(position, 0.55 + (1.0 - saturate(dist)) * 0.4);
             float glow = calculateGlow(dist, 2.0, GLOW_BASE_INTENSITY * 0.5);
             result += float3(glow * 0.2);
             break;
@@ -191,13 +213,14 @@ static inline float3 applyStateLighting(
 static inline float3 calculateParticle2DLighting(
     float3 baseColor,
     float2 position,
+    float2 screenSize,
     float dist,
     float time,
     int state,
     float brightnessBoost
 ) {
     float3 result = baseColor * brightnessBoost;
-    result = applyStateLighting(result, position, dist, time, state);
+    result = applyStateLighting(result, position, screenSize, dist, time, state);
     result = applyBloomEffect(result, dist);
     result = max(result, float3(0.0));
     return result;

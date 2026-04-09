@@ -102,7 +102,6 @@ final class OperationManager: OperationManagerProtocol {
     /// Выполняет асинхронную операцию и возвращает результат
     func execute<T: Sendable>(_ operation: @escaping () async throws -> T) async throws -> T {
         let operationWrapper = AsyncOperation { try await operation() }
-        addOperation(operationWrapper)
 
         return try await withCheckedThrowingContinuation { continuation in
             operationWrapper.resultHandler = { result in
@@ -113,6 +112,8 @@ final class OperationManager: OperationManagerProtocol {
                     continuation.resume(throwing: error)
                 }
             }
+
+            addOperation(operationWrapper)
         }
     }
 

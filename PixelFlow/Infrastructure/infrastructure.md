@@ -107,6 +107,8 @@ protocol MetalRendererProtocol {
     func setupPipelines() throws
     func setupBuffers(particleCount: Int) throws
     func encodeCompute(into buffer: MTLCommandBuffer)
+    func setParticleGenerationConfig(_ config: ParticleGenerationConfig)
+    func setRenderQuality(_ quality: RenderQuality)
     // ...
 }
 
@@ -137,6 +139,7 @@ protocol ParticleSystemControlling {
     func stopSimulation()
     func toggleSimulation()
     func startCollecting()
+    func updateConfiguration(_ config: ParticleGenerationConfig)
     func collectHighQualityImage()
     func startLightningStorm()
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)

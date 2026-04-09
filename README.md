@@ -1,12 +1,12 @@
-# PixelFlow - Продвинутая система частиц на Metal
+# PixelFlow - Система частиц на Metal
 
-Модульная система частиц на Metal для iOS/macOS с MVVM архитектурой, интеллектуальной генерацией частиц из изображений и высокопроизводительными GPU вычислениями.
+Модульная система частиц на Metal для iOS с MVVM-архитектурой, генерацией частиц из изображений и GPU-вычислениями.
 
 ## Быстрый старт
 
 ```swift
 // Создание приложения через Assembly (MVVM паттерн)
-let viewController = ParticleAssembly.assemble()
+let viewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
 // Или прямая работа с Engine
 let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
 let config = ParticleGenerationConfig.standard
@@ -22,7 +22,14 @@ let particles = try await coordinator.generateParticles(
 
 ## Архитектура проекта
 
-PixelFlow построен по принципам чистой архитектуры с разделением на слои MVVM и модульной организацией компонентов.
+PixelFlow состоит из нескольких модулей:
+- `Assembly` собирает UI, ViewModel и зависимости
+- `Engine` содержит генераторы, симуляцию и Metal-шейдеры
+- `UI` управляет жизненным циклом приложения
+- `Infrastructure` хранит DI, протоколы и сервисы
+- `Resources` содержит ассеты и локализацию
+
+Подробности по каждому модулю находятся в отдельных markdown-файлах.
 
 ```
 PixelFlow/
@@ -59,7 +66,7 @@ PixelFlow/
 │   │
 │   └── GraphicsUtils.swift    # Графические утилиты
 │
-├── 📁 UI/                     # Пользовательский интерфейс
+├── 📁 UI/                     # Пользовательский интерфейс iOS
 │   ├── AppDelegate.swift      # Делегат приложения
 │   └── SceneDelegate.swift    # Делегат сцены
 │
@@ -73,49 +80,13 @@ PixelFlow/
 │   └── Base.lproj/            # Storyboards и локализация
 ```
 
-### Взаимодействие компонентов
-
-```
-Пользователь → Assembly (MVVM) → Engine
-                              ↓
-                    ParticleSystem ← Generators
-                              ↓
-                          Shaders (GPU)
-```
-
 ## Ключевые возможности
 
-### Архитектура MVVM
-- **Чистая архитектура**: Разделение на Assembly, Engine и UI слои
-- **Модульная организация**: Независимые компоненты с четкими интерфейсами
-- **Протокольно-ориентированный дизайн**: Гибкие и расширяемые API
-- **Assembly паттерн**: Упрощенная сборка и конфигурация
-
-### Интеллектуальная генерация частиц
-- **Умный анализ изображений**: SIMD-оптимизированные вычисления метрик
-- **Множественные стратегии сэмплинга**: Uniform, Importance, Adaptive, Hybrid
-- **Адаптивная плотность**: Больше частиц в детализированных областях
-- **Цветовая точность**: Наследование цветов и свойств пикселей
-- **Кэширование результатов**: Автоматическое сохранение и повторное использование
-
-### Высокая производительность
-- **Metal GPU acceleration**: Полностью аппаратное ускорение
-- **SIMD оптимизации**: Векторизованные вычисления с Accelerate
-- **Многопоточная обработка**: Параллельный анализ изображений
-- **Эффективное управление памятью**: Оптимизированные структуры данных
-
-### Продвинутые визуальные эффекты
-- **State-based освещение**: Динамические эффекты в зависимости от состояния
-- **Bloom и glow**: Радиальное свечение с настраиваемой интенсивностью
-- **Lightning эффекты**: Реалистичные электрические разряды
-- **Цинематическое освещение**: Профессиональные пост-обработка эффекты
-- **HDR рендеринг**: Расширенный динамический диапазон
-
-### Гибкая конфигурация
-- **Пресеты качества**: Draft, Standard, High, Ultra
-- **Настраиваемые параметры**: Размеры частиц, скорости, эффекты
-- **Множественные стратегии**: Адаптация под разные типы контента
-- **Программное API**: Полный контроль над поведением системы
+- Генерация частиц из изображений
+- Симуляция и рендеринг на Metal
+- MVVM-сборка через `Assembly`
+- Presets качества: Draft, Standard, High, Ultra
+- State-based эффекты освещения
 
 ## Документация
 
@@ -123,8 +94,8 @@ PixelFlow/
 - **[ImageParticleGenerator](PixelFlow/Engine/Generators/ImageParticleGenerator/image-particle-generator.md)** - Руководство по генерации частиц
 
 ### Архитектура проекта
-- **[Assembly](PixelFlow/Assembly/assembly.md)** - MVVM слой, ParticleAssembly, ViewModel
-- **[UI](PixelFlow/UI/ui.md)** - AppDelegate, SceneDelegate, структура интерфейса
+- **[Assembly](PixelFlow/Assembly/assembly.md)** - MVVM слой и сборка
+- **[UI](PixelFlow/UI/ui.md)** - AppDelegate, SceneDelegate, ViewController
 - **[Infrastructure](PixelFlow/Infrastructure/infrastructure.md)** - DI, протоколы, сервисы
 - **[Errors](PixelFlow/Errors/errors.md)** - Система ошибок PixelFlow
 - **[Resources](PixelFlow/Resources/resources.md)** - Ассеты, локализация, управление ресурсами
@@ -150,10 +121,9 @@ PixelFlow/
 
 ## Системные требования
 
-- **iOS**: 16.0+
-- **macOS**: 13.0+
-- **Xcode**: 14.0+
-- **Swift**: 5.7+
+- **Платформа**: iOS target
+- **Xcode**: current project-compatible version with Metal toolchain
+- **Swift**: 5.0 as set in the Xcode project
 
 ## Лицензия
 

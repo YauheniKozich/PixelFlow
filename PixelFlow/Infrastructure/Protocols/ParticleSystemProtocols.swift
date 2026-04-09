@@ -9,6 +9,23 @@
 import MetalKit
 import CoreGraphics
 
+/// Качество render pipeline в MetalRenderer.
+enum RenderQuality: Equatable {
+    case standard
+    case performance
+}
+
+extension QualityPreset {
+    var renderQuality: RenderQuality {
+        switch self {
+        case .draft:
+            return .performance
+        case .standard, .high, .ultra:
+            return .standard
+        }
+    }
+}
+
 // Протокол для контроллера системы частиц
 // @MainActor
 // protocol ParticleSystemControlling: AnyObject {
@@ -60,6 +77,12 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
 
     /// Обновляет параметры симуляции
     func updateSimulationParams()
+
+    /// Обновляет конфигурацию генерации частиц, используемую шейдерами.
+    func setParticleGenerationConfig(_ config: ParticleGenerationConfig)
+
+    /// Выбирает качество render pipeline.
+    func setRenderQuality(_ quality: RenderQuality)
 
     /// Сбрасывает счетчик собранных частиц
     func resetCollectedCounter()

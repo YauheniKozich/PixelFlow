@@ -2,7 +2,7 @@
 
 ## Быстрый старт
 
-Ваши шейдеры предоставляют **мощные возможности освещения** для частиц! Вот что доступно прямо сейчас:
+Шейдеры проекта содержат базовые и state-based эффекты освещения для частиц.
 
 ---
 
@@ -11,10 +11,11 @@
 ### 1. Простое освещение частиц
 ```metal
 // Используйте calculateParticle2DLighting из Lighting.h
-// Позиция частицы должна быть в NDC [-1, 1]
+// Позиция частицы должна быть в пикселях, screenSize нужен для нормализации
 float3 litColor = calculateParticle2DLighting(
     baseColor,           // базовый цвет частицы
-    screenPos,           // позиция в NDC [-1, 1]
+    screenPos,           // позиция в пикселях
+    screenSize,          // размер экрана для NDC-конверсии
     dist,                // расстояние от центра частицы (0-1)
     time,                // время для анимации
     state,               // состояние симуляции
@@ -32,12 +33,56 @@ float3 glowingColor = baseColor + float3(glow);
 ### 3. State-based освещение
 ```metal
 // Разные эффекты для разных состояний симуляции
-// Позиция частицы должна быть в NDC [-1, 1]
+// Позиция частицы должна быть в пикселях, screenSize нужен для нормализации
 float3 color = applyStateLighting(
-    baseColor, position, dist, time, state
+    baseColor, position, screenSize, dist, time, state
 );
 // Автоматически выбирает: idle, chaotic, collecting, collected, storm
 ```
+
+---
+
+## РАСШИРЯЕМЫЕ HELPER'Ы
+
+Некоторые функции уже подключены в отдельных режимах, а часть все еще остается как готовая точка расширения для новых сценариев.
+
+### Движение
+```metal
+// Альтернативные варианты хаотичного движения
+float2 chaoticA = randomChaoticMotion(position, time, particleId);
+float2 chaoticB = fractalChaos(position, time, particleId);
+```
+
+### Освещение
+```metal
+// Дополнительные lighting helpers для state-based режимов
+float3 globalLight = applyGlobalLight(color, ndcPosition, lightColor, intensity);
+float ao = calculateAmbientOcclusion2D(position, particleDensity);
+float3 scattered = applyLightScattering(color, position, lightSource, intensity);
+```
+
+### Производительность
+```metal
+// Упрощенный fragment path для переключения качества через draft preset
+float4 fastColor = fragmentParticlePerformance(...);
+```
+
+При `QualityPreset.draft` renderer автоматически выбирает performance path.
+
+---
+
+## КРАТКАЯ КАРТА ФУНКЦИЙ
+
+- `turbulentMotion()` - основной chaotic motion в текущем pipeline
+- `randomChaoticMotion()` - дополнительный chaotic motion для storm-ветки
+- `fractalChaos()` - более сложный motion с несколькими октавами для chaotic state
+- `calculateParticle2DLighting()` - основной путь освещения
+- `applyStateLighting()` - state-based модификация освещения
+- `applyGlobalLight()` - state-based helper для общего света
+- `calculateAmbientOcclusion2D()` - state-based helper для ambient occlusion
+- `applyLightScattering()` - state-based helper для рассеяния света
+- `fragmentParticle()` - основной fragment path
+- `fragmentParticlePerformance()` - fast-path для производительности
 
 ---
 
@@ -77,7 +122,7 @@ return float4(color, alpha);
 
 ### Lightning эффекты
 ```metal
-// В режиме LIGHTNING_STORM автоматически:
+// В режиме LIGHTNING_STORM:
 // - Электрические цвета с турбулентностью
 // - Zigzag молнии каждые 4 секунды
 // - Spark эффекты
@@ -110,8 +155,8 @@ struct SimulationParams {
 
 ### Основные функции освещения (Lighting.h)
 ```metal
-// Простое глобальное освещение
-float3 applyGlobalLight(float3 color, float2 position, float2 screenSize,
+// Простое глобальное освещение для state-based режимов
+float3 applyGlobalLight(float3 color, float2 position,
                        float3 lightColor, float intensity);
 
 // Радиальный glow
@@ -119,11 +164,11 @@ float calculateGlow(float dist, float power, float intensity);
 
 // Полное освещение частиц
 float3 calculateParticle2DLighting(float3 color, float2 position,
-                                  float dist, float time, int state, float brightnessBoost);
+                                  float2 screenSize, float dist, float time, int state, float brightnessBoost);
 
 // State-based эффекты
 float3 applyStateLighting(float3 color, float2 position,
-                         float dist, float time, int state);
+                         float2 screenSize, float dist, float time, int state);
 ```
 
 ### Константы состояний (Simulation.h)

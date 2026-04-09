@@ -41,6 +41,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         static let updateParticles = "updateParticles"
         static let vertexParticle = "vertexParticle"
         static let fragmentParticle = "fragmentParticle"
+        static let fragmentParticlePerformance = "fragmentParticlePerformance"
     }
     
     // MARK: - Dependencies
@@ -74,11 +75,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     private var particleCount: Int = 0
     private(set) var screenSize: CGSize = .zero
     private var currentConfig: ParticleGenerationConfig = .standard
+    private var renderQuality: RenderQuality = .standard
     private var enableIdleChaotic: Bool = false
     private var displayScale: Float = Constants.defaultDisplayScale
 
     private weak var simulationEngine: SimulationEngineProtocol?
     private var paramsUpdater: SimulationParamsUpdater?
+    private var shaderLibrary: MTLLibrary?
     
     // MARK: - Frame Tracking
 
@@ -157,6 +160,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         guard let library = device.makeDefaultLibrary() else {
             throw MetalError.libraryCreationFailed
         }
+        shaderLibrary = library
 
         try setupComputePipeline(library: library)
         try setupRenderPipeline(library: library)
@@ -184,11 +188,19 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     
     private func createRenderPipelineDescriptor(library: MTLLibrary) throws -> MTLRenderPipelineDescriptor {
         let descriptor = MTLRenderPipelineDescriptor()
+        let fragmentFunctionName: String
+
+        switch renderQuality {
+        case .standard:
+            fragmentFunctionName = ShaderNames.fragmentParticle
+        case .performance:
+            fragmentFunctionName = ShaderNames.fragmentParticlePerformance
+        }
         
         guard let vertexFunction = library.makeFunction(name: ShaderNames.vertexParticle),
-              let fragmentFunction = library.makeFunction(name: ShaderNames.fragmentParticle) else {
+              let fragmentFunction = library.makeFunction(name: fragmentFunctionName) else {
             throw MetalError.functionNotFound(
-                name: "\(ShaderNames.vertexParticle)/\(ShaderNames.fragmentParticle)"
+                name: "\(ShaderNames.vertexParticle)/\(fragmentFunctionName)"
             )
         }
         
@@ -296,8 +308,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let pipeline = renderPipeline,
               let particleBuf = particleBuffer,
-              let paramsBuf = paramsBuffer,
-              let counterBuf = collectedCounterBuffer else {
+              let paramsBuf = paramsBuffer else {
             return
         }
 
@@ -472,6 +483,9 @@ extension MetalRenderer: MetalRendererProtocol {
         lastLoggedCollectionProgress = 0
         isPipelineConfigured = false
         simulationEngine = nil
+        shaderLibrary = nil
+        renderQuality = .standard
+        currentConfig = .standard
 
         logger.info("MetalRenderer cleanup completed")
     }
@@ -497,6 +511,29 @@ extension MetalRenderer: MetalRendererProtocol {
         simulationEngine = engine
         resetCollectedCounter()
         updateSimulationParams()
+    }
+
+    func setParticleGenerationConfig(_ config: ParticleGenerationConfig) {
+        currentConfig = config
+        updateSimulationParams()
+    }
+
+    func setRenderQuality(_ quality: RenderQuality) {
+        guard renderQuality != quality else { return }
+        renderQuality = quality
+
+        guard isPipelineConfigured else { return }
+        guard let library = shaderLibrary else {
+            logger.warning("Render quality changed to \(quality) before shader library was cached")
+            return
+        }
+
+        do {
+            try setupRenderPipeline(library: library)
+            logger.info("Render quality switched to \(quality)")
+        } catch {
+            logger.error("Failed to switch render quality to \(quality): \(error)")
+        }
     }
     
     func resetCollectedCounter() {

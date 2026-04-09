@@ -38,11 +38,13 @@ using namespace metal;
 #define PARTICLE_EDGE_SOFTNESS 0.95     // Увеличиваем размытость краев для сглаживания
 
 // КОНСТАНТЫ ЭЛЕКТРИЧЕСКОЙ БУРИ - спецэффекты молний
-#define STORM_BRIGHTNESS_MULTIPLIER 4.0    // Усиление яркости в буре
-#define STORM_SIZE_MULTIPLIER_MIN 1.5      // Минимальное увеличение размера
-#define STORM_SIZE_MULTIPLIER_MAX 2.0      // Максимальное увеличение размера
+#define STORM_BRIGHTNESS_MULTIPLIER 4.5    // Усиление яркости в буре
+#define STORM_SIZE_MULTIPLIER_MIN 0.55     // Минимальный размер в буре
+#define STORM_SIZE_MULTIPLIER_MAX 0.9      // Максимальный размер в буре
 #define STORM_MAX_BRIGHTNESS 3.0           // Ограничение яркости (защита от ослепления)
 #define STORM_SPARK_THRESHOLD 0.995        // Порог для искр (редкие вспышки)
+#define STORM_CORE_SOFTNESS 0.7            // Мягкость ядра частицы
+#define STORM_GLOW_BOOST 0.28              // Дополнительный ореол для мелких частиц
 #define STORM_WAVE_SPATIAL_FREQ 15.0       // Частота волн турбулентности
 #define STORM_ELECTRIC_UV_SCALE 8.0        // Масштаб электрических текстур
 #define STORM_TIME_SCALE_1 3.0             // Скорость анимации 1
@@ -309,6 +311,10 @@ fragment float4 fragmentParticle(
             col = float3(3.0, 3.0, 3.0);  // Белые вспышки
         }
 
+        // МЕЛКИЙ ЯДЕРНЫЙ ОРЕОЛ - делаем частицы визуально тоньше и "электричнее"
+        float stormCore = pow(max(1.0 - dist, 0.0), 3.2);
+        col += float3(0.25, 0.45, 0.75) * stormCore * STORM_GLOW_BOOST * STORM_CORE_SOFTNESS;
+
         // ЭНЕРГЕТИЧЕСКИЕ ВОЛНЫ - модуляция яркости
         float waveFreq = 8.0 + hash(electricSeed) * 4.0;
         float wave = sin(params[0].time * waveFreq + length(uv) * STORM_WAVE_SPATIAL_FREQ) * 0.4 + 0.6;
@@ -384,6 +390,7 @@ fragment float4 fragmentParticle(
             col = calculateParticle2DLighting(
                 baseColor,              // Базовый цвет частицы (linear)
                 in.screenPos,           // Позиция на экране
+                params[0].screenSize,   // Размер экрана для NDC-освещения
                 dist,                   // Расстояние от центра
                 localTime,              // Адаптированное время
                 params[0].state,        // Текущее состояние
@@ -462,6 +469,7 @@ fragment float4 fragmentParticle(
 // ============================================================================
 // АЛЬТЕРНАТИВНЫЙ FRAGMENT ШЕЙДЕР - РЕЖИМ ПРОИЗВОДИТЕЛЬНОСТИ
 // ============================================================================
+// Fast-path для будущего переключения качества. Сейчас основной pipeline его не вызывает.
 
 /*
     УПРОЩЕННАЯ ВЕРСИЯ ДЛЯ МАКСИМАЛЬНОЙ ПРОИЗВОДИТЕЛЬНОСТИ
@@ -497,6 +505,8 @@ fragment float4 fragmentParticlePerformance(
             0.4 + 0.6 * cos(hue),
             0.8
         ) * 3.0;
+        float stormCore = pow(max(1.0 - dist, 0.0), 3.0);
+        col += float3(0.2, 0.4, 0.7) * stormCore * STORM_CORE_SOFTNESS;
     } else {
         // Только простое свечение
         float glow = pow(1.0 - dist, 2.5) * GLOW_BASE_INTENSITY;

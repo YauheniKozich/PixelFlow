@@ -1,1 +1,77 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# AI context
+QWEN.md
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Xcode — личные схемы и workspace state
+*.xcworkspace/xcshareddata/xcbaselines/
+xcuserdata/
+
+# Derived Data
+DerivedData/
+build/
+
+# Build artifacts
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Package.resolved
+.swiftpm/
+
+# CocoaPods (если добавятся)
+Pods/
+
+# Log files
+*.log
+xcodebuild*.log
+build.log
+
+# Code coverage
+coverage/
+*.gcno
+*.gcda
+*.profdata
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Carthage (если добавится)
+Carthage/
+
+# Accio
+Accio/
+
+# Ruby / CocoaPods
+*.gem
+*.rbc
+/.bundle/
+/coverage/
+/Gemfile.lock
+/spec/reports/
+/tmp/
+/vendor/
+
+# SwiftLint report
+swiftlint_report.txt

@@ -29,7 +29,7 @@ Resources/
 **Требования к иконке:**
 - Формат: PNG
 - Фон: Прозрачный или сплошной
-- Стиль: Современный, recognizable
+- Стиль: Подходящий для бренда приложения
 
 ### AccentColor
 **Акцентный цвет приложения**
@@ -213,10 +213,3 @@ func testImageLoading() {
     XCTAssertEqual(image?.height, 512, "Height should be 512")
 }
 ```
-
-## Будущие улучшения
-
-- **Dynamic assets**: Загрузка ресурсов из сети
-- **Theming**: Множественные темы оформления
-- **Internationalization**: Полная локализация интерфейса
-- **Accessibility**: VoiceOver поддержка и динамические размеры

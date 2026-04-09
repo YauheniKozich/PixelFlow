@@ -1,6 +1,6 @@
 # UI - Пользовательский интерфейс
 
-UI слой PixelFlow, отвечающий за приложение iOS/macOS, управление жизненным циклом и интеграцию с системой.
+UI слой PixelFlow, отвечающий за iOS-приложение, управление жизненным циклом и интеграцию с системой.
 
 ## Архитектура
 
@@ -37,12 +37,6 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 ```
-
-**Обязанности:**
-- **Инициализация**: Настройка внешнего вида, логирование запуска
-- **Жизненный цикл**: Обработка запуска, завершения, фонового режима
-- **Конфигурация сцен**: Создание конфигураций для новых сцен
-- **Низкая память**: Обработка `didReceiveMemoryWarning`
 
 ### configureAppearance()
 **Настройка внешнего вида приложения**
@@ -81,7 +75,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         self.window = window
 
         // Создание корневого ViewController через Assembly
-        let rootViewController = ParticleAssembly.assemble()
+        let rootViewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
         window.rootViewController = rootViewController
 
         window.makeKeyAndVisible()
@@ -109,26 +103,22 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 }
 ```
 
-**Обязанности:**
-- **Создание окна**: Инициализация UIWindow для сцены
-- **Сборка UI**: Использование ParticleAssembly для создания корневого контроллера
-- **Жизненный цикл сцены**: Обработка переходов активный/неактивный, foreground/background
-
 ## ViewController
 **Основной контроллер приложения**
 
 **Структура:**
 - Render view (создаётся через ViewModel) для Metal рендеринга частиц
 - ParticleViewModel для бизнес-логики
-- UI элементы для управления (кнопки, слайдеры, индикаторы)
+- UI элементы для управления качеством и состоянием симуляции
 
 **Ключевые методы:**
 ```swift
 override func viewDidLoad() {
     super.viewDidLoad()
     setupRenderView()
-    setupUIControls()
-    setupViewModel()
+    setupQualityControl()
+    setupGestures()
+    setupViewModelCallbacks()
 }
 
 func setupRenderView() {
@@ -145,31 +135,12 @@ func setupRenderView() {
 }
 ```
 
-## Жизненный цикл приложения
+## Платформа
 
-```
-App Launch → AppDelegate.didFinishLaunching → SceneDelegate.willConnectToScene
-    ↓
-Создание окна → Assembly.assemble() → ViewController с ParticleViewModel
-    ↓
-setupRenderView() → viewModel.createSystem() → ParticleSystem инициализация
-    ↓
-Симуляция частиц → Metal рендеринг
-```
-
-## Кроссплатформенность
-
-UI слой поддерживает iOS и macOS:
-
-```swift
-#if os(iOS)
-typealias PlatformViewController = UIViewController
-typealias PlatformSceneDelegate = UIResponder & UIWindowSceneDelegate
-#elseif os(macOS)
-typealias PlatformViewController = NSViewController
-typealias PlatformSceneDelegate = NSObject & NSApplicationDelegate
-#endif
-```
+UI слой PixelFlow сейчас ориентирован на iOS target:
+- `AppDelegate.swift` управляет запуском приложения
+- `SceneDelegate.swift` создаёт окно и корневой контроллер
+- `ViewController.swift` содержит render view, quality control и жесты
 
 ## Интеграция с системой
 
@@ -177,13 +148,6 @@ typealias PlatformSceneDelegate = NSObject & NSApplicationDelegate
 - **UIWindowSceneDelegate**: Управление сценами и окнами
 - **Logger**: Логирование всех UI событий
 - **ParticleAssembly**: MVVM сборка компонентов
-
-## Тестирование
-
-UI компоненты тестируются через:
-- **Unit тесты** для ViewModel
-- **UI тесты** для контроллеров
-- **Интеграционные тесты** для Assembly
 
 ## Производительность
 

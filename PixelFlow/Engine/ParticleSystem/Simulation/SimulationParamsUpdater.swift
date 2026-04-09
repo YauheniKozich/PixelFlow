@@ -20,7 +20,7 @@ final class SimulationParamsUpdater {
         config: ParticleGenerationConfig,
         enableIdleChaotic: Bool = false,
         displayScale: Float = 1.0,
-        collectionSpeed: Float = 5.0,
+        collectionSpeed: Float = 8.0,
         brightnessBoost: Float = 2.0,
         threadsPerThreadgroup: UInt32 = 256
     ) {

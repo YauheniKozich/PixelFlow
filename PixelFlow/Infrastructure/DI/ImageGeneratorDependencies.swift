@@ -240,8 +240,8 @@ final class ResourceTracker: ResourceTrackerProtocol {
     func resourceReport() -> String {
         lock.lock()
         defer { lock.unlock() }
-        
-        let total = totalTrackedResources
+
+        let total = trackedResources.values.reduce(0, +)
         var report = "Resource Tracking Report:\n"
         report += "Total tracked resources: \(total)\n"
         

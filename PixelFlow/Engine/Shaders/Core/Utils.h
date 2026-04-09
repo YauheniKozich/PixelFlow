@@ -93,7 +93,8 @@ static inline float noise(float3 p) {
                    mix(hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
 }
 
-// Сильно рандомизированное движение
+// Сильно рандомизированное движение.
+// Оставлено как альтернативный профиль для будущих хаотичных режимов.
 
 static inline float2 randomChaoticMotion(float2 position, float time, uint particleId) {
     float seed = float(particleId) * CHAOTIC_PARTICLE_SEED_FACTOR + time * CHAOTIC_TIME_SCALE;
@@ -175,7 +176,8 @@ static inline float2 turbulentMotion(float2 position, float time, uint particleI
     return offset;
 }
 
-// Фрактальное хаотичное движение
+// Фрактальное хаотичное движение.
+// Используется как расширяемый вариант более "слоистого" motion-эффекта.
 
 static inline float2 fractalChaos(float2 position, float time, uint particleId) {
     float seed = float(particleId) + time * FRACTAL_SEED_TIME_SCALE;

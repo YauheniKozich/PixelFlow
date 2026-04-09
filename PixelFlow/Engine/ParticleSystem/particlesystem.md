@@ -51,6 +51,7 @@ enum SimulationState {
     case chaotic        // Хаотичное движение всех частиц
     case collecting     // Частицы собираются в центр
     case collected      // Частицы собраны, ждут команды
+    case lightningStorm // Электрическая буря с усиленными эффектами
 }
 ```
 
@@ -65,7 +66,8 @@ enum SimulationState {
 **Переходы состояний:**
 ```
 idle → chaotic → collecting → collected → idle
-   ↑                                    ↓
+   ↑            │                    ↓
+   │            └──── lightningStorm ─┘
    └────────────────────────────────────┘
 ```
 
@@ -74,6 +76,7 @@ idle → chaotic → collecting → collected → idle
 - **chaotic**: Все частицы в хаотичном движении
 - **collecting**: Частицы притягиваются к центру
 - **collected**: Частицы в плотной группе
+- **lightningStorm**: Электрическая буря с импульсами и усиленным светом
 
 ### SimulationClock
 **Управление временем симуляции**
@@ -115,7 +118,7 @@ func draw(in: MTKView)                    // Отрисовка кадра (вн
 ### Particle
 **Основная структура частицы**
 
-**Память (80 байт):**
+**Память (96 байт):**
 ```swift
 struct Particle {
     // Позиция и движение (48 байт)
@@ -152,7 +155,7 @@ struct ParticleConstants {
 ## Models - Модели данных
 
 ### SimulationParams
-**Параметры симуляции для GPU (256 байт)**
+**Параметры симуляции для GPU (272 байта)**
 
 ```swift
 struct SimulationParams {
@@ -171,11 +174,11 @@ struct SimulationParams {
     var time: Float                      // Текущее время
     var particleCount: UInt32            // Количество частиц
 
-    // + padding до 256 байт
+    // + padding до 272 байт
 }
 ```
 
-**Критически важно:** Размер ровно 256 байт для Metal буферов
+**Критически важно:** Размер ровно 272 байта для Metal буферов
 
 ## Storage - Управление данными
 

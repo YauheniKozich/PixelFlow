@@ -577,7 +577,7 @@ extension ParticleStorage: ParticleStorageProtocol {
         
         let normalized = (
             x: (scatteredScreen.x / viewWidth) * 2.0 - 1.0,
-            y: (scatteredScreen.y / viewHeight) * 2.0 - 1.0
+            y: (1.0 - scatteredScreen.y / viewHeight) * 2.0 - 1.0
         )
         
         let scatteredPos = clampToNDCBounds(x: normalized.x, y: normalized.y)
@@ -669,6 +669,7 @@ extension ParticleStorage: ParticleStorageProtocol {
         index: Int
     ) {
         bufferPointer[index].targetPosition = target.targetPosition
+        bufferPointer[index].velocity = SIMD3<Float>(0, 0, 0)
         bufferPointer[index].color = target.color
         bufferPointer[index].originalColor = target.originalColor
         bufferPointer[index].size = target.size

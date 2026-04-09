@@ -10,6 +10,8 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         static let qualityLabelFontSize: CGFloat = 20
         static let restartLabelFontSize: CGFloat = 18
         static let qualityLabelTopOffset: CGFloat = 50
+        static let qualityControlBottomOffset: CGFloat = 16
+        static let qualityControlHorizontalInset: CGFloat = 16
         static let fadeInDuration: TimeInterval = 0.3
         static let fadeOutDuration: TimeInterval = 0.3
         static let fadeOutDelay: TimeInterval = 1.0
@@ -30,6 +32,7 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     
     private let viewModel: ParticleViewModel
     private var renderView: RenderView?
+    private var qualityControl: UISegmentedControl?
     private var qualityUpgradeLabel: UILabel?
     private var restartMessageLabel: UILabel?
     private var isFirstLayout = true
@@ -52,6 +55,7 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         super.viewDidLoad()
         setupView()
         setupRenderView()
+        setupQualityControl()
         setupGestures()
         setupViewModelCallbacks()
         setupMemoryWarningObserver()
@@ -93,7 +97,90 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
         renderView = viewInstance
         
         guard let renderUIView = viewInstance as? UIView else { return }
+        renderUIView.isAccessibilityElement = true
+        renderUIView.accessibilityLabel = "Экран частиц PixelFlow"
+        renderUIView.accessibilityHint = "Коснитесь один раз для сбора HQ-изображения, дважды для сброса, трижды для эффекта молнии"
         view.addSubview(renderUIView)
+    }
+
+    private func setupQualityControl() {
+        let control = createQualityControl()
+        qualityControl = control
+        view.addSubview(control)
+
+        NSLayoutConstraint.activate([
+            control.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            control.bottomAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.bottomAnchor,
+                constant: -Constants.qualityControlBottomOffset
+            ),
+            control.leadingAnchor.constraint(
+                greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: Constants.qualityControlHorizontalInset
+            ),
+            control.trailingAnchor.constraint(
+                lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor,
+                constant: -Constants.qualityControlHorizontalInset
+            )
+        ])
+
+        view.bringSubviewToFront(control)
+        syncQualityControlSelection()
+    }
+
+    private func createQualityControl() -> UISegmentedControl {
+        let control = UISegmentedControl(items: qualityPresetTitles)
+        control.translatesAutoresizingMaskIntoConstraints = false
+        control.selectedSegmentIndex = qualityPresetIndex(for: viewModel.qualityPreset)
+        control.apportionsSegmentWidthsByContent = true
+        control.selectedSegmentTintColor = .systemBlue
+        control.backgroundColor = UIColor(white: 0.15, alpha: 0.92)
+        control.setTitleTextAttributes(
+            [.font: UIFont.systemFont(ofSize: 12, weight: .semibold)],
+            for: .normal
+        )
+        control.setTitleTextAttributes(
+            [.font: UIFont.systemFont(ofSize: 12, weight: .semibold)],
+            for: .selected
+        )
+        control.addTarget(self, action: #selector(handleQualityControlChanged(_:)), for: .valueChanged)
+        control.accessibilityLabel = "Режим качества рендера"
+        return control
+    }
+
+    private var qualityPresetTitles: [String] {
+        ["Draft", "Standard", "High", "Ultra"]
+    }
+
+    private func qualityPresetIndex(for preset: QualityPreset) -> Int {
+        switch preset {
+        case .draft: return 0
+        case .standard: return 1
+        case .high: return 2
+        case .ultra: return 3
+        }
+    }
+
+    private func qualityPreset(for index: Int) -> QualityPreset {
+        switch index {
+        case 0: return .draft
+        case 1: return .standard
+        case 2: return .high
+        default: return .ultra
+        }
+    }
+
+    private func syncQualityControlSelection() {
+        guard let control = qualityControl else { return }
+        let selectedIndex = qualityPresetIndex(for: viewModel.qualityPreset)
+        if control.selectedSegmentIndex != selectedIndex {
+            control.selectedSegmentIndex = selectedIndex
+        }
+    }
+
+    @objc private func handleQualityControlChanged(_ sender: UISegmentedControl) {
+        let preset = qualityPreset(for: sender.selectedSegmentIndex)
+        viewModel.setQualityPreset(preset)
     }
     
     private func setupViewModelCallbacks() {
@@ -139,14 +226,20 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     private func initializeParticleSystem() {
         Task { [weak self] in
             guard let self else { return }
-            guard !self.viewModel.isConfigured else { return }
-            guard let renderView = self.renderView else { return }
-            
-            self.viewModel.setImageDisplayMode(.fit)
-            
-            if await self.viewModel.createSystem(in: renderView) {
-                self.activateGestures()
-            }
+            await self.initializeParticleSystemOnMainActor()
+        }
+    }
+
+    @MainActor
+    private func initializeParticleSystemOnMainActor() async {
+        guard !viewModel.isConfigured else { return }
+        guard let renderView = renderView else { return }
+
+        viewModel.setImageDisplayMode(.fit)
+
+        if await viewModel.createSystem(in: renderView) {
+            syncQualityControlSelection()
+            activateGestures()
         }
     }
     
@@ -183,25 +276,25 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
             tripleTap: tripleTap
         )
 
-        // Accessibility: делаем view доступным для VoiceOver
-        view.isAccessibilityElement = true
-        view.accessibilityLabel = "Экран частиц PixelFlow"
-        view.accessibilityHint = "Коснитесь один раз для запуска, дважды для сброса, трижды для эффекта молнии"
     }
     
     private func createTapGesture() -> UITapGestureRecognizer {
-        return UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        let gesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        gesture.delegate = self
+        return gesture
     }
-    
+
     private func createDoubleTapGesture() -> UITapGestureRecognizer {
         let gesture = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
         gesture.numberOfTapsRequired = 2
+        gesture.delegate = self
         return gesture
     }
-    
+
     private func createTripleTapGesture() -> UITapGestureRecognizer {
         let gesture = UITapGestureRecognizer(target: self, action: #selector(handleTripleTap))
         gesture.numberOfTapsRequired = 3
+        gesture.delegate = self
         return gesture
     }
     
@@ -418,5 +511,19 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
             qualityUpgradeLabel = nil
         }
         label.removeFromSuperview()
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate
+
+extension ViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let touchedView = touch.view else { return true }
+
+        if let control = qualityControl, touchedView.isDescendant(of: control) {
+            return false
+        }
+
+        return true
     }
 }

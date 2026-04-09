@@ -31,6 +31,7 @@ protocol ParticleSystemControlling {
     func stopSimulation()
     func toggleSimulation()
     func startCollecting()
+    func updateConfiguration(_ config: ParticleGenerationConfig)
     func collectHighQualityImage()
     func startLightningStorm()
     func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
@@ -67,12 +68,10 @@ final class ParticleSystemController: ParticleSystemControlling {
     
     // Task management
     private var generationTask: Task<Void, Never>?
-    private var hqCollectTask: Task<Void, Never>?
-    
+
     // State flags
     private var isCollectingHQ: Bool = false
     private var hasHighQualityTargets: Bool = false
-    private var pendingCollectAfterHQ: Bool = false
     private var isImageAssembled: Bool = false
     
     // Completion handlers
@@ -109,6 +108,11 @@ final class ParticleSystemController: ParticleSystemControlling {
         renderer.setParticleBuffer(storage.particleBuffer)
         setupCallbacks()
     }
+
+    private func syncRenderQuality(with config: ParticleGenerationConfig) {
+        renderer.setParticleGenerationConfig(config)
+        renderer.setRenderQuality(config.qualityPreset.renderQuality)
+    }
     
     private func setupCallbacks() {
         simulationEngine.resetCounterCallback = { [weak self] in
@@ -136,6 +140,7 @@ extension ParticleSystemController {
         self.particleCount = particleCount
 
         configManager.apply(config)
+        syncRenderQuality(with: config)
         storage.initialize(with: particleCount)
 
         do {
@@ -432,14 +437,6 @@ extension ParticleSystemController {
             highQualityReadyCompletion?(true)
             highQualityReadyCompletion = nil
 
-            // Если был запрос на сборку до готовности HQ
-            if pendingCollectAfterHQ {
-                pendingCollectAfterHQ = false
-                logCollectViewSize(context: "after HQ ready")
-                simulationEngine.startCollectingToImage()
-                // НЕ устанавливаем isImageAssembled здесь - дождемся завершения
-            }
-
             // Запуск симуляции только если еще не активна
             if !simulationEngine.isActive {
                 startSimulation()
@@ -485,6 +482,11 @@ extension ParticleSystemController {
 
     func startCollecting() {
         simulationEngine.startCollecting()
+    }
+
+    func updateConfiguration(_ config: ParticleGenerationConfig) {
+        configManager.apply(config)
+        syncRenderQuality(with: config)
     }
     
     func startLightningStorm() {
@@ -534,6 +536,7 @@ extension ParticleSystemController {
 
     func checkCollectionCompletion() {
         renderer.checkCollectionCompletion()
+        syncCollectionFlags(with: simulationEngine.state)
     }
 }
 
@@ -593,7 +596,18 @@ extension ParticleSystemController {
             return
         }
 
-        // Предотвращаем множественные запуски
+        syncCollectionFlags(with: simulationEngine.state)
+
+        if case .collected = simulationEngine.state {
+            logger.info("HQ image assembled - scattering on repeat tap")
+            isCollectingHQ = true
+            isImageAssembled = false
+            simulationEngine.startCollecting()
+            mtkView?.isPaused = false
+            return
+        }
+
+        // Предотвращаем множественные запуски и не прерываем уже собранное изображение
         guard !isCollectingHQ else {
             logger.info("HQ collect already in progress - skipping tap")
             return
@@ -604,18 +618,11 @@ extension ParticleSystemController {
             return
         }
 
-        // Toggle между собранным и разлетевшимся состоянием
-        if isImageAssembled {
-            simulationEngine.startCollecting()
-            isImageAssembled = false
-            mtkView?.isPaused = false
-            return
-        }
-
-        // HQ частицы готовы - собираем
+        // HQ частицы готовы - собираем изображение
         logCollectViewSize(context: "direct")
+        isCollectingHQ = true
+        isImageAssembled = false
         simulationEngine.startCollectingToImage()
-        isImageAssembled = true
         mtkView?.isPaused = false
     }
 
@@ -637,6 +644,7 @@ extension ParticleSystemController {
         let desiredCount = image.width * image.height
         hqConfig.targetParticleCount = desiredCount
         configManager.apply(hqConfig)
+        syncRenderQuality(with: hqConfig)
 
         if desiredCount != particleCount {
             particleCount = desiredCount
@@ -678,8 +686,9 @@ extension ParticleSystemController {
             
             // Запускаем сборку
             logCollectViewSize(context: "generated")
+            isCollectingHQ = true
+            isImageAssembled = false
             simulationEngine.startCollectingToImage()
-            isImageAssembled = true
             mtkView?.isPaused = false
             
         } catch {
@@ -688,6 +697,20 @@ extension ParticleSystemController {
             } else {
                 logger.error("HQ collect generation failed: \(error)")
             }
+        }
+    }
+
+    private func syncCollectionFlags(with state: SimulationState) {
+        switch state {
+        case .collecting:
+            isCollectingHQ = true
+            isImageAssembled = false
+        case .collected:
+            isCollectingHQ = false
+            isImageAssembled = true
+        default:
+            isCollectingHQ = false
+            isImageAssembled = false
         }
     }
 
@@ -723,8 +746,6 @@ extension ParticleSystemController {
     private func cancelAllTasks() {
         generationTask?.cancel()
         generationTask = nil
-        hqCollectTask?.cancel()
-        hqCollectTask = nil
     }
     
     func cleanup() {
@@ -743,7 +764,6 @@ extension ParticleSystemController {
         isHighQualityMode = false
         isImageAssembled = false
         hasHighQualityTargets = false
-        pendingCollectAfterHQ = false
         isCollectingHQ = false
         highQualityReadyCompletion = nil
         

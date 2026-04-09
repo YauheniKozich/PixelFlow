@@ -29,10 +29,11 @@ final class ParticleViewModel {
     }
     
     // MARK: - Public State
-    
+
     public private(set) var isConfigured = false
     public private(set) var isGeneratingHighQuality = false
     public private(set) var particleSystem: ParticleSystemControlling?
+    public var qualityPreset: QualityPreset { currentConfig.qualityPreset }
     
     // MARK: - Callbacks
     
@@ -93,6 +94,18 @@ final class ParticleViewModel {
         var updated = currentConfig
         updated.imageDisplayMode = mode
         apply(updated)
+    }
+
+    func setQualityPreset(_ preset: QualityPreset) {
+        guard currentConfig.qualityPreset != preset else { return }
+
+        var updated = currentConfig
+        updated.qualityPreset = preset
+        currentConfig = updated
+        logger.info("Quality preset updated to \(preset)")
+
+        guard isConfigured else { return }
+        particleSystem?.updateConfiguration(updated)
     }
 
     // MARK: - System Lifecycle
@@ -157,6 +170,7 @@ final class ParticleViewModel {
         config.imagePointWidth = Float(imageInfo.pointSize.width)
         config.imagePointHeight = Float(imageInfo.pointSize.height)
         config.screenScale = Float(screenScale)
+        currentConfig = config
         
         logger.info("Using image size: \(image.width)x\(image.height) for particle generation")
         logger.info("Full-res particle count (all pixels): \(totalPixels)")
