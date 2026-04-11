@@ -246,9 +246,13 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     func setupBuffers(particleCount: Int) throws {
         // Очищаем старые буферы перед созданием новых
         cleanupBuffers()
-        
+
+        guard particleCount > 0 else {
+            throw MetalError.invalidParticleCount
+        }
+
         self.particleCount = particleCount
-        
+
         guard let newParticleBuffer = device.makeBuffer(
             length: MemoryLayout<Particle>.stride * particleCount,
             options: .storageModeShared
@@ -273,8 +277,12 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         particleBuffer = newParticleBuffer
         paramsBuffer = newParamsBuffer
         collectedCounterBuffer = newCollectedCounterBuffer
-        
-        collectedCounterPointer = newCollectedCounterBuffer.contents().assumingMemoryBound(to: UInt32.self)
+
+        // Защищаем запись указателя от гонок с cleanup()/checkCollectionCompletion()
+        counterAccessQueue.sync {
+            collectedCounterPointer = newCollectedCounterBuffer.contents()
+                .assumingMemoryBound(to: UInt32.self)
+        }
     }
     
     private func cleanupBuffers() {
@@ -309,6 +317,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
               let pipeline = renderPipeline,
               let particleBuf = particleBuffer,
               let paramsBuf = paramsBuffer else {
+            logger.debug("draw(in:) skipped — missing resources")
             return
         }
 
