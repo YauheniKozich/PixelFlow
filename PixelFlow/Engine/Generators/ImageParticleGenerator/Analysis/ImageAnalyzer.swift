@@ -152,16 +152,8 @@ final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
         // -----------------------------------------------------------------
         // Доступ к сырым байтам + корректный stride
         // -----------------------------------------------------------------
-        guard let dataProvider = image.dataProvider,
-              let cfData = dataProvider.data,
-              let rawPtr = CFDataGetBytePtr(cfData) else {
-            throw GeneratorError.analysisFailed(reason: "Cannot access image data")
-        }
-        
-        // Важно использовать реальный stride, а не `width*4`.
-        let bytesPerRow = image.bytesPerRow
-        let bytesPerPixel = 4
-        
+        let cache = try PixelCache.create(from: image)
+
         // -----------------------------------------------------------------
         // Параллельный проход по строкам
         // -----------------------------------------------------------------
@@ -169,64 +161,68 @@ final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
         var globalHistogram = [SIMD3<Float>: Int]()
         var histogramLock = os_unfair_lock_s()
         
-        DispatchQueue.concurrentPerform(iterations: h) { row in
-            let localStats = PixelStatistics()      // отдельный объект для строки
-            var localHist = [SIMD3<Float>: Int]()
-            var prevBrightness: Float = 0          // сбрасываем в начале строки
+        cache.withUnsafeBytes { rawBytes in
+            let rawPtr = rawBytes.bindMemory(to: UInt8.self)
+            DispatchQueue.concurrentPerform(iterations: h) { row in
+                let localStats = PixelStatistics()      // отдельный объект для строки
+                var localHist = [SIMD3<Float>: Int]()
+                var prevBrightness: Float = 0          // сбрасываем в начале строки
             
-            let rowStart = row * bytesPerRow
-            for x in 0..<w {
-                let offset = rowStart + x * bytesPerPixel
-                let r = Float(rawPtr[offset])       / 255.0
-                let g = Float(rawPtr[offset + 1])   / 255.0
-                let b = Float(rawPtr[offset + 2])   / 255.0
-                let a = Float(rawPtr[offset + 3])   / 255.0
+                let rowStart = row * cache.bytesPerRow
+                for x in 0..<w {
+                    let offset = rowStart + x * 4
+                    let r = Float(rawPtr[offset + 2])       / 255.0
+                    let g = Float(rawPtr[offset + 1])   / 255.0
+                    let b = Float(rawPtr[offset])   / 255.0
+                    let a = Float(rawPtr[offset + 3])   / 255.0
                 
-                // Пропускаем почти прозрачные пиксели
-                guard a > 0.1 else { continue }
+                    // Пропускаем почти прозрачные пиксели
+                    guard a > 0.1 else { continue }
                 
-                // ---------- Суммируем основные метрики ----------
-                let aR = r * a, aG = g * a, aB = b * a
-                localStats.totalR += aR
-                localStats.totalG += aG
-                localStats.totalB += aB
-                localStats.coloredPixels += 1
+                    // ---------- Суммируем основные метрики ----------
+                    let aR = r, aG = g, aB = b
+                    localStats.totalR += aR
+                    localStats.totalG += aG
+                    localStats.totalB += aB
+                    localStats.coloredPixels += 1
                 
-                // ---------- Яркость ----------
-                let brightness = (r + g + b) / 3.0
-                localStats.totalBrightness += brightness
-                localStats.minBrightness = Swift.min(localStats.minBrightness, brightness)
-                localStats.maxBrightness = Swift.max(localStats.maxBrightness, brightness)
+                    // ---------- Яркость ----------
+                    let brightness = (r + g + b) / 3.0
+                    localStats.totalBrightness += brightness
+                    localStats.minBrightness = Swift.min(localStats.minBrightness, brightness)
+                    localStats.maxBrightness = Swift.max(localStats.maxBrightness, brightness)
                 
-                // ---------- Насыщенность ----------
-                let mx = max(r, g, b)
-                let mn = min(r, g, b)
-                let sat = mx > 0 ? (mx - mn) / mx : 0
-                localStats.totalSaturation += sat
+                    // ---------- Насыщенность ----------
+                    let mx = max(r, g, b)
+                    let mn = min(r, g, b)
+                    let sat = mx > 0 ? (mx - mn) / mx : 0
+                    localStats.totalSaturation += sat
                 
-                // ---------- Гистограмма (квантованная) ----------
-                let quant = SIMD3<Float>(round(r * 8) / 8,
-                                        round(g * 8) / 8,
-                                        round(b * 8) / 8)
-                localHist[quant, default: 0] += 1
+                    // ---------- Гистограмма (квантованная) ----------
+                    let quant = SIMD3<Float>(round(r * 8) / 8,
+                                            round(g * 8) / 8,
+                                            round(b * 8) / 8)
+                    localHist[quant, default: 0] += 1
                 
-                // ---------- Простейшее горизонтальное Sobel‑детектирование ----------
-                let diff = abs(brightness - prevBrightness)
-                if diff > 0.15 { localStats.edgePixels += 1 }
-                prevBrightness = brightness
+                    // ---------- Простейшее горизонтальное Sobel‑детектирование ----------
+                    let diff = abs(brightness - prevBrightness)
+                    if diff > 0.15 { localStats.edgePixels += 1 }
+                    prevBrightness = brightness
+                }
+            
+                // Объединяем локальные данные в глобальные (lock внутри класса)
+                globalStats.combine(with: localStats)
+            
+                // Гистограмма – отдельный lock, так как это обычный словарь
+                os_unfair_lock_lock(&histogramLock)
+                for (col, cnt) in localHist {
+                    globalHistogram[col, default: 0] += cnt
+                }
+                os_unfair_lock_unlock(&histogramLock)
             }
-            
-            // Объединяем локальные данные в глобальные (lock внутри класса)
-            globalStats.combine(with: localStats)
-            
-            // Гистограмма – отдельный lock, так как это обычный словарь
-            os_unfair_lock_lock(&histogramLock)
-            for (col, cnt) in localHist {
-                globalHistogram[col, default: 0] += cnt
-            }
-            os_unfair_lock_unlock(&histogramLock)
-        }
         
+        } // Pixel bytes remain borrowed until all rows finish.
+
         // -----------------------------------------------------------------
         // Пост‑обработка (расчёт итоговых метрик)
         // -----------------------------------------------------------------

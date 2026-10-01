@@ -48,12 +48,14 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
 
     // MARK: - State
 
-    private let stateQueue = DispatchQueue(label: "com.generation.coordinator.state", attributes: .concurrent)
+    private let stateQueue = DispatchQueue(label: "com.generation.coordinator.state")
     private var _isGenerating = false
     private var _currentProgress: Float = 0.0
     private var _currentStage = "Idle"
 
     private var currentTask: Task<[Particle], Error>?
+    private var activeGenerationID: UUID?
+    private var cancellationRequested = false
 
     // MARK: - Initialization
 
@@ -97,15 +99,24 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
         progress: @escaping (Float, String) -> Void
     ) async throws -> [Particle] {
 
-        let canStart = stateQueue.sync(flags: .barrier) { () -> Bool in
-            guard !self._isGenerating else { return false }
-            self._isGenerating = true
-            self._currentProgress = 0.0
-            self._currentStage = "Starting"
-            return true
-        }
-        guard canStart else {
-            throw GeneratorError.cancelled
+        let generationID = UUID()
+        while true {
+            try Task.checkCancellation()
+            let canStart = stateQueue.sync { () -> Bool in
+                guard !self._isGenerating else { return false }
+                self._isGenerating = true
+                self._currentProgress = 0.0
+                self._currentStage = "Starting"
+                self.activeGenerationID = generationID
+                self.cancellationRequested = false
+                return true
+            }
+            if canStart { break }
+            // The previous run owns the pipeline until its computation exits.
+            if let previousTask = stateQueue.sync(execute: { currentTask }) {
+                _ = try? await previousTask.value
+            }
+            await Task.yield()
         }
 
         logger.info("Starting particle generation for image \(image.width)x\(image.height)")
@@ -119,19 +130,36 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
             do {
                 try Task.checkCancellation()
                 // Проверка кэша
-                let cacheKey = self.cacheKey(for: image, config: config, screenSize: screenSize)
-                if config.enableCaching,
-                   let cachedParticles: [Particle] = try self.cacheManager.retrieve([Particle].self, for: cacheKey) {
+                var cacheKey: String?
+                if config.enableCaching {
+                    do {
+                        cacheKey = try self.cacheKey(for: image, config: config, screenSize: screenSize)
+                    } catch {
+                        self.logger.warning("Cannot create generation cache key: \(error)")
+                    }
+                }
+                try Task.checkCancellation()
+                var cachedParticles: [Particle]?
+                if let cacheKey {
+                    do {
+                        cachedParticles = try self.cacheManager.retrieve([Particle].self, for: cacheKey)
+                    } catch {
+                        self.logger.warning("Cannot read generation cache: \(error)")
+                    }
+                }
+                if let cachedParticles {
 
                     // Проверяем, что количество частиц в кэше соответствует целевому
                     if cachedParticles.count == config.targetParticleCount {
                         await MainActor.run {
-                            progress(1.0, "Loaded from cache")
+                            if self.isGenerationActive(id: generationID) {
+                                progress(1.0, "Loaded from cache")
+                            }
                         }
 
                         self.logger.info("Loaded \(cachedParticles.count) particles from cache")
+                        try Task.checkCancellation()
                         return cachedParticles
-                    } else {
                     }
                 }
 
@@ -141,20 +169,28 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
                     config: config,
                     screenSize: screenSize
                 ) { progressValue, stage in
-                    self.stateQueue.async(flags: .barrier) {
+                    self.stateQueue.async {
+                        guard self.activeGenerationID == generationID, !self.cancellationRequested else { return }
                         self._currentProgress = progressValue
                         self._currentStage = stage
                     }
 
                     DispatchQueue.main.async {
+                        guard self.isGenerationActive(id: generationID) else { return }
                         progress(progressValue, stage)
                     }
                 }
 
                 // Кэширование результата
-                if config.enableCaching {
-                    try self.cacheManager.cache(particles, for: cacheKey)
+                try Task.checkCancellation()
+                if let cacheKey {
+                    do {
+                        try self.cacheManager.cache(particles, for: cacheKey)
+                    } catch {
+                        self.logger.warning("Cannot store generation cache: \(error)")
+                    }
                 }
+                try Task.checkCancellation()
 
                 // Отслеживание памяти
                 self.memoryManager.trackMemoryUsage(Int64(particles.count * MemoryLayout<Particle>.size))
@@ -175,13 +211,24 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
         }
 
         // Сохранение ссылки на задачу для отмены
-        self.currentTask = generationTask
+        let shouldCancelImmediately = stateQueue.sync { () -> Bool in
+            guard activeGenerationID == generationID else { return true }
+            currentTask = generationTask
+            return cancellationRequested
+        }
+        if shouldCancelImmediately { generationTask.cancel() }
 
         // Ожидание завершения
         do {
-            let particles = try await generationTask.value
+            let particles = try await withTaskCancellationHandler {
+                try await generationTask.value
+            } onCancel: {
+                generationTask.cancel()
+            }
+            try Task.checkCancellation()
+            guard isGenerationActive(id: generationID) else { throw GeneratorError.cancelled }
 
-            finishGeneration(progress: 1.0, stage: "Completed")
+            finishGeneration(id: generationID, progress: 1.0, stage: "Completed")
 
             return particles
 
@@ -195,7 +242,7 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
                 stage = "Failed"
             }
 
-            finishGeneration(progress: 0.0, stage: stage)
+            finishGeneration(id: generationID, progress: 0.0, stage: stage)
             throw error
         }
     }
@@ -203,47 +250,56 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
     func cancelGeneration() {
         logger.info("Cancelling particle generation")
 
-        // Отмена текущей задачи
-        currentTask?.cancel()
+        let taskToCancel = stateQueue.sync { () -> Task<[Particle], Error>? in
+            let task = currentTask
+            cancellationRequested = _isGenerating
+            _currentProgress = 0.0
+            _currentStage = "Cancelled"
+            return task
+        }
+        taskToCancel?.cancel()
 
-        // Обновление состояния
-        finishGeneration(progress: 0.0, stage: "Cancelled")
-
-        // Отмена в pipeline и operation manager
-        operationManager.cancelAllOperations()
+        // Task передаёт отмену вложенным операциям; общий менеджер не отменяем,
+        // чтобы завершение старого запуска не затронуло следующий.
     }
 
     // MARK: - Private Methods
 
-    private func finishGeneration(progress: Float, stage: String) {
-        stateQueue.sync(flags: .barrier) {
+    private func finishGeneration(id: UUID, progress: Float, stage: String) {
+        stateQueue.sync {
+            guard activeGenerationID == id else { return }
             self._isGenerating = false
             self._currentProgress = progress
             self._currentStage = stage
             self.currentTask = nil
+            self.activeGenerationID = nil
+            self.cancellationRequested = false
         }
     }
 
-    private func cacheKey(for image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) -> String {
-        let configFingerprint = hashConfig(config)
+    private func isGenerationActive(id: UUID) -> Bool {
+        stateQueue.sync { activeGenerationID == id && !cancellationRequested }
+    }
+
+    private func cacheKey(for image: CGImage, config: ParticleGenerationConfig, screenSize: CGSize) throws -> String {
+        let configFingerprint = try hashConfig(config)
+        let imageFingerprint = try PixelCache.create(from: image).contentFingerprint
         let components = [
-            "v3-fullres-2026-02-07",
+            "v4-image-content",
             "\(image.width)x\(image.height)",
-            "\(Int(screenSize.width))x\(Int(screenSize.height))",
+            imageFingerprint,
+            "\(screenSize.width)x\(screenSize.height)",
             configFingerprint
         ]
         return "generation_" + components.joined(separator: "_")
     }
 
-    private func hashConfig(_ config: ParticleGenerationConfig) -> String {
-        do {
-            let data = try JSONEncoder().encode(config)
-            let hash = SHA256.hash(data: data)
-            return hash.compactMap { String(format: "%02x", $0) }.joined()
-        } catch {
-            logger.warning("Failed to hash config for cache key: \(error)")
-            return "config_fallback"
-        }
+    private func hashConfig(_ config: ParticleGenerationConfig) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let data = try encoder.encode(config)
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
 
     func clearCache() {

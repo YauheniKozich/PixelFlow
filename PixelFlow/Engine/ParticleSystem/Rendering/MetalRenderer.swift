@@ -68,6 +68,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     var paramsBuffer: MTLBuffer?
     var collectedCounterBuffer: MTLBuffer?
     private var collectedCounterPointer: UnsafeMutablePointer<UInt32>?
+    private var pendingFrame: MTLCommandBuffer?
     
     // MARK: - State
 
@@ -243,8 +244,10 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     
     // MARK: - Buffers
     
+    @MainActor
     func setupBuffers(particleCount: Int) throws {
         // Очищаем старые буферы перед созданием новых
+        waitForPendingFrame()
         cleanupBuffers()
 
         guard particleCount > 0 else {
@@ -253,13 +256,6 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
         self.particleCount = particleCount
 
-        guard let newParticleBuffer = device.makeBuffer(
-            length: MemoryLayout<Particle>.stride * particleCount,
-            options: .storageModeShared
-        ) else {
-            throw MetalError.bufferCreationFailed
-        }
-        
         guard let newParamsBuffer = device.makeBuffer(
             length: MemoryLayout<SimulationParams>.stride,
             options: .storageModeShared
@@ -274,7 +270,6 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
             throw MetalError.bufferCreationFailed
         }
         
-        particleBuffer = newParticleBuffer
         paramsBuffer = newParamsBuffer
         collectedCounterBuffer = newCollectedCounterBuffer
 
@@ -305,6 +300,12 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
     }
     
     func draw(in view: MTKView) {
+        // Общие буферы нельзя менять на CPU, пока предыдущий кадр использует их на GPU.
+        if let frame = pendingFrame {
+            guard frame.status == .completed || frame.status == .error else { return }
+            pendingFrame = nil
+            checkCollectionCompletion()
+        }
         guard shouldRender(view: view),
               particleCount > 0 else {
             return
@@ -328,13 +329,8 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
         encodeCompute(into: commandBuffer)
         encodeRender(into: commandBuffer, renderPassDesc: renderPassDesc, pipeline: pipeline, particleBuf: particleBuf, paramsBuf: paramsBuf)
 
-        commandBuffer.addCompletedHandler { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.checkCollectionCompletion()
-            }
-        }
-
         commandBuffer.present(drawable)
+        pendingFrame = commandBuffer
         commandBuffer.commit()
     }
 
@@ -378,6 +374,7 @@ final class MetalRenderer: NSObject, MTKViewDelegate {
 
     @MainActor
     func updateSimulationParams() {
+        waitForPendingFrame()
         guard let updater = paramsUpdater,
               let buffer = paramsBuffer,
               let engine = simulationEngine else { return }
@@ -464,18 +461,11 @@ extension MetalRenderer: MetalRendererProtocol {
 
     func cleanup() {
         logger.info("MetalRenderer cleanup started")
+        waitForPendingFrame()
 
         // Останавливаем рендеринг
         mtkView?.isPaused = true
         mtkView?.delegate = nil
-
-        // Асинхронно ждём GPU — не блокируем @MainActor
-        Task.detached(priority: .userInitiated) { [weak commandQueue] in
-            guard let commandQueue = commandQueue,
-                  let buffer = commandQueue.makeCommandBuffer() else { return }
-            buffer.commit()
-            await buffer.completed()
-        }
 
         // Обнуляем pointer под защитой и освобождаем буферы
         counterAccessQueue.sync {
@@ -500,8 +490,7 @@ extension MetalRenderer: MetalRendererProtocol {
     }
 
     func setParticleBuffer(_ buffer: MTLBuffer?) {
-        // Вызывать только при mtkView?.isPaused = true
-        // Рендеринг должен быть остановлен чтобы избежать гонки с GPU
+        waitForPendingFrame()
         particleBuffer = buffer
     }
 
@@ -546,6 +535,7 @@ extension MetalRenderer: MetalRendererProtocol {
     }
     
     func resetCollectedCounter() {
+        waitForPendingFrame()
         counterAccessQueue.sync {
             guard let ptr = collectedCounterPointer else { return }
             ptr.pointee = 0
@@ -554,6 +544,7 @@ extension MetalRenderer: MetalRendererProtocol {
     }
 
     func checkCollectionCompletion() {
+        guard pendingFrame == nil else { return }
         // Читаем pointer под защитой очереди
         let collectedValue: Int? = counterAccessQueue.sync { [weak self] in
             guard let ptr = self?.collectedCounterPointer else { return nil }
@@ -575,6 +566,11 @@ extension MetalRenderer: MetalRendererProtocol {
         }
 
         engine.updateProgress(ratio)
+    }
+
+    func waitForPendingFrame() {
+        pendingFrame?.waitUntilCompleted()
+        pendingFrame = nil
     }
 }
 

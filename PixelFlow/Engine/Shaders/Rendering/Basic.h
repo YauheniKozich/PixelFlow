@@ -363,7 +363,7 @@ fragment float4 fragmentParticle(
             float zigzagMask = exp(-abs(zigzag) * 25.0);
 
             float timeMask = smoothstep(0.0, 0.15, boltProgress) *
-                             smoothstep(1.0, 0.7, boltProgress);
+                             (1.0 - smoothstep(0.7, 1.0, boltProgress));
 
             float boltShape = core * zigzagMask * timeMask;
 
@@ -382,7 +382,7 @@ fragment float4 fragmentParticle(
             col = baseColor;
             
             // Только добавляем мягкое свечение
-            float glow = pow(1.0 - dist, 2.5) * 0.2;
+            float glow = pow(max(1.0 - dist, 0.0), 2.5) * 0.2;
             col += float3(glow);
         } else {
             // Для других режимов используем полное освещение
@@ -509,7 +509,7 @@ fragment float4 fragmentParticlePerformance(
         col += float3(0.2, 0.4, 0.7) * stormCore * STORM_CORE_SOFTNESS;
     } else {
         // Только простое свечение
-        float glow = pow(1.0 - dist, 2.5) * GLOW_BASE_INTENSITY;
+        float glow = pow(max(1.0 - dist, 0.0), 2.5) * GLOW_BASE_INTENSITY;
         col = clamp(baseColor * in.brightnessBoost, 0.0, 1.0) + glow;
     }
 

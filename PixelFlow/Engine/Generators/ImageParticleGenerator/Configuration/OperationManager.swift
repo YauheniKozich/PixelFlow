@@ -66,7 +66,7 @@ final class OperationManager: OperationManagerProtocol {
     }
 
     func addOperation(_ operation: Operation) {
-        activeOperationsQueue.async(flags: .barrier) {
+        _ = activeOperationsQueue.sync(flags: .barrier) {
             self.activeOperations.insert(operation)
         }
 
@@ -102,18 +102,18 @@ final class OperationManager: OperationManagerProtocol {
     /// Выполняет асинхронную операцию и возвращает результат
     func execute<T: Sendable>(_ operation: @escaping () async throws -> T) async throws -> T {
         let operationWrapper = AsyncOperation { try await operation() }
+        let resultGate = OperationResultGate<T>()
+        operationWrapper.resultHandler = { result in
+            resultGate.resolve(result)
+        }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            operationWrapper.resultHandler = { result in
-                switch result {
-                case .success(let value):
-                    continuation.resume(returning: value)
-                case .failure(let error):
-                    continuation.resume(throwing: error)
-                }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                resultGate.install(continuation)
+                addOperation(operationWrapper)
             }
-
-            addOperation(operationWrapper)
+        } onCancel: {
+            operationWrapper.cancel()
         }
     }
 
@@ -166,8 +166,11 @@ struct OperationStats {
 /// Асинхронная операция-обертка
 private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
     private let operationBlock: () async throws -> T
+    private let stateLock = NSLock()
     private var executionTask: Task<T, Error>?
-
+    private var isExecutingOperation = false
+    private var isFinishedOperation = false
+    private var isFinishing = false
     private var hasResultBeenHandled = false
     private let resultHandlerLock = NSLock()
 
@@ -178,32 +181,112 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
         super.init()
     }
 
-    override func main() {
+    override var isAsynchronous: Bool { true }
+
+    override var isExecuting: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return isExecutingOperation
+    }
+
+    override var isFinished: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return isFinishedOperation
+    }
+
+    override func start() {
         if isCancelled {
             callResultHandlerOnce(with: .failure(OperationError.operationCancelled))
+            finish()
             return
         }
 
-        executionTask = Task {
+        guard transitionToExecuting() else {
+            callResultHandlerOnce(with: .failure(OperationError.operationCancelled))
+            finish()
+            return
+        }
+        guard !isCancelled else {
+            finish()
+            return
+        }
+        let task = Task {
+            let result: T
             do {
-                let result = try await operationBlock()
+                guard !self.isCancelled else {
+                    throw OperationError.operationCancelled
+                }
+                result = try await operationBlock()
                 callResultHandlerOnce(with: .success(result))
-                return result
             } catch {
                 if !isCancelled {
                     callResultHandlerOnce(with: .failure(error))
                 } else {
                     callResultHandlerOnce(with: .failure(OperationError.operationCancelled))
                 }
+                finish()
                 throw error
             }
+            finish()
+            return result
         }
+
+        stateLock.lock()
+        executionTask = task
+        let shouldCancel = isCancelled
+        stateLock.unlock()
+        if shouldCancel { task.cancel() }
     }
 
     override func cancel() {
         super.cancel()
-        executionTask?.cancel()
+        stateLock.lock()
+        let task = executionTask
+        let isRunning = isExecutingOperation
+        stateLock.unlock()
+        task?.cancel()
         callResultHandlerOnce(with: .failure(OperationError.operationCancelled))
+        if !isRunning { finish() }
+    }
+
+    private func transitionToExecuting() -> Bool {
+        stateLock.lock()
+        guard !isFinishedOperation, !isFinishing, !isCancelled else {
+            stateLock.unlock()
+            return false
+        }
+        isFinishing = true
+        stateLock.unlock()
+
+        willChangeValue(forKey: "isExecuting")
+        stateLock.lock()
+        isExecutingOperation = true
+        isFinishing = false
+        stateLock.unlock()
+        didChangeValue(forKey: "isExecuting")
+        return true
+    }
+
+    private func finish() {
+        stateLock.lock()
+        guard !isFinishedOperation, !isFinishing else {
+            stateLock.unlock()
+            return
+        }
+        isFinishing = true
+        let wasExecuting = isExecutingOperation
+        stateLock.unlock()
+
+        if wasExecuting { willChangeValue(forKey: "isExecuting") }
+        willChangeValue(forKey: "isFinished")
+        stateLock.lock()
+        isExecutingOperation = false
+        isFinishedOperation = true
+        isFinishing = false
+        stateLock.unlock()
+        didChangeValue(forKey: "isFinished")
+        if wasExecuting { didChangeValue(forKey: "isExecuting") }
     }
 
     private func callResultHandlerOnce(with result: Result<T, Error>) {
@@ -212,6 +295,42 @@ private class AsyncOperation<T: Sendable>: Operation, @unchecked Sendable {
         if !hasResultBeenHandled {
             hasResultBeenHandled = true
             resultHandler?(result)
+        }
+    }
+}
+
+private final class OperationResultGate<T> {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, Error>?
+    private var pendingResult: Result<T, Error>?
+
+    func install(_ continuation: CheckedContinuation<T, Error>) {
+        lock.lock()
+        let result = pendingResult
+        if result == nil { self.continuation = continuation }
+        lock.unlock()
+
+        if let result { resume(continuation, with: result) }
+    }
+
+    func resolve(_ result: Result<T, Error>) {
+        lock.lock()
+        guard pendingResult == nil else {
+            lock.unlock()
+            return
+        }
+        pendingResult = result
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+
+        if let continuation { resume(continuation, with: result) }
+    }
+
+    private func resume(_ continuation: CheckedContinuation<T, Error>, with result: Result<T, Error>) {
+        switch result {
+        case .success(let value): continuation.resume(returning: value)
+        case .failure(let error): continuation.resume(throwing: error)
         }
     }
 }

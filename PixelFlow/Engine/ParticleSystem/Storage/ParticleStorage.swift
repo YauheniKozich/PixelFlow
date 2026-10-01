@@ -713,6 +713,8 @@ extension ParticleStorage: ParticleStorageProtocol {
         particle.position.x += particle.velocity.x * deltaTime
         particle.position.y += particle.velocity.y * deltaTime
         
+        let proposedPosition = particle.position
+
         // Ограничение границами (можно объединить)
         let clampedX = clamp(
             particle.position.x,
@@ -728,11 +730,11 @@ extension ParticleStorage: ParticleStorageProtocol {
         particle.position = SIMD3<Float>(clampedX, clampedY, particle.position.z)
         
         // Обработка столкновений с границами
-        if particle.position.x != clampedX {
+        if proposedPosition.x != clampedX {
             particle.velocity.x *= Constants.velocityReboundFactor
         }
         
-        if particle.position.y != clampedY {
+        if proposedPosition.y != clampedY {
             particle.velocity.y *= Constants.velocityReboundFactor
         }
         
@@ -858,7 +860,7 @@ extension ParticleStorage: ParticleStorageProtocol {
     
     private func ndcToScreen(_ ndcPosition: SIMD3<Float>) -> (x: Float, y: Float) {
         let screenX = (ndcPosition.x + 1.0) * 0.5 * viewWidth
-        let screenY = (ndcPosition.y + 1.0) * 0.5 * viewHeight
+        let screenY = (1.0 - ndcPosition.y) * 0.5 * viewHeight
         return (screenX, screenY)
     }
     

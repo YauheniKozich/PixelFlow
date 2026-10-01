@@ -254,6 +254,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     }
     
     func handleDidBecomeActive() {
+        if !viewModel.isConfigured {
+            initializeParticleSystem()
+            return
+        }
         viewModel.handleDidBecomeActive()
     }
     
@@ -322,6 +326,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
+        guard viewModel.isConfigured else {
+            initializeParticleSystem()
+            return
+        }
         
         viewModel.toggleSimulation()
         startRendering()
@@ -335,6 +343,10 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
     
     @objc private func handleTripleTap(_ gesture: UITapGestureRecognizer) {
         guard gesture.state == .ended else { return }
+        guard viewModel.isConfigured else {
+            initializeParticleSystem()
+            return
+        }
         
         viewModel.startLightningStorm()
         startRendering()

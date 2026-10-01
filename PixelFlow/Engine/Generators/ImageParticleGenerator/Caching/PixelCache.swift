@@ -10,6 +10,7 @@
 // Graphics code uses short variable names for mathematical readability
 
 import CoreGraphics
+import CryptoKit
 import Foundation
 import simd
 
@@ -38,6 +39,15 @@ final class PixelCache {
     
     private let backingData: Data
     private let accessLock = NSLock()
+
+    var contentFingerprint: String {
+        var hash = SHA256()
+        for row in 0..<height {
+            let start = row * bytesPerRow
+            hash.update(data: backingData[start..<(start + width * 4)])
+        }
+        return hash.finalize().map { String(format: "%02x", $0) }.joined()
+    }
     
     // MARK: - Инициализация
     
@@ -118,87 +128,45 @@ final class PixelCache {
         guard x >= 0 && x < width && y >= 0 && y < height else {
             fatalError("Координаты пикселя вне границ: (\(x), \(y))")
         }
-        
-        // Вычисляем позицию в буфере
-        let rowOffset = y * bytesPerRow
-        let pixelOffset = x * 4
-        let byteIndex = rowOffset + pixelOffset
-        
-        guard byteIndex + 3 < dataCount else {
+        guard let color = rawColor(atX: x, y: y) else {
             return SIMD4<Float>(0, 0, 0, 1)
         }
-        
-        // Блокируем доступ для потокобезопасности
-        accessLock.lock()
-        defer { accessLock.unlock() }
-        
-        guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
-            return SIMD4<Float>(0, 0, 0, 1)
-        }
-        
-        // Читаем байты
-        let byte0 = Float(bytes[byteIndex]) / 255.0
-        let byte1 = Float(bytes[byteIndex + 1]) / 255.0
-        let byte2 = Float(bytes[byteIndex + 2]) / 255.0
-        let byte3 = Float(bytes[byteIndex + 3]) / 255.0
-        
-        // Преобразуем в зависимости от порядка байтов
-        let result: SIMD4<Float>
-        switch byteOrder {
-        case .rgba:
-            result = SIMD4<Float>(byte0, byte1, byte2, byte3)
-        case .bgra:
-            result = SIMD4<Float>(byte2, byte1, byte0, byte3)
-        case .argb:
-            result = SIMD4<Float>(byte1, byte2, byte3, byte0)
-        }
-        
-        // NOT усиливаем альфа — это искажает исходные данные пикселя
-        // Правильный подход: использовать реальные значения для сэмплирования,
-        // а прозрачность частиц контролировать в рендеринге через ParticleConstants
-        
-        return result
+        return SIMD4<Float>(
+            Float(color.r) / 255.0,
+            Float(color.g) / 255.0,
+            Float(color.b) / 255.0,
+            Float(color.a) / 255.0
+        )
     }
-    
+
     // MARK: - Получение сырых значений
-    
+
     func rawColor(atX x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
-        guard x >= 0 && x < width && y >= 0 && y < height else {
-            return nil
-        }
-        
-        let rowOffset = y * bytesPerRow
-        let pixelOffset = x * 4
-        let byteIndex = rowOffset + pixelOffset
-        
-        guard byteIndex + 3 < dataCount else {
-            return nil
-        }
-        
+        guard x >= 0 && x < width && y >= 0 && y < height else { return nil }
+        let byteIndex = y * bytesPerRow + x * 4
+        guard byteIndex + 3 < dataCount else { return nil }
+
         accessLock.lock()
         defer { accessLock.unlock() }
-        
-        guard let bytes = backingData.withUnsafeBytes({ $0.bindMemory(to: UInt8.self).baseAddress }) else {
-            return nil
-        }
-        
-        // Читаем байты с учетом порядка байтов
-        let byte0 = bytes[byteIndex]
-        let byte1 = bytes[byteIndex + 1]
-        let byte2 = bytes[byteIndex + 2]
-        let byte3 = bytes[byteIndex + 3]
-        
-        // Преобразуем в зависимости от порядка байтов
-        switch byteOrder {
-        case .rgba:
-            return (byte0, byte1, byte2, byte3)
-        case .bgra:
-            return (byte2, byte1, byte0, byte3)
-        case .argb:
-            return (byte1, byte2, byte3, byte0)
+
+        return backingData.withUnsafeBytes { rawBytes in
+            let bytes = rawBytes.bindMemory(to: UInt8.self)
+            let byte0 = bytes[byteIndex]
+            let byte1 = bytes[byteIndex + 1]
+            let byte2 = bytes[byteIndex + 2]
+            let byte3 = bytes[byteIndex + 3]
+
+            switch byteOrder {
+            case .rgba:
+                return (byte0, byte1, byte2, byte3)
+            case .bgra:
+                return (byte2, byte1, byte0, byte3)
+            case .argb:
+                return (byte1, byte2, byte3, byte0)
+            }
         }
     }
-    
+
     // MARK: - Работа с областями
     
     func colors(in rect: CGRect, step: Int = 1) -> [SIMD4<Float>] {

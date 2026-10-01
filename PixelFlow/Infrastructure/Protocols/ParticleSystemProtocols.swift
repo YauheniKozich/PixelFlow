@@ -87,6 +87,9 @@ protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
     /// Сбрасывает счетчик собранных частиц
     func resetCollectedCounter()
 
+    /// Завершает GPU-доступ перед изменением общего буфера частиц на CPU.
+    func waitForPendingFrame()
+
     /// Проверяет завершение сбора частиц
     func checkCollectionCompletion()
 

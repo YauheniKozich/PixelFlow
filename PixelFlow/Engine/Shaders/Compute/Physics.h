@@ -29,7 +29,7 @@ using namespace metal;
 
 // Collection physics
 #define COLLECTION_BASE_SPEED          30.0   // pixels/sec (scaled by collectionSpeed)
-#define COLLECTION_MIN_SPEED           0.25   // pixels (minimum step)
+#define COLLECTION_MIN_SPEED           0.25   // pixels per reference frame (60 FPS)
 #define COLLECTION_SNAP_PIXELS        2.0
 #define COLLECTION_MOVE_THRESHOLD      0.01
 #define COLLECTION_VELOCITY_DAMPING    0.9
@@ -72,7 +72,7 @@ using namespace metal;
 // ============================================================================
 
 static inline float safeDeltaTimeForPhysics(float dt) {
-    return (isfinite(dt) && dt > MIN_DT && dt < MAX_DT) ? dt : DEFAULT_DT;
+    return (isfinite(dt) && dt > 0.0) ? clamp(dt, MIN_DT, MAX_DT) : DEFAULT_DT;
 }
 
 static inline float2 safeNormalize2(float2 v) {
@@ -126,7 +126,7 @@ static inline float2 calculateCollectionMovement(
     float ease = clamp(distPixels / 12.0, 0.1, 1.0);
     float moveDistancePixels = baseSpeedPixels * safeDt * ease;
     float moveDistance = moveDistancePixels * min(pixelToNDC.x, pixelToNDC.y);
-    float minMove = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_MIN_SPEED;
+    float minMove = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_MIN_SPEED * (safeDt / DEFAULT_DT);
     moveDistance = max(moveDistance, minMove);
     moveDistance = min(moveDistance, distToTarget);
 
@@ -138,7 +138,8 @@ static inline float2 calculateCollectionMovement(
     }
 
     float2 newVelocity = (p.position.xy - prevPos) / safeDt;
-    p.velocity.xy = mix(p.velocity.xy, newVelocity, COLLECTION_VELOCITY_DAMPING);
+    float velocityBlend = 1.0 - pow(1.0 - COLLECTION_VELOCITY_DAMPING, safeDt / DEFAULT_DT);
+    p.velocity.xy = mix(p.velocity.xy, newVelocity, velocityBlend);
 
     return p.velocity.xy;
 }
@@ -171,7 +172,7 @@ static inline float2 calculateChaoticMovement(
     if (speedSq > CHAOTIC_HIGH_SPEED_THRESHOLD * CHAOTIC_HIGH_SPEED_THRESHOLD) {
         velocityDamping = CHAOTIC_VELOCITY_DAMPING_HIGH;
     }
-    p.velocity.xy *= velocityDamping;
+    p.velocity.xy *= pow(velocityDamping, safeDt / DEFAULT_DT);
 
     return p.velocity.xy;
 }
@@ -182,26 +183,28 @@ static inline float2 calculateChaoticMovement(
 static inline void calculateStormMovement(
     thread Particle& p,
     uint id,
-    constant SimulationParams * params
+    constant SimulationParams * params,
+    float safeDt
 ) {
+    float frameScale = safeDt / DEFAULT_DT;
     float seed = float(id) * 13.7;
 
     float fieldX = hash(seed + params[0].time * 1.5) - 0.5;
     float fieldY = hash(seed + params[0].time * 2.1 + 100.0) - 0.5;
     float2 electricForce = float2(fieldX, fieldY) * STORM_ELECTRIC_FORCE;
-    p.velocity.xy += electricForce * STORM_ELECTRIC_DAMPING;
+    p.velocity.xy += electricForce * STORM_ELECTRIC_DAMPING * frameScale;
 
     float baseTurbulence = sin(params[0].time * 3.0 + seed) * STORM_BASE_TURBULENCE;
-    p.velocity.xy += float2(baseTurbulence, baseTurbulence * 0.7);
+    p.velocity.xy += float2(baseTurbulence, baseTurbulence * 0.7) * frameScale;
 
     // Вихревой компонент вокруг центра экрана делает бурю более плавной и цельной
     float2 centerOffset = p.position.xy;
     float2 tangent = safeNormalize2(float2(-centerOffset.y, centerOffset.x));
     float spiralPhase = sin(params[0].time * 0.8 + seed * 0.3) * 0.5 + 0.5;
-    p.velocity.xy += tangent * STORM_VORTEX_FORCE * (0.65 + spiralPhase * 0.35);
-    p.velocity.xy += -centerOffset * STORM_VORTEX_PULL * (0.5 + spiralPhase * 0.5);
+    p.velocity.xy += tangent * STORM_VORTEX_FORCE * (0.65 + spiralPhase * 0.35) * frameScale;
+    p.velocity.xy += -centerOffset * STORM_VORTEX_PULL * (0.5 + spiralPhase * 0.5) * frameScale;
 
-    p.velocity.xy *= STORM_VELOCITY_DAMPING;
+    p.velocity.xy *= pow(STORM_VELOCITY_DAMPING, frameScale);
 
     float electricHue = hash(seed) * TWO_PI + params[0].time * 2.0;
     p.color = float4(
@@ -213,7 +216,7 @@ static inline void calculateStormMovement(
 
     // Легкий хаотический jitter делает бурю визуально живее без разрыва траектории
     float2 stormChaos = randomChaoticMotion(p.position.xy, params[0].time, id);
-    p.velocity.xy += stormChaos * 0.005;
+    p.velocity.xy += stormChaos * 0.005 * frameScale;
 }
 
 // ============================================================================
@@ -251,7 +254,8 @@ static inline float calculateParticleSize(
 
 static inline void applyBoundaryConditionsForPhysics(
     thread Particle& p,
-    constant SimulationParams * params
+    constant SimulationParams * params,
+    float safeDt
 ) {
     if (!isFloatSafe(p.position.x)) p.position.x = 0.0;
     if (!isFloatSafe(p.position.y)) p.position.y = 0.0;
@@ -275,7 +279,7 @@ static inline void applyBoundaryConditionsForPhysics(
 
     if (p.position.x < repulsionZoneMin) {
         float penetration = repulsionZoneMin - p.position.x;
-        p.velocity.x += penetration * REPULSION_STRENGTH * DEFAULT_DT;
+        p.velocity.x += penetration * REPULSION_STRENGTH * safeDt;
 
         if (p.position.x <= NDC_MIN_POS) {
             p.position.x = clampMin;
@@ -285,7 +289,7 @@ static inline void applyBoundaryConditionsForPhysics(
         }
     } else if (p.position.x > repulsionZoneMax) {
         float penetration = p.position.x - repulsionZoneMax;
-        p.velocity.x -= penetration * REPULSION_STRENGTH * DEFAULT_DT;
+        p.velocity.x -= penetration * REPULSION_STRENGTH * safeDt;
 
         if (p.position.x >= NDC_MAX_POS) {
             p.position.x = clampMax;
@@ -297,7 +301,7 @@ static inline void applyBoundaryConditionsForPhysics(
 
     if (p.position.y < repulsionZoneMin) {
         float penetration = repulsionZoneMin - p.position.y;
-        p.velocity.y += penetration * REPULSION_STRENGTH * DEFAULT_DT;
+        p.velocity.y += penetration * REPULSION_STRENGTH * safeDt;
 
         if (p.position.y <= NDC_MIN_POS) {
             p.position.y = clampMin;
@@ -307,7 +311,7 @@ static inline void applyBoundaryConditionsForPhysics(
         }
     } else if (p.position.y > repulsionZoneMax) {
         float penetration = p.position.y - repulsionZoneMax;
-        p.velocity.y -= penetration * REPULSION_STRENGTH * DEFAULT_DT;
+        p.velocity.y -= penetration * REPULSION_STRENGTH * safeDt;
 
         if (p.position.y >= NDC_MAX_POS) {
             p.position.y = clampMax;
@@ -371,6 +375,7 @@ kernel void updateParticles(
 ) {
     uint id = thread_position_in_grid;
     if (id >= params[0].particleCount) return;
+    if (params[0].state == SIMULATION_STATE_IDLE && params[0].idleChaoticMotion == 0) return;
 
     Particle p = particles[id];
     float safeDt = safeDeltaTimeForPhysics(params[0].deltaTime);
@@ -400,7 +405,7 @@ kernel void updateParticles(
                 break;
 
             case SIMULATION_STATE_LIGHTNING_STORM:
-                calculateStormMovement(p, id, params);
+                calculateStormMovement(p, id, params, safeDt);
                 break;
 
             case SIMULATION_STATE_IDLE:
@@ -413,7 +418,7 @@ kernel void updateParticles(
         if (needsPhysicsIntegration) {
             integrateParticleForPhysics(p, safeDt, float2(0.0));
         }
-        applyBoundaryConditionsForPhysics(p, params);
+        applyBoundaryConditionsForPhysics(p, params, safeDt);
         p.size = calculateParticleSize(p, params, id);
 
         if (isFloatSafe(p.life) && p.life >= PARTICLE_ALIVE) {

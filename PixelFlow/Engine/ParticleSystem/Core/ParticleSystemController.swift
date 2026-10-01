@@ -68,6 +68,11 @@ final class ParticleSystemController: ParticleSystemControlling {
     
     // Task management
     private var generationTask: Task<Void, Never>?
+    private var generationID: UUID?
+    private var generationViewSize: CGSize = .zero
+    private var isLifecyclePaused = false
+    private var wantsSimulation = true
+    private var collectingToImage = true
 
     // State flags
     private var isCollectingHQ: Bool = false
@@ -98,7 +103,6 @@ final class ParticleSystemController: ParticleSystemControlling {
         setupComponentConnections()
         
         logger.info("ParticleSystemController initialized")
-        generator.clearCache()
     }
     
     // MARK: - Component Connections
@@ -137,6 +141,7 @@ extension ParticleSystemController {
         logger.info("Initializing with image: \(image.width)x\(image.height)")
 
         self.sourceImage = image
+        wantsSimulation = true
         self.particleCount = particleCount
 
         configManager.apply(config)
@@ -152,61 +157,55 @@ extension ParticleSystemController {
 
         logger.info("Controller initialized with \(particleCount) particles")
 
-        // Подготовим sourcePixels для цветного предпросмотра
-        if let cache = try? PixelCache.create(from: image) {
-            let pixels = generatePreviewPixels(
-                cache: cache,
-                particleCount: particleCount,
-                config: config
-            )
-            storage.setSourcePixels(pixels)
-            logger.info("Seeded source pixels for preview: \(pixels.count)")
-        } else {
-            logger.warning("Failed to build PixelCache for preview colors")
-        }
+        launchGeneration(replacingParticles: true, preparePreview: true)
+    }
 
-        // Быстрый предпросмотр: заполняем буфер, чтобы сразу что-то было видно
-        storage.createFastPreviewParticles()
-        renderer.setParticleBuffer(storage.particleBuffer)
-        
-        // Первый кадр, чтобы частицы были видны сразу
-        if let view = mtkView,
-           view.isPaused,
-           view.drawableSize.width > 0,
-           view.drawableSize.height > 0 {
-            view.draw()
-        }
-        
-        // Запускаем симуляцию, чтобы частицы начали двигаться сразу
-        if !simulationEngine.isActive {
-            startSimulation()
-        }
-
-        // Асинхронная генерация частиц
+    private func launchGeneration(replacingParticles: Bool, preparePreview: Bool = false) {
         cancelAllTasks()
+        let id = UUID()
+        generationID = id
         generationTask = Task { [weak self] in
-            await self?.generateAndStartSimulation()
+            guard let self else { return }
+            await self.generateAndStartSimulation(replacingParticles: replacingParticles, preparePreview: preparePreview)
+            guard self.generationID == id else { return }
+            self.generationTask = nil
+            self.generationID = nil
         }
     }
-    
-    private func generatePreviewPixels(
+
+    nonisolated private static func preparePreview(
+        image: CGImage, particleCount: Int, config: ParticleGenerationConfig, targetSize: CGSize
+    ) async throws -> (pixels: [Pixel], particles: [Particle]) {
+        try Task.checkCancellation()
+        let cache = try PixelCache.create(from: image)
+        let pixels = try generatePreviewPixels(cache: cache, particleCount: particleCount,
+                                          config: config, targetSize: targetSize)
+        var particles: [Particle] = []
+        particles.reserveCapacity(pixels.count)
+        for (index, pixel) in pixels.enumerated() {
+            if index % 1024 == 0 { try Task.checkCancellation() }
+            let x = (Float(pixel.x) + Float.random(in: -50...50)) / Float(targetSize.width) * 2 - 1
+            let y = 1 - (Float(pixel.y) + Float.random(in: -50...50)) / Float(targetSize.height) * 2
+            let color = SIMD4<Float>(Float(pixel.r), Float(pixel.g), Float(pixel.b), 255) / 255
+            particles.append(Particle(
+                position: SIMD3<Float>(min(max(x, -0.99), 0.99), min(max(y, -0.99), 0.99), 0),
+                velocity: SIMD3<Float>(Float.random(in: -0.1...0.1), Float.random(in: -0.1...0.1), 0),
+                color: color, size: 3, baseSize: 3))
+        }
+        return (pixels, particles)
+    }
+
+    nonisolated private static func generatePreviewPixels(
         cache: PixelCache,
         particleCount: Int,
-        config: ParticleGenerationConfig
-    ) -> [Pixel] {
+        config: ParticleGenerationConfig,
+        targetSize: CGSize
+    ) throws -> [Pixel] {
         var pixels: [Pixel] = []
         pixels.reserveCapacity(particleCount)
 
         let imageWidth = cache.width
         let imageHeight = cache.height
-        let viewSize = mtkView?.drawableSize ?? .zero
-        let fallbackScale = mtkView?.contentScaleFactor ?? 1.0
-        let fallbackSize = CGSize(
-            width: (mtkView?.bounds.size.width ?? 0) * fallbackScale,
-            height: (mtkView?.bounds.size.height ?? 0) * fallbackScale
-        )
-        let targetSize = (viewSize.width > 0 && viewSize.height > 0) ? viewSize : fallbackSize
-
         // Вычисляем трансформацию для предпросмотра
         let imagePixelSize = CGSize(width: imageWidth, height: imageHeight)
         let baseImageSize = imagePixelSize
@@ -225,6 +224,7 @@ extension ParticleSystemController {
         // Вариант 1: если берем все пиксели, не используем сетку — проходим все координаты.
         if particleCount >= imageWidth * imageHeight {
             for yPos in 0..<imageHeight {
+                try Task.checkCancellation()
                 for xPos in 0..<imageWidth {
                     if let color = PixelCacheHelper.getPixelData(atX: xPos, y: yPos, from: cache) {
                         let screenX = transform.offsetX + (CGFloat(xPos) + 0.5) * transform.scaleX * baseScaleX + transform.pixelCenterOffset
@@ -261,6 +261,7 @@ extension ParticleSystemController {
         }
 
         outerLoop: for gridY in 0..<gridHeight {
+            try Task.checkCancellation()
             for gridX in 0..<gridWidth {
                 guard samplesGenerated < particleCount else { break outerLoop }
 
@@ -302,7 +303,7 @@ extension ParticleSystemController {
         let pixelCenterOffset: CGFloat
     }
     
-    private func calculateTransform(
+    nonisolated private static func calculateTransform(
         imageSize: CGSize,
         screenSize: CGSize,
         mode: ImageDisplayMode,
@@ -377,7 +378,7 @@ extension ParticleSystemController {
         )
     }
 
-    private func generateAndStartSimulation() async {
+    private func generateAndStartSimulation(replacingParticles: Bool, preparePreview: Bool = false) async {
         if Task.isCancelled { return }
         guard let image = sourceImage, let view = mtkView else {
             logger.error("Cannot generate particles: missing image or view size")
@@ -385,12 +386,24 @@ extension ParticleSystemController {
         }
 
         let viewSize = await resolveDrawableSize(for: view)
+        guard !Task.isCancelled, viewSize.width > 0, viewSize.height > 0 else { return }
+        generationViewSize = viewSize
         storage.updateViewSize(viewSize)
         logger.info("HQ generation viewSize: \(Int(viewSize.width))x\(Int(viewSize.height)) (drawable: \(Int(view.drawableSize.width))x\(Int(view.drawableSize.height)))")
 
         logger.info("Starting particle generation for image \(image.width)x\(image.height)")
         
         do {
+            if preparePreview {
+                let preview = try await Self.preparePreview(image: image, particleCount: particleCount,
+                                                           config: configManager.currentConfig, targetSize: viewSize)
+                try Task.checkCancellation()
+                renderer.waitForPendingFrame()
+                storage.setSourcePixels(preview.pixels)
+                storage.updateParticles(preview.particles)
+                renderer.setParticleBuffer(storage.particleBuffer)
+                if wantsSimulation { startSimulation() }
+            }
             var hqConfig = configManager.currentConfig
             hqConfig.qualityPreset = .ultra
             hqConfig.samplingStrategy = .hybrid
@@ -419,7 +432,10 @@ extension ParticleSystemController {
             }
 
             // Обновляем storage и рендерер
-            storage.updateParticles(preparedParticles)
+            renderer.waitForPendingFrame()
+            if replacingParticles {
+                storage.updateParticles(preparedParticles)
+            }
             renderer.setParticleBuffer(storage.particleBuffer)
             renderer.updateParticleCount(preparedParticles.count)
             
@@ -429,16 +445,31 @@ extension ParticleSystemController {
 
             // Готовим HQ цели для сборки
             storage.setHighQualityTargets(preparedParticles)
+            storage.saveHighQualityPixels(from: preparedParticles)
             simulationEngine.setHighQualityReady(true)
             hasHighQualityTargets = true
             isHighQualityMode = true
+            if !replacingParticles {
+                switch simulationEngine.state {
+                case .collecting:
+                    if collectingToImage {
+                        simulationEngine.startCollectingToImage()
+                    } else {
+                        simulationEngine.startCollecting()
+                    }
+                case .collected:
+                    storage.applyHighQualityTargetsToBuffer()
+                default:
+                    break
+                }
+            }
             
             // Вызываем completion
             highQualityReadyCompletion?(true)
             highQualityReadyCompletion = nil
 
             // Запуск симуляции только если еще не активна
-            if !simulationEngine.isActive {
+            if !simulationEngine.isActive && wantsSimulation {
                 startSimulation()
                 logger.info("Simulation started with \(preparedParticles.count) visible particles")
             } else {
@@ -446,9 +477,8 @@ extension ParticleSystemController {
             }
 
         } catch {
-            if !Task.isCancelled {
-                logger.error("Particle generation failed: \(error)")
-            }
+            guard !Task.isCancelled else { return }
+            logger.error("Particle generation failed: \(error)")
             highQualityReadyCompletion?(false)
             highQualityReadyCompletion = nil
         }
@@ -460,12 +490,15 @@ extension ParticleSystemController {
 extension ParticleSystemController {
     
     func startSimulation() {
+        wantsSimulation = true
         logger.info("Starting simulation")
+        renderer.waitForPendingFrame()
         simulationEngine.start()
-        mtkView?.isPaused = false
+        mtkView?.isPaused = isLifecyclePaused
     }
     
     func stopSimulation() {
+        wantsSimulation = false
         logger.info("Stopping simulation")
         mtkView?.isPaused = true
         clock.reset()
@@ -481,6 +514,8 @@ extension ParticleSystemController {
     }
 
     func startCollecting() {
+        collectingToImage = false
+        renderer.waitForPendingFrame()
         simulationEngine.startCollecting()
     }
 
@@ -501,11 +536,13 @@ extension ParticleSystemController {
     // MARK: - Lifecycle Hooks
 
     func handleWillResignActive() {
+        isLifecyclePaused = true
         mtkView?.isPaused = true
         mtkView?.releaseDrawables()
     }
 
     func handleDidBecomeActive() {
+        isLifecyclePaused = false
         if simulationEngine.isActive {
             mtkView?.isPaused = false
         }
@@ -528,9 +565,20 @@ extension ParticleSystemController {
             view.drawableSize = targetDrawableSize
         }
         storage.updateViewSize(view.drawableSize)
+        if sourceImage != nil, generationViewSize != .zero,
+           view.drawableSize.width > 0, view.drawableSize.height > 0,
+           generationViewSize != view.drawableSize {
+            generationViewSize = view.drawableSize
+            let needsInitialParticles = !isHighQualityMode
+            hasHighQualityTargets = false
+            isHighQualityMode = false
+            launchGeneration(replacingParticles: needsInitialParticles,
+                             preparePreview: renderer.particleBuffer == nil)
+        }
     }
 
     func setRenderPaused(_ paused: Bool) {
+        isLifecyclePaused = paused
         mtkView?.isPaused = paused
     }
 
@@ -568,25 +616,8 @@ extension ParticleSystemController {
             return
         }
 
-        // Запускаем новую генерацию
         highQualityReadyCompletion = completion
-        
-        generationTask = Task { [weak self] in
-            guard let self = self else {
-                await MainActor.run {
-                    self?.highQualityReadyCompletion?(false)
-                    self?.highQualityReadyCompletion = nil
-                    self?.generationTask = nil
-                }
-                return
-            }
-            
-            await self.generateAndStartSimulation()
-            
-            await MainActor.run {
-                self.generationTask = nil
-            }
-        }
+        launchGeneration(replacingParticles: true)
     }
     
     func collectHighQualityImage() {
@@ -596,9 +627,12 @@ extension ParticleSystemController {
             return
         }
 
+        renderer.waitForPendingFrame()
+        renderer.checkCollectionCompletion()
         syncCollectionFlags(with: simulationEngine.state)
 
         if case .collected = simulationEngine.state {
+            collectingToImage = false
             logger.info("HQ image assembled - scattering on repeat tap")
             isCollectingHQ = true
             isImageAssembled = false
@@ -618,86 +652,13 @@ extension ParticleSystemController {
             return
         }
 
+        collectingToImage = true
         // HQ частицы готовы - собираем изображение
         logCollectViewSize(context: "direct")
         isCollectingHQ = true
         isImageAssembled = false
         simulationEngine.startCollectingToImage()
         mtkView?.isPaused = false
-    }
-
-    private func generateHighQualityTargetsAndCollect() async {
-        if Task.isCancelled { return }
-        
-        guard let image = sourceImage, let view = mtkView else {
-            logger.error("Cannot collect image: missing image or view")
-            return
-        }
-
-        let viewSize = await resolveDrawableSize(for: view)
-        storage.updateViewSize(viewSize)
-        logger.info("HQ collect viewSize: \(Int(viewSize.width))x\(Int(viewSize.height)) (drawable: \(Int(view.drawableSize.width))x\(Int(view.drawableSize.height)))")
-
-        var hqConfig = configManager.currentConfig
-        hqConfig.qualityPreset = .ultra
-        hqConfig.samplingStrategy = .hybrid
-        let desiredCount = image.width * image.height
-        hqConfig.targetParticleCount = desiredCount
-        configManager.apply(hqConfig)
-        syncRenderQuality(with: hqConfig)
-
-        if desiredCount != particleCount {
-            particleCount = desiredCount
-            storage.initialize(with: desiredCount)
-
-            do {
-                try renderer.setupBuffers(particleCount: desiredCount)
-                renderer.updateParticleCount(desiredCount)
-            } catch {
-                logger.error("Failed to setup renderer for HQ collect: \(error)")
-                return
-            }
-
-            storage.createFastPreviewParticles()
-            renderer.setParticleBuffer(storage.particleBuffer)
-        }
-
-        logger.info("Generating HQ particles for collection: \(desiredCount)")
-
-        do {
-            let particles = try await generator.generateParticles(
-                from: image,
-                config: hqConfig,
-                screenSize: viewSize
-            )
-            
-            if Task.isCancelled { return }
-
-            let preparedParticles = particles.map { particle -> Particle in
-                var p = particle
-                p.color[3] = 1.0
-                return p
-            }
-
-            storage.setHighQualityTargets(preparedParticles)
-            simulationEngine.setHighQualityReady(true)
-            hasHighQualityTargets = true
-            isHighQualityMode = true
-            
-            // Запускаем сборку
-            logCollectViewSize(context: "generated")
-            isCollectingHQ = true
-            isImageAssembled = false
-            simulationEngine.startCollectingToImage()
-            mtkView?.isPaused = false
-            
-        } catch {
-            if Task.isCancelled {
-                logger.warning("HQ collect generation cancelled")
-            } else {
-                logger.error("HQ collect generation failed: \(error)")
-            }
-        }
     }
 
     private func syncCollectionFlags(with state: SimulationState) {
@@ -746,6 +707,7 @@ extension ParticleSystemController {
     private func cancelAllTasks() {
         generationTask?.cancel()
         generationTask = nil
+        generationID = nil
     }
     
     func cleanup() {
@@ -753,13 +715,14 @@ extension ParticleSystemController {
         
         cancelAllTasks()
         stopSimulation()
+        renderer.waitForPendingFrame()
         clock.reset()
         simulationEngine.reset()
         renderer.cleanup()
         storage.clear()
-        generator.clearCache()
         
         sourceImage = nil
+        generationViewSize = .zero
         particleCount = 0
         isHighQualityMode = false
         isImageAssembled = false

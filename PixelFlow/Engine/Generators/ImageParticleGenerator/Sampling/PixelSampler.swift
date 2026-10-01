@@ -47,7 +47,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         
         // Если требуется больше сэмплов, чем пикселей - вернуть все пиксели
         if shouldReturnAllPixels(targetCount: targetCount, cache: cache) {
-            return sampleAllPixels(from: cache)
+            return try sampleAllPixels(from: cache)
         }
         
         let samples = try generateSamples(
@@ -98,12 +98,13 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
     
     // MARK: - Sampling
     
-    private func sampleAllPixels(from cache: PixelCache) -> [Sample] {
+    private func sampleAllPixels(from cache: PixelCache) throws -> [Sample] {
         let totalPixels = cache.width * cache.height
         var allSamples: [Sample] = []
         allSamples.reserveCapacity(totalPixels)
         
         for y in 0..<cache.height {
+            try Task.checkCancellation()
             for x in 0..<cache.width {
                 let color = cache.color(atX: x, y: y)
                 allSamples.append(Sample(x: x, y: y, color: color))

@@ -45,7 +45,7 @@ final class SimulationEngine {
             break
             
         case .chaotic:
-            particleStorage.updateFastPreview(deltaTime: deltaTime)
+            break // Position integration is owned by the Metal compute pass.
             
         case .collecting:
             guard hqParticlesReady else {
@@ -58,7 +58,7 @@ final class SimulationEngine {
             stateMachine.tickCollected()
             
         case .lightningStorm:
-            particleStorage.updateFastPreview(deltaTime: deltaTime)
+            break // Position integration is owned by the Metal compute pass.
         }
     }
     
@@ -79,17 +79,8 @@ extension SimulationEngine: SimulationEngineProtocol {
     func start() {
         logger.info("Starting simulation")
         
-        // Создаем fast preview частицы с начальными скоростями
-        particleStorage.createFastPreviewParticles()
-        
-        // Генерируем HQ частицы асинхронно
-        particleStorage.generateHighQualityParticles { [weak self] in
-            guard let self = self else { return }
-            self.hqParticlesReady = true
-            self.stateMachine.start()
-            self.resetCounterCallback?()
-            self.logger.info("Simulation started with HQ particles ready")
-        }
+        stateMachine.start()
+        resetCounterCallback?()
     }
     
     /// Останавливает симуляцию
@@ -139,6 +130,7 @@ extension SimulationEngine: SimulationEngineProtocol {
     @MainActor func update(deltaTime: Float) {
         let clampedDeltaTime = min(deltaTime, 0.1)
         clock.update(with: clampedDeltaTime)
+        stateMachine.advanceCollectionTime(by: clock.deltaTime)
         applyForces()
         handleStateUpdate(deltaTime: clampedDeltaTime)
     }

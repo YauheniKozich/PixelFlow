@@ -46,24 +46,24 @@ final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
             let fileName = self.generateFileName(for: key)
             let fileURL = cacheDirectory.appendingPathComponent(fileName)
 
-            // Сериализуем данные
-            let data = try JSONEncoder().encode(value)
+            // Skip large particle arrays before allocating a serialized copy.
+            let data: Data
+            if let particles = value as? [Particle] {
+                let (estimatedSize, overflow) = particles.count.multipliedReportingOverflow(by: MemoryLayout<Particle>.stride)
+                guard !overflow, estimatedSize <= maxCacheSize / 4 else { return }
+                let encoder = PropertyListEncoder()
+                encoder.outputFormat = .binary
+                data = try encoder.encode(particles)
+            } else {
+                data = try JSONEncoder().encode(value)
+            }
 
             // Проверяем размер
             if data.count > maxCacheSize / 4 { // Не кэшируем слишком большие объекты
                 return
             }
 
-            // Удаляем старый файл если существует
-            if let oldEntry = cacheIndex[key] {
-                try? FileManager.default.removeItem(at: cacheDirectory.appendingPathComponent(oldEntry.fileName))
-                currentCacheSize -= oldEntry.size
-            }
-
-            // Очищаем кэш если необходимо
-            try cleanupIfNeeded(additionalSize: data.count)
-
-            // Записываем файл
+            // Сохраняем прежний файл и индекс до успешной атомарной замены.
             try data.write(to: fileURL, options: .atomic)
 
             // Обновляем индекс
@@ -75,8 +75,11 @@ final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
                 lastAccessed: Date()
             )
 
+            let replacedSize = cacheIndex[key]?.size ?? 0
             cacheIndex[key] = entry
-            currentCacheSize += data.count
+            currentCacheSize += data.count - replacedSize
+
+            try cleanupIfNeeded(additionalSize: 0)
 
             // Сохраняем индекс
             try saveCacheIndex()
@@ -112,6 +115,9 @@ final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
                 try? saveCacheIndex()
 
                 // Десериализуем
+                if data.starts(with: Data("bplist00".utf8)) {
+                    return try PropertyListDecoder().decode(type, from: data)
+                }
                 return try JSONDecoder().decode(type, from: data)
             } catch {
                 // Если файл поврежден, удаляем запись

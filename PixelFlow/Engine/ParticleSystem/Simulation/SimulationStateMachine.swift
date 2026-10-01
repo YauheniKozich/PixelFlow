@@ -29,13 +29,10 @@ final class SimulationStateMachine {
     private var collectMode: CollectMode = .toImage
 
     // Таймаут для сбора частиц
-    private var collectionStartTime: TimeInterval = 0
-    private var lastProgressUpdateTime: TimeInterval = 0
-    private var lastProgress: Float = 0
+    private var collectionElapsedTime: TimeInterval = 0
 
     // Константы таймаута
     private let maxCollectionTime: TimeInterval = 30.0  // 30 секунд максимум
-    private let progressStagnationTimeout: TimeInterval = 5.0  // 5 секунд без прогресса
     
     var isActive: Bool {
         if case .idle = state { return false }
@@ -58,10 +55,7 @@ final class SimulationStateMachine {
         resetCounterCallback?()
 
         // Инициализируем таймаут сбора
-        let currentTime = ProcessInfo.processInfo.systemUptime
-        collectionStartTime = currentTime
-        lastProgressUpdateTime = currentTime
-        lastProgress = 0
+        collectionElapsedTime = 0
         collectMode = mode
 
         state = .collecting(progress: 0)
@@ -71,43 +65,35 @@ final class SimulationStateMachine {
         guard case .collecting = state else { return }
 
         let clampedProgress = min(max(progress, 0), 1)
-        let currentTime = ProcessInfo.processInfo.systemUptime
 
         // Проверяем условия завершения сбора
-        var shouldComplete = false
-        var reason = ""
-
-        // 1. Полная готовность (100%)
         if clampedProgress >= 1.0 {
-            shouldComplete = true
-            reason = "progress >= 100%"
-        }
-        // 2. Общий таймаут (30 секунд)
-        else if currentTime - collectionStartTime > maxCollectionTime {
-            shouldComplete = true
-            reason = "timeout (\(String(format: "%.1f", maxCollectionTime))s)"
-        }
-
-        if shouldComplete {
-            lastProgress = 1.0
-            Logger.shared.info("[StateMachine] Collection complete → .collected(0) [\(reason)]")
+            Logger.shared.info("[StateMachine] Collection complete → .collected(0) [progress >= 100%]")
             switch collectMode {
             case .toImage:
                 state = .collected(frames: 0)
             case .toScatter:
                 state = .chaotic
             }
-        } else {
-            // Обновляем время последнего прогресса только если он действительно изменился
-            let epsilon: Float = 1e-6
-            if abs(clampedProgress - lastProgress) > epsilon {
-                lastProgressUpdateTime = currentTime
-                lastProgress = clampedProgress
-            }
-            state = .collecting(progress: clampedProgress)
+            return
         }
+
+        if collectionElapsedTime > maxCollectionTime {
+            Logger.shared.warning(
+                "[StateMachine] Collection timed out at \(Int(clampedProgress * 100))%; returning to chaotic state"
+            )
+            state = .chaotic
+            return
+        }
+
+        state = .collecting(progress: clampedProgress)
     }
     
+    func advanceCollectionTime(by deltaTime: Float) {
+        guard case .collecting = state, deltaTime.isFinite, deltaTime > 0 else { return }
+        collectionElapsedTime += TimeInterval(deltaTime)
+    }
+
     func tickCollected() {
         guard case .collected(let frames) = state else { return }
         let newFrames = frames + 1

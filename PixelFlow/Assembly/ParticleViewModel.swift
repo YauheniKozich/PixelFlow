@@ -359,15 +359,23 @@ final class ParticleViewModel {
         logger.info("Starting high-quality replacement task for system")
         
         let success = await requestHighQualityReplacement(for: system)
-        
+        guard !Task.isCancelled else { return }
+
         handleQualityGenerationCompletion(success: success, system: system)
     }
     
     private func requestHighQualityReplacement(for system: ParticleSystemControlling) async -> Bool {
-        return await withCheckedContinuation { continuation in
-            system.replaceWithHighQualityParticles { success in
-                continuation.resume(returning: success)
+        let resultGate = BooleanContinuationGate()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                resultGate.install(continuation)
+                guard !Task.isCancelled else { return }
+                system.replaceWithHighQualityParticles { success in
+                    resultGate.resolve(success)
+                }
             }
+        } onCancel: {
+            resultGate.resolve(false)
         }
     }
     
@@ -440,5 +448,34 @@ final class ParticleViewModel {
         for url in urls where url.lastPathComponent.hasPrefix(Constants.tempFilePrefix) {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+}
+
+private final class BooleanContinuationGate {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Bool, Never>?
+    private var pendingValue: Bool?
+
+    func install(_ continuation: CheckedContinuation<Bool, Never>) {
+        lock.lock()
+        let value = pendingValue
+        if value == nil { self.continuation = continuation }
+        lock.unlock()
+
+        if let value { continuation.resume(returning: value) }
+    }
+
+    func resolve(_ value: Bool) {
+        lock.lock()
+        guard pendingValue == nil else {
+            lock.unlock()
+            return
+        }
+        pendingValue = value
+        let continuation = self.continuation
+        self.continuation = nil
+        lock.unlock()
+
+        continuation?.resume(returning: value)
     }
 }

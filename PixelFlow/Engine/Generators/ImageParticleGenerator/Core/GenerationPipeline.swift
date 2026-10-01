@@ -57,6 +57,7 @@ final class GenerationPipeline: GenerationPipelineProtocol {
 
         // Инициализация контекста
         context.reset()
+        defer { context.reset() }
         context.image = image
         context.config = config
 
@@ -325,6 +326,7 @@ final class GenerationPipeline: GenerationPipelineProtocol {
             try Task.checkCancellation()
             let input = try prepareInput(for: stage)
             let output = try await executeStage(stage, input: input, config: config, screenSize: screenSize)
+            try Task.checkCancellation()
             try processOutput(output, for: stage)
             reportProgress(stage)
         } catch {

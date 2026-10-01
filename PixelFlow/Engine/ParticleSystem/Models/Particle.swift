@@ -57,21 +57,33 @@ struct Particle: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
+        func decodeVector(forKey key: CodingKeys, count: Int) throws -> [Float] {
+            let values = try container.decode([Float].self, forKey: key)
+            guard values.count == count else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: key,
+                    in: container,
+                    debugDescription: "Expected \(count) components, received \(values.count)"
+                )
+            }
+            return values
+        }
+
         // Decode SIMD3 as arrays
-        let positionArray = try container.decode([Float].self, forKey: .position)
+        let positionArray = try decodeVector(forKey: .position, count: 3)
         position = SIMD3<Float>(positionArray[0], positionArray[1], positionArray[2])
 
-        let velocityArray = try container.decode([Float].self, forKey: .velocity)
+        let velocityArray = try decodeVector(forKey: .velocity, count: 3)
         velocity = SIMD3<Float>(velocityArray[0], velocityArray[1], velocityArray[2])
 
-        let targetPositionArray = try container.decode([Float].self, forKey: .targetPosition)
+        let targetPositionArray = try decodeVector(forKey: .targetPosition, count: 3)
         targetPosition = SIMD3<Float>(targetPositionArray[0], targetPositionArray[1], targetPositionArray[2])
 
         // Decode SIMD4 as arrays
-        let colorArray = try container.decode([Float].self, forKey: .color)
+        let colorArray = try decodeVector(forKey: .color, count: 4)
         color = SIMD4<Float>(colorArray[0], colorArray[1], colorArray[2], colorArray[3])
 
-        let originalColorArray = try container.decode([Float].self, forKey: .originalColor)
+        let originalColorArray = try decodeVector(forKey: .originalColor, count: 4)
         originalColor = SIMD4<Float>(originalColorArray[0], originalColorArray[1], originalColorArray[2], originalColorArray[3])
 
         // Decode simple types

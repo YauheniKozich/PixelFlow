@@ -414,6 +414,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
         particles.reserveCapacity(samples.count)
         
         for (index, sample) in samples.enumerated() {
+            if index % 1024 == 0 && Task.isCancelled { return [] }
             let particle = createParticle(
                 from: sample,
                 index: index,
