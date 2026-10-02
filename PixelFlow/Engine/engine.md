@@ -52,11 +52,6 @@ Metal-шейдеры для вычислений и рендеринга.
 
 ## Использование
 
-Engine используется через слой Assembly:
-
-```swift
-// Создание компонентов через Assembly
-let viewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
-```
+Engine instances are created explicitly by `AppCompositionRoot` for each particle view. The presentation layer interacts with the resulting system through `ParticleSystemControlling`; image generation is connected through `ParticleGeneratorProtocol`.
 
 Все публичные API доступны через протоколы и основные классы в соответствующих модулях.

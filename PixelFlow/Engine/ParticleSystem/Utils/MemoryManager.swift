@@ -21,7 +21,7 @@ final class MemoryManager: MemoryManagerProtocol {
 
     // MARK: - Initialization
 
-    init(logger: LoggerProtocol = Logger.shared) {
+    init(logger: LoggerProtocol) {
         self.logger = logger
         setupMemoryWarningObserver()
         logger.info("MemoryManager initialized")

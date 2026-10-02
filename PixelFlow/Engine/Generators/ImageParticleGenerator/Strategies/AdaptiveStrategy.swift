@@ -12,7 +12,7 @@ final class AdaptiveStrategy: GenerationStrategyProtocol {
 
     // MARK: - Properties
 
-    private(set) var executionOrder: [GenerationStage] = [.analysis, .sampling, .assembly, .caching]
+    let executionOrder: [GenerationStage] = [.analysis, .sampling, .assembly, .caching]
 
     private let availableConcurrency: Int
     private let deviceCapabilities: DeviceCapabilities

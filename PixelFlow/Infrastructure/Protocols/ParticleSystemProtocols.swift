@@ -26,43 +26,6 @@ extension QualityPreset {
     }
 }
 
-// Протокол для контроллера системы частиц
-// @MainActor
-// protocol ParticleSystemControlling: AnyObject {
-//    Начинает симуляцию частиц
-//    func startSimulation()
-//
-//    Останавливает симуляцию частиц
-//    func stopSimulation()
-//
-//    Переключает состояние симуляции
-//    func toggleSimulation()
-//
-//    Запускает специальный эффект "молниеносная буря"
-//    func startLightningStorm()
-//
-//    Обновляет конфигурацию системы частиц
-//    func updateConfiguration(_ config: ParticleGenerationConfig) async
-//
-//    Обновляет симуляцию с учётом времени
-//    func updateSimulation(deltaTime: Float)
-//
-//    Выполняет замену частиц на высококачественные асинхронно
-//    func replaceWithHighQualityParticles(completion: @escaping (Bool) -> Void)
-//
-//    Инициализирует систему с быстрой превью
-//    func initializeFastPreview()
-//
-//    Очищает все ресурсы
-//    func cleanup()
-//
-//    Возвращает текущее состояние симуляции
-//    var hasActiveSimulation: Bool { get }
-//
-//    Возвращает буфер частиц для рендерера
-//    var particleBuffer: MTLBuffer? { get }
-// }
-
 /// Протокол для рендерера Metal
 @MainActor
 protocol MetalRendererProtocol: AnyObject, MTKViewDelegate {
@@ -175,30 +138,6 @@ protocol SimulationEngineProtocol: AnyObject {
 
     /// Устанавливает флаг готовности HQ-частиц
     func setHighQualityReady(_ ready: Bool)
-}
-
-/// Протокол для менеджера состояний
-protocol StateManagerProtocol: AnyObject {
-    /// Текущее состояние
-    var currentState: SimulationState { get }
-
-    /// Переходит в новое состояние
-    func transition(to state: SimulationState)
-
-    /// Активно ли текущее состояние
-    var isActive: Bool { get }
-}
-
-/// Протокол для физического движка
-protocol PhysicsEngineProtocol: AnyObject {
-    // Обновляет физику частиц
-    // func update(deltaTime: Float)
-
-    /// Применяет силы к частицам
-    func applyForces()
-
-    // Сбрасывает физику
-    // func reset()
 }
 
 /// Протокол для хранилища частиц

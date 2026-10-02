@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 
 /// Менеджер кэширования результатов генерации частиц
-final class DefaultCacheManager: CacheManager, CacheManagerProtocol {
+final class DefaultCacheManager: CacheManagerProtocol {
 
     private let cacheDirectory: URL
     private var maxCacheSize: Int // в байтах

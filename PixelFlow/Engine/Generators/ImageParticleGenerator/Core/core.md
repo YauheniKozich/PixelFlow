@@ -19,7 +19,7 @@
 - `cancelGeneration()` - отмена процесса
 - `clearCache()` - очистка кэша
 
-**Фабрика:** `GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)`
+The coordinator is created with explicit dependencies by `AppCompositionRoot` for each particle-system graph. It owns mutable generation state such as active task, progress, and cancellation state.
 
 ### GenerationPipeline.swift
 **Конвейер выполнения этапов генерации**
@@ -51,7 +51,6 @@
 
 Основные протоколы определены в [`PixelFlow/Infrastructure/Protocols/GeneratorProtocols.swift`](PixelFlow/Infrastructure/Protocols/GeneratorProtocols.swift):
 
-- `GenerationCoordinatorProtocol` - интерфейс координатора генерации
 - `GenerationPipelineProtocol` - интерфейс конвейера выполнения
 - `ImageAnalyzerProtocol` - анализ изображений
 - `PixelSamplerProtocol` - сэмплинг пикселей

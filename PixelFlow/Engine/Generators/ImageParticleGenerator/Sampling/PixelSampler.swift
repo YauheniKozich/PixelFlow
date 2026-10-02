@@ -12,11 +12,12 @@ import CoreGraphics
 import Foundation
 import simd
 
-final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
+final class DefaultPixelSampler: PixelSamplerProtocol {
 
     // MARK: - Properties
 
     private let config: ParticleGenerationConfig
+    private let logger: LoggerProtocol
 
     // MARK: - PixelSamplerProtocol
 
@@ -28,8 +29,9 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
     
     // MARK: - Initialization
     
-    init(config: ParticleGenerationConfig) {
+    init(config: ParticleGenerationConfig, logger: LoggerProtocol) {
         self.config = config
+        self.logger = logger
     }
     
     // MARK: - Public Interface
@@ -63,7 +65,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         // logSampleDistribution(validatedSamples, cacheHeight: cache.height)
         #endif
         
-        return filterSamplesForDisplay(
+        return try filterSamplesForDisplay(
             samples: validatedSamples,
             cache: cache,
             targetCount: targetCount,
@@ -78,7 +80,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         do {
             return try PixelCacheHelper.createPixelCache(from: image)
         } catch {
-            Logger.shared.error("Failed to create pixel cache: \(error)")
+            logger.error("Failed to create pixel cache: \(error)")
             throw SamplingError.cacheCreationFailed(underlying: error)
         }
     }
@@ -467,7 +469,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         targetCount: Int,
         config: ParticleGenerationConfig,
         screenSize: CGSize
-    ) -> [Sample] {
+    ) throws -> [Sample] {
         guard isValidSize(screenSize) else {
             return samples
         }
@@ -496,7 +498,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         var filtered = filterSamplesInBounds(samples: samples, bounds: bounds)
 
         if filtered.count < targetCount {
-            fillMissingSamples(
+            try fillMissingSamples(
                 samples: &filtered,
                 cache: cache,
                 bounds: bounds,
@@ -554,9 +556,9 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         cache: PixelCache,
         bounds: VisibleBounds,
         targetCount: Int
-    ) {
+    ) throws {
         var used = PixelCacheHelper.usedPositions(from: samples)
-        addUniformSamplesInRect(
+        try addUniformSamplesInRect(
             to: &samples,
             used: &used,
             cache: cache,
@@ -571,7 +573,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         cache: PixelCache,
         bounds: VisibleBounds,
         targetCount: Int
-    ) {
+    ) throws {
         let needed = targetCount - samples.count
         guard needed > 0 else { return }
 
@@ -591,12 +593,11 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         )
 
         if samples.count < targetCount {
-            addRandomSamples(
+            try addRemainingSamples(
                 to: &samples,
                 used: &used,
                 cache: cache,
                 bounds: bounds,
-                needed: needed,
                 targetCount: targetCount
             )
         }
@@ -627,6 +628,7 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
                 if used.contains(key) { continue }
                 
                 let color = cache.color(atX: x, y: y)
+                guard color.w > PixelCacheHelper.Constants.alphaThreshold else { continue }
                 samples.append(Sample(x: x, y: y, color: color))
                 used.insert(key)
             }
@@ -640,29 +642,26 @@ final class DefaultPixelSampler: PixelSampler, PixelSamplerProtocol {
         return Int((t * Double(maxCoord)).rounded())
     }
     
-    private func addRandomSamples(
+    private func addRemainingSamples(
         to samples: inout [Sample],
         used: inout Set<UInt64>,
         cache: PixelCache,
         bounds: VisibleBounds,
-        needed: Int,
         targetCount: Int
-    ) {
-        var attempts = 0
-        let maxAttempts = needed * 10
-        
-        while samples.count < targetCount && attempts < maxAttempts {
-            let x = Int.random(in: bounds.minX...bounds.maxX)
-            let y = Int.random(in: bounds.minY...bounds.maxY)
-            let key = PixelCacheHelper.positionKey(x, y)
-            
-            if !used.contains(key) {
+    ) throws {
+        for y in bounds.minY...bounds.maxY {
+            try Task.checkCancellation()
+            for x in bounds.minX...bounds.maxX {
+                guard samples.count < targetCount else { return }
+
+                let key = PixelCacheHelper.positionKey(x, y)
+                if used.contains(key) { continue }
+
                 let color = cache.color(atX: x, y: y)
+                guard color.w > PixelCacheHelper.Constants.alphaThreshold else { continue }
                 samples.append(Sample(x: x, y: y, color: color))
                 used.insert(key)
             }
-            
-            attempts += 1
         }
     }
 }

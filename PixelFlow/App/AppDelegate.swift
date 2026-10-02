@@ -8,7 +8,10 @@
 import UIKit
 
 @main
+@MainActor
 final class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    private(set) lazy var compositionRoot = AppCompositionRoot()
 
     // MARK: - UIApplicationDelegate
     func application(_ application: UIApplication,

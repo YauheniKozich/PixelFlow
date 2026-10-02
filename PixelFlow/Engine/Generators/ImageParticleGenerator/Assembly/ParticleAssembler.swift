@@ -39,7 +39,7 @@ enum ParticleAssemblerError: Error, LocalizedError {
 
 // MARK: - Default Particle Assembler
 
-final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtocol {
+final class DefaultParticleAssembler: ParticleAssemblerProtocol {
     
     // MARK: - Constants
     
@@ -77,11 +77,13 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
     // MARK: - Properties
     
     private let config: ParticleGenerationConfig
+    private let logger: LoggerProtocol
     
     // MARK: - Initialization
     
-    init(config: ParticleGenerationConfig) {
+    init(config: ParticleGenerationConfig, logger: LoggerProtocol) {
         self.config = config
+        self.logger = logger
     }
     
     // MARK: - Public API
@@ -102,7 +104,7 @@ final class DefaultParticleAssembler: ParticleAssembler, ParticleAssemblerProtoc
                 originalImageSize: originalImageSize
             )
         } catch {
-            Logger.shared.error("Particle assembly failed: \(error)")
+            logger.error("Particle assembly failed: \(error)")
             return []
         }
     }

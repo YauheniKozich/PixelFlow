@@ -10,25 +10,6 @@ import CoreGraphics
 import Foundation
 import simd
 
-protocol ParticleGenerationServiceProtocol {
-    /// Генерирует частицы асинхронно
-    func generateParticles(
-        from image: CGImage,
-        config: ParticleGenerationConfig,
-        screenSize: CGSize,
-        progress: @escaping (Float, String) -> Void
-    ) async throws -> [Particle]
-
-    /// Отменяет генерацию
-    func cancelGeneration()
-
-    /// Очищает кэш
-    func clearCache()
-
-    /// Активна ли генерация
-    var isGenerating: Bool { get }
-}
-
 /// Протокол для анализатора изображений
 protocol ImageAnalyzerProtocol {
     /// Анализирует изображение
@@ -69,12 +50,6 @@ protocol ParticleAssemblerProtocol {
         imageSize: CGSize,
         originalImageSize: CGSize
     ) -> [Particle]
-
-    // Валидирует частицы
-    // func validateParticles(_ particles: [Particle]) -> Bool
-
-    // Размер частиц по умолчанию
-    // var defaultParticleSize: Float { get }
 }
 
 /// Протокол для менеджера кэша
@@ -132,45 +107,6 @@ protocol OperationManagerProtocol {
     var hasActiveOperations: Bool { get }
 }
 
-/// Протокол для трекера ресурсов
-protocol ResourceTrackerProtocol {
-    /// Отслеживает выделение ресурса
-    func trackAllocation(_ resource: AnyObject, type: String)
-
-    /// Отслеживает освобождение ресурса
-    func trackDeallocation(_ resource: AnyObject)
-
-    /// Отчет об использовании ресурсов
-    func resourceReport() -> String
-
-    /// Общее количество отслеживаемых ресурсов
-    var totalTrackedResources: Int { get }
-
-    /// Ресурсы по типам
-    var resourcesByType: [String: Int] { get }
-}
-
-/// Протокол для фабрики компонентов генератора
-protocol GeneratorComponentFactoryProtocol {
-    /// Создает анализатор изображений
-    func makeImageAnalyzer(config: PerformanceParams) -> ImageAnalyzerProtocol
-
-    /// Создает сэмплер пикселей
-    func makePixelSampler(config: ParticleGenerationConfig) -> PixelSamplerProtocol
-
-    /// Создает сборщик частиц
-    func makeParticleAssembler(config: ParticleGenerationConfig) -> ParticleAssemblerProtocol
-
-    /// Создает менеджер кэша
-    func makeCacheManager(sizeLimit: Int64) -> CacheManagerProtocol
-
-    /// Создает менеджер операций
-    func makeOperationManager() -> OperationManagerProtocol
-
-    /// Создает трекер ресурсов
-    func makeResourceTracker() -> ResourceTrackerProtocol
-}
-
 /// Протокол для контекста генерации
 protocol GenerationContextProtocol {
     /// Текущее изображение
@@ -202,55 +138,6 @@ protocol GenerationContextProtocol {
 
     /// Обновляет прогресс и этап
     func updateProgress(_ progress: Float, stage: String)
-}
-
-/// Протокол для делегата генерации частиц
-protocol ParticleGenerationDelegate: AnyObject {
-    /// Вызывается при обновлении прогресса
-    func generation(_ generation: ParticleGenerationServiceProtocol,
-                    didUpdateProgress progress: Float,
-                    stage: String)
-
-    /// Вызывается при возникновении ошибки
-    func generation(_ generation: ParticleGenerationServiceProtocol,
-                    didEncounterError error: Error)
-
-    /// Вызывается при успешном завершении
-    func generation(_ generation: ParticleGenerationServiceProtocol,
-                    didFinishWithParticles particles: [Particle])
-
-    /// Вызывается при отмене генерации
-    func generationDidCancel(_ generation: ParticleGenerationServiceProtocol)
-}
-
-/// Протокол для метрик генерации
-protocol GenerationMetricsProtocol {
-    /// Время анализа изображения
-    var analysisTime: TimeInterval { get set }
-
-    /// Время сэмплинга
-    var samplingTime: TimeInterval { get set }
-
-    /// Время сборки частиц
-    var assemblyTime: TimeInterval { get set }
-
-    /// Общее время генерации
-    var totalTime: TimeInterval { get }
-
-    /// Количество обработанных пикселей
-    var pixelsProcessed: Int64 { get set }
-
-    /// Количество сгенерированных частиц
-    var particlesGenerated: Int { get set }
-
-    /// Пиковое использование памяти
-    var peakMemoryUsage: Int64 { get set }
-
-    /// Сбрасывает метрики
-    func reset()
-
-    /// Создает отчет о производительности
-    func performanceReport() -> String
 }
 
 /// Протокол для конвейера генерации частиц
@@ -302,29 +189,6 @@ protocol GenerationStrategyProtocol {
     func isOptimal(for config: ParticleGenerationConfig) -> Bool
 }
 
-/// Протокол для координатора генерации частиц
-protocol GenerationCoordinatorProtocol {
-    /// Генерирует частицы асинхронно
-    func generateParticles(
-        from image: CGImage,
-        config: ParticleGenerationConfig,
-        screenSize: CGSize,
-        progress: @escaping (Float, String) -> Void
-    ) async throws -> [Particle]
-
-    /// Отменяет генерацию
-    func cancelGeneration()
-
-    /// Активна ли генерация
-    var isGenerating: Bool { get }
-
-    /// Текущий прогресс (0.0 - 1.0)
-    var currentProgress: Float { get }
-
-    /// Текущий этап генерации
-    var currentStage: String { get }
-}
-
 /// Этапы генерации частиц
 enum GenerationStage {
     case analysis
@@ -349,62 +213,6 @@ enum GenerationStageOutput {
     case cached(Bool)
 }
 
-/// Протокол для валидатора конфигурации
-protocol ConfigurationValidatorProtocol {
-    /// Валидирует конфигурацию генерации
-    func validate(_ config: ParticleGenerationConfig) throws
-
-    /// Валидирует изображение
-    func validate(image: CGImage) throws
-
-    /// Валидирует количество частиц
-    func validate(particleCount: Int) throws
-
-    /// Предлагает исправления для невалидной конфигурации
-    func suggestFixes(for config: ParticleGenerationConfig) -> [String]
-
-    /// Максимально допустимый размер изображения
-    var maxImageSize: CGSize { get }
-
-    /// Максимально допустимое количество частиц
-    var maxParticleCount: Int { get }
-
-    /// Минимально допустимое количество частиц
-    var minParticleCount: Int { get }
-}
-
-// MARK: - Core Protocols (moved from Core/Protocols.swift)
-
-/// Протокол для анализа изображений (внутренний)
-protocol ImageAnalyzer {
-    func analyze(image: CGImage) throws -> ImageAnalysis
-}
-
-/// Протокол для сэмплинга пикселей (внутренний)
-protocol PixelSampler {
-    func samplePixels(from analysis: ImageAnalysis,
-                      targetCount: Int,
-                      config: ParticleGenerationConfig,
-                      image: CGImage,
-                      screenSize: CGSize) throws -> [Sample]
-}
-
-/// Протокол для сборки частиц (внутренний)
-protocol ParticleAssembler {
-    func assembleParticles(from samples: [Sample],
-                           config: ParticleGenerationConfig,
-                           screenSize: CGSize,
-                           imageSize: CGSize,
-                           originalImageSize: CGSize) -> [Particle]
-}
-
-/// Протокол для кэширования результатов (внутренний)
-protocol CacheManager: AnyObject {
-    func cache<T: Codable>(_ value: T, for key: String) throws
-    func retrieve<T: Codable>(_ type: T.Type, for key: String) throws -> T?
-    func clear()
-}
-
 /// Протокол для конфигурации генерации (внутренний)
 protocol ParticleGeneratorConfiguration: Codable {
     var samplingStrategy: SamplingStrategy { get }
@@ -413,7 +221,6 @@ protocol ParticleGeneratorConfiguration: Codable {
     var maxConcurrentOperations: Int { get }
 }
 
-// swiftlint:disable:next type_name
 /// Протокол для расширенной конфигурации генератора с режимом отображения (внутренний)
 protocol GeneratorConfigWithDisplayMode: ParticleGeneratorConfiguration {
     var imageDisplayMode: ImageDisplayMode { get }

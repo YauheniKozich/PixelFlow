@@ -45,13 +45,13 @@ ImageParticleGenerator/
 **GenerationCoordinator** - главный координатор системы:
 - Управляет жизненным циклом генерации частиц
 - Координирует работу всех компонентов
-- Предоставляет публичный API
+- Передает API генерации адаптеру конкретной particle system.
 - Обрабатывает асинхронные операции, кэширование и отмену
 
 **Протоколы:**
-- `GenerationCoordinatorProtocol` - основной интерфейс координатора
 - `GenerationPipelineProtocol` - интерфейс конвейера выполнения
-- `ParticleGenerationDelegate` - обратные вызовы для отслеживания прогресса
+- `ImageAnalyzerProtocol`, `PixelSamplerProtocol`, `ParticleAssemblerProtocol` - этапы подготовки данных
+- `CacheManagerProtocol`, `GenerationStrategyProtocol` - кэширование и порядок этапов
 
 #### Analysis (Анализ)
 
@@ -96,11 +96,7 @@ ImageParticleGenerator/
 
 ### 1. Инициализация
 
-```swift
-let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
-var config = ParticleGenerationConfig.high
-config.targetParticleCount = 1000
-```
+The app composition root creates a fresh coordinator and pipeline for each particle-system graph. The presentation model supplies the image, view size, and selected generation configuration.
 
 ### 2. Этап анализа
 
@@ -192,63 +188,7 @@ CacheManager сохраняет результаты:
 
 ## Использование
 
-### Базовое использование
-
-```swift
-// Создание координатора
-let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
-
-// Конфигурация генерации
-var config = ParticleGenerationConfig.high
-config.targetParticleCount = 1000
-
-// Генерация частиц
-let particles = try await coordinator.generateParticles(
-    from: myImage,
-    config: config,
-    screenSize: CGSize(width: 1920, height: 1080),
-    progress: { progress, stage in
-        print("Progress: \(progress), Stage: \(stage)")
-    }
-)
-```
-
-### С кастомной конфигурацией
-
-```swift
-let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
-
-var config = ParticleGenerationConfig.high
-config.targetParticleCount = 1000
-config.samplingStrategy = .importance
-config.enableCaching = true
-config.analysisSamplingTuning = AnalysisSamplingTuning(
-    edgeBiasStrength: 0.6,
-    importanceThresholdMin: 0.05,
-    importanceThresholdMax: 0.9,
-    contrastWeightScale: 0.5,
-    saturationWeightScale: 0.5,
-    weightMin: 0.1,
-    weightMax: 2.0,
-    complexityMid: 4,
-    complexityHigh: 7,
-    edgeRadiusBoostMid: 1,
-    edgeRadiusBoostHigh: 2,
-    detailBoostScale: 0.15,
-    detailBoostMax: 0.2,
-    importantRatioMin: 0.3,
-    importantRatioMax: 0.9
-)
-
-let particles = try await coordinator.generateParticles(
-    from: myImage,
-    config: config,
-    screenSize: view.bounds.size,
-    progress: { progress, stage in
-        // Обновление UI прогресса
-    }
-)
-```
+Image generation is started through the particle-system controller created for an `MTKView`. `AppCompositionRoot` supplies that graph explicitly; callers do not construct or resolve a coordinator globally. Quality presets and sampling configuration are passed as values into each generation request.
 
 **Пояснение параметров `AnalysisSamplingTuning`:**
 - `edgeBiasStrength` — насколько сильно плотность важности зависит от `edgeDensity` (0–1).

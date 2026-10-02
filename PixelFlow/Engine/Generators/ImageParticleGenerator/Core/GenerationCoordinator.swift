@@ -10,32 +10,7 @@ import CoreGraphics
 import CryptoKit
 import Foundation
 
-// MARK: - Factory
-
-enum GenerationCoordinatorFactory {
-    static func makeCoordinator(in container: DIContainer) -> GenerationCoordinator {
-        // Получить зависимости из DI контейнера
-        guard let pipeline = container.resolve(GenerationPipelineProtocol.self),
-              let operationManager = container.resolve(OperationManagerProtocol.self),
-              let memoryManager = container.resolve(MemoryManagerProtocol.self),
-              let cacheManager = container.resolve(CacheManagerProtocol.self),
-              let logger = container.resolve(LoggerProtocol.self),
-              let errorHandler = container.resolve(ErrorHandlerProtocol.self) else {
-            fatalError("Failed to resolve GenerationCoordinator dependencies")
-        }
-        
-        return GenerationCoordinator(
-            pipeline: pipeline,
-            operationManager: operationManager,
-            memoryManager: memoryManager,
-            cacheManager: cacheManager,
-            logger: logger,
-            errorHandler: errorHandler
-        )
-    }
-}
-
-final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoordinatorProtocol {
+final class GenerationCoordinator: NSObject, @unchecked Sendable {
 
     // MARK: - Dependencies
 
@@ -63,7 +38,7 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
          operationManager: OperationManagerProtocol,
          memoryManager: MemoryManagerProtocol,
          cacheManager: CacheManagerProtocol,
-         logger: LoggerProtocol = Logger.shared,
+         logger: LoggerProtocol,
          errorHandler: ErrorHandlerProtocol) {
 
         self.pipeline = pipeline
@@ -77,8 +52,6 @@ final class GenerationCoordinator: NSObject, @unchecked Sendable, GenerationCoor
 
         logger.info("GenerationCoordinator initialized")
     }
-
-    // MARK: - GenerationCoordinatorProtocol
 
     var isGenerating: Bool {
         stateQueue.sync { _isGenerating }

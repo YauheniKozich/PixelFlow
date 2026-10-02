@@ -267,5 +267,5 @@ App → ParticleSystemController
 ParticleSystem спроектирован для расширения:
 - **Новые состояния**: Добавление через SimulationStateMachine
 - **Эффекты**: Новые шейдеры в Effects/
-- **Генераторы**: Плагины через GenerationCoordinatorProtocol
-- **Рендереры**: Альтернативные бэкенды через RendererProtocol
+- **Генераторы**: Подключаются через `ParticleGeneratorProtocol`
+- **Рендереры**: Контроллер работает с `MetalRendererProtocol`

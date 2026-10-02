@@ -61,18 +61,20 @@ private struct AnalysisResult {
 
 // MARK: Основной класс‑анализатор
 
-final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
+final class DefaultImageAnalyzer: ImageAnalyzerProtocol {
 
     // Параметры производительности (для будущего расширения)
     private let config: PerformanceParams
+    private let logger: LoggerProtocol
 
     // MARK: - ImageAnalyzerProtocol
 
     var supportsSIMD: Bool { true }
     var supportsConcurrency: Bool { true }
 
-    init(config: PerformanceParams) {
+    init(config: PerformanceParams, logger: LoggerProtocol) {
         self.config = config
+        self.logger = logger
     }
     
     // --------------------------------------------------------
@@ -120,21 +122,8 @@ final class DefaultImageAnalyzer: ImageAnalyzer, ImageAnalyzerProtocol {
         let newH = Int(CGFloat(h) * scale)
         
         // 0‑bytesPerRow → система будет выбирать выравненный stride
-//        guard let ctx = CGContext(
-//            data: nil,
-//            width: newW,
-//            height: newH,
-//            bitsPerComponent: 8,
-//            bytesPerRow: w * 4,
-//            space: CGColorSpaceCreateDeviceRGB(),
-//            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-//        ) else {
-//            Logger.shared.error("Failed to create down‑sampling CGContext")
-//            return image
-//        }
-        
         guard let ctx = GraphicsUtils.createBitmapContext(width: newW, height: newH) else {
-            Logger.shared.error("Не удалось создать CGContext для уменьшения разрешения")
+            logger.error("Не удалось создать CGContext для уменьшения разрешения")
             return image
         }
         

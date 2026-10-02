@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - View Controller
 
-final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
+final class ParticleViewController: UIViewController, ParticleSystemLifecycleHandling {
     
     // MARK: - Constants
     
@@ -528,7 +528,7 @@ final class ViewController: UIViewController, ParticleSystemLifecycleHandling {
 
 // MARK: - UIGestureRecognizerDelegate
 
-extension ViewController: UIGestureRecognizerDelegate {
+extension ParticleViewController: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         guard let touchedView = touch.view else { return true }
 

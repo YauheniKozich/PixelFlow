@@ -1,132 +1,90 @@
-# PixelFlow - Система частиц на Metal
+# PixelFlow
 
-Модульная система частиц на Metal для iOS с MVVM-архитектурой, генерацией частиц из изображений и GPU-вычислениями.
+PixelFlow превращает исходные изображения в анимированные системы частиц с помощью обработки на CPU и вычислений и рендеринга на Metal. Каждое представление частиц владеет собственной симуляцией и GPU-ресурсами; общие сервисы приложения создаются явным корнем композиции.
 
-## Быстрый старт
+## Сборка приложения
 
-```swift
-// Создание приложения через Assembly (MVVM паттерн)
-let viewController = ParticleAssembly.assemble(withDI: AppContainer.shared)
-// Или прямая работа с Engine
-let coordinator = GenerationCoordinatorFactory.makeCoordinator(in: EngineContainer.shared)
-let config = ParticleGenerationConfig.standard
-let particles = try await coordinator.generateParticles(
-    from: image,
-    config: config,
-    screenSize: CGSize(width: 1920, height: 1080),
-    progress: { progress, stage in
-        print("Progress: \(progress), Stage: \(stage)")
-    }
-)
+```text
+AppDelegate
+    ↓
+AppCompositionRoot
+    ↓
+ParticleViewModel / ParticleViewController
+    ↓
+ParticleSystem для отдельного представления
 ```
 
-## Архитектура проекта
+`AppCompositionRoot` владеет сервисами уровня приложения и создаёт отдельный граф зависимостей для каждого `MTKView`. Система частиц владеет собственным хранилищем частиц, симуляцией, рендерером и координатором генерации. Рендерер назначается делегатом `MTKView`; рендерер и контроллер хранят слабые ссылки на представление. Общие сервисы не удерживают системы частиц или представления.
 
-PixelFlow состоит из нескольких модулей:
-- `Assembly` собирает UI, ViewModel и зависимости
-- `Engine` содержит генераторы, симуляцию и Metal-шейдеры
-- `UI` управляет жизненным циклом приложения
-- `Infrastructure` хранит DI, протоколы и сервисы
-- `Resources` содержит ассеты и локализацию
+## Путь от изображения до кадра
 
-Подробности по каждому модулю находятся в отдельных markdown-файлах.
-
+```text
+Изображение
+  ↓
+Анализ
+  ↓
+Сэмплирование
+  ↓
+Сборка частиц
+  ↓
+Хранилище частиц
+  ↓
+Симуляция
+  ↓
+Вычисления Metal
+  ↓
+Рендеринг Metal
 ```
+
+Анализ изображения, сэмплирование пикселей и сборка частиц подготавливают исходные данные частиц. `ParticleStorage` владеет GPU-буфером частиц для конкретного представления. `SimulationEngine` обновляет состояние симуляции и время, вычисления Metal — позиции частиц, а рендеринг Metal отображает каждый кадр. Перед изменением общих буферов рендерер синхронизирует обновления на CPU с кадрами, обработка которых на GPU ещё не завершена.
+
+## Структура проекта
+
+```text
 PixelFlow/
-├── 📁 Assembly/                # MVVM слой сборки
-│   ├── ParticleAssembly.swift  # Фабрика компонентов
-│   ├── ParticleViewModel.swift # Бизнес-логика UI
-│   └── ViewController.swift    # Презентационный слой
-│
-├── 📁 Engine/                 # Ядро симуляции частиц
-│   ├── Generators/            # Генерация частиц из изображений
-│   │   └── ImageParticleGenerator/
-│   │       ├── Core/           # Ядро генератора
-│   │       ├── Analysis/       # Анализ изображений
-│   │       ├── Sampling/       # Сэмплинг пикселей
-│   │       ├── Assembly/       # Сборка частиц
-│   │       ├── Configuration/  # Конфигурация
-│   │       └── Caching/        # Кэширование
-│   │
-│   ├── ParticleSystem/        # Система симуляции частиц
-│   │   ├── Core/              # Основные компоненты
-│   │   ├── Simulation/        # Логика симуляции
-│   │   ├── Rendering/         # Metal рендеринг
-│   │   ├── Particles/         # Структуры данных
-│   │   ├── Models/            # Модели данных
-│   │   ├── Extension/         # Расширения
-│   │   └── Utils/             # Утилиты
-│   │
-│   ├── Shaders/               # Metal шейдеры
-│   │   ├── Core/              # Общие структуры
-│   │   ├── Compute/           # Вычислительные шейдеры
-│   │   ├── Rendering/         # Рендеринг шейдеры
-│   │   ├── Effects/           # Визуальные эффекты
-│   │   └── ParticleShader.metal # Главный шейдер
-│   │
-│   └── GraphicsUtils.swift    # Графические утилиты
-│
-├── 📁 UI/                     # Пользовательский интерфейс iOS
-│   ├── AppDelegate.swift      # Делегат приложения
-│   └── SceneDelegate.swift    # Делегат сцены
-│
-├── 📁 Infrastructure/         # Инфраструктурные компоненты
-│   ├── DI/                    # Внедрение зависимостей
-│   ├── Protocols/             # Общие протоколы
-│   └── Services/              # Сервисы приложения
-│
-├── 📁 Resources/              # Ресурсы и ассеты
-│   ├── Assets.xcassets/       # Иконки и изображения
-│   └── Base.lproj/            # Storyboards и локализация
+├── App/
+│   ├── AppDelegate.swift
+│   ├── SceneDelegate.swift
+│   └── Composition/AppCompositionRoot.swift
+├── Presentation/Particle/
+│   ├── ParticleViewController.swift
+│   ├── ParticleViewModel.swift
+│   ├── RenderView.swift
+│   └── RenderView+MetalKit.swift
+├── Engine/
+│   ├── Generators/ImageParticleGenerator/
+│   ├── ParticleSystem/
+│   ├── Shaders/
+│   └── GraphicsUtils.swift
+├── Infrastructure/
+│   ├── Protocols/
+│   └── Services/
+├── Errors/
+└── Resources/
 ```
 
-## Ключевые возможности
+## Возможности
 
-- Генерация частиц из изображений
-- Симуляция и рендеринг на Metal
-- MVVM-сборка через `Assembly`
-- Presets качества: Draft, Standard, High, Ultra
-- State-based эффекты освещения
+- Генерация частиц на основе изображений с пресетами качества Draft, Standard, High и Ultra.
+- Симуляция и рендеринг на GPU с помощью вычислительных и графических конвейеров Metal.
+- Отдельный жизненный цикл системы частиц для каждого представления при общих сервисах приложения для изображений, журналирования, обработки ошибок и управления памятью.
+- Синхронизация CPU и GPU: перед изменением общих буферов учитывается обработка уже отправленных кадров.
 
 ## Документация
 
-### Быстрый старт
-- **[ImageParticleGenerator](PixelFlow/Engine/Generators/ImageParticleGenerator/image-particle-generator.md)** - Руководство по генерации частиц
+- [Генератор частиц из изображения](PixelFlow/Engine/Generators/ImageParticleGenerator/image-particle-generator.md)
+- [Обзор Engine](PixelFlow/Engine/engine.md)
+- [Система частиц](PixelFlow/Engine/ParticleSystem/particlesystem.md)
+- [Руководство по шейдерам](PixelFlow/Engine/Shaders/shaders.md)
+- [Обработка ошибок](PixelFlow/Errors/errors.md)
+- [Ресурсы](PixelFlow/Resources/resources.md)
 
-### Архитектура проекта
-- **[Assembly](PixelFlow/Assembly/assembly.md)** - MVVM слой и сборка
-- **[UI](PixelFlow/UI/ui.md)** - AppDelegate, SceneDelegate, ViewController
-- **[Infrastructure](PixelFlow/Infrastructure/infrastructure.md)** - DI, протоколы, сервисы
-- **[Errors](PixelFlow/Errors/errors.md)** - Система ошибок PixelFlow
-- **[Resources](PixelFlow/Resources/resources.md)** - Ассеты, локализация, управление ресурсами
+## Требования
 
-### Engine - Ядро симуляции
-- **[Engine Overview](PixelFlow/Engine/engine.md)** - Архитектура и компоненты Engine
-- **[ParticleSystem Details](PixelFlow/Engine/ParticleSystem/particlesystem.md)** - Детальная документация ParticleSystem
-
-### Генерация частиц
-- **[ImageParticleGenerator](PixelFlow/Engine/Generators/ImageParticleGenerator/image-particle-generator.md)** - Детальное руководство по генератору частиц
-- **[Core](PixelFlow/Engine/Generators/ImageParticleGenerator/Core/core.md)** - Ядро генератора
-- **[Analysis](PixelFlow/Engine/Generators/ImageParticleGenerator/Analysis/analysis.md)** - Анализ изображений
-- **[Sampling](PixelFlow/Engine/Generators/ImageParticleGenerator/Sampling/sampling.md)** - Стратегии сэмплинга
-- **[Strategies](PixelFlow/Engine/Generators/ImageParticleGenerator/Strategies/strategies.md)** - Стратегии генерации
-- **[Assembly](PixelFlow/Engine/Generators/ImageParticleGenerator/Assembly/assembly.md)** - Сборка частиц
-- **[Caching](PixelFlow/Engine/Generators/ImageParticleGenerator/Caching/caching.md)** - Система кэширования
-
-### Metal шейдеры
-- **[Shaders Guide](PixelFlow/Engine/Shaders/shaders.md)** - Структура Metal шейдеров
-- **[Shader Usage](PixelFlow/Engine/Shaders/Shader-Usage-Guide.md)** - Практическое использование шейдеров
-- **[Metal 4 Features](PixelFlow/Engine/Shaders/metal.md)** - Возможности Metal 4
-
-
-## Системные требования
-
-- **Платформа**: iOS target
-- **Xcode**: current project-compatible version with Metal toolchain
-- **Swift**: 5.0 as set in the Xcode project
+- Целевая платформа iOS задаётся в проекте Xcode.
+- Версия Xcode должна поддерживать используемую проектом цепочку инструментов Metal.
+- Версия Swift задаётся в настройках проекта Xcode.
 
 ## Лицензия
 
-MIT License - см. файл LICENSE
-
----
+MIT License. См. файл [LICENSE](LICENSE).

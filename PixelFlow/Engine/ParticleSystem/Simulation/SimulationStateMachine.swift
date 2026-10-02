@@ -27,12 +27,17 @@ final class SimulationStateMachine {
     private(set) var state: SimulationState = .idle
     var resetCounterCallback: (() -> Void)?
     private var collectMode: CollectMode = .toImage
+    private let logger: LoggerProtocol
 
     // Таймаут для сбора частиц
     private var collectionElapsedTime: TimeInterval = 0
 
     // Константы таймаута
     private let maxCollectionTime: TimeInterval = 30.0  // 30 секунд максимум
+
+    init(logger: LoggerProtocol) {
+        self.logger = logger
+    }
     
     var isActive: Bool {
         if case .idle = state { return false }
@@ -40,7 +45,7 @@ final class SimulationStateMachine {
     }
     
     func start() {
-        Logger.shared.info("[StateMachine] start() → .chaotic")
+        logger.info("[StateMachine] start() → .chaotic")
         
         // Сбрасываем счетчик собранных частиц при начале новой симуляции
         resetCounterCallback?()
@@ -49,7 +54,7 @@ final class SimulationStateMachine {
     }
     
     func startCollecting(mode: CollectMode = .toImage) {
-        Logger.shared.info("[StateMachine] startCollecting() → .collecting(0)")
+        logger.info("[StateMachine] startCollecting() → .collecting(0)")
 
         // Сбрасываем счетчик собранных частиц
         resetCounterCallback?()
@@ -68,7 +73,7 @@ final class SimulationStateMachine {
 
         // Проверяем условия завершения сбора
         if clampedProgress >= 1.0 {
-            Logger.shared.info("[StateMachine] Collection complete → .collected(0) [progress >= 100%]")
+            logger.info("[StateMachine] Collection complete → .collected(0) [progress >= 100%]")
             switch collectMode {
             case .toImage:
                 state = .collected(frames: 0)
@@ -79,7 +84,7 @@ final class SimulationStateMachine {
         }
 
         if collectionElapsedTime > maxCollectionTime {
-            Logger.shared.warning(
+            logger.warning(
                 "[StateMachine] Collection timed out at \(Int(clampedProgress * 100))%; returning to chaotic state"
             )
             state = .chaotic
@@ -101,12 +106,12 @@ final class SimulationStateMachine {
     }
     
     func stop() {
-        Logger.shared.info("[StateMachine] stop() → .idle")
+        logger.info("[StateMachine] stop() → .idle")
         state = .idle
     }
     
     func startLightningStorm() {
-        Logger.shared.info("[StateMachine] startLightningStorm() → .lightningStorm")
+        logger.info("[StateMachine] startLightningStorm() → .lightningStorm")
         state = .lightningStorm
     }
 }

@@ -71,8 +71,12 @@ final class ParticleViewModel {
     }
     
     deinit {
-        // Синхронная отмена Task — не создаём новых асинхронных операций
+        // Cancel pending generation and clean up the main-actor-owned particle graph.
         qualityTask?.cancel()
+        let system = particleSystem
+        Task { @MainActor in
+            system?.cleanup()
+        }
         particleSystem = nil
         // Не обращаемся к logger — объект уже deallocating, это data race risk
     }
@@ -338,33 +342,21 @@ final class ParticleViewModel {
         cancelQualityTask()
         isGeneratingHighQuality = true
         logger.info("Launching high‑quality particle generation")
-        
-        qualityTask = Task { [weak self] in
-            guard let self else { return }
-            
-            await self.executeQualityGenerationWithDelay(for: system)
+
+        qualityTask = Task { [weak self, system] in
+            try? await Task.sleep(nanoseconds: Constants.qualityGenerationDelay)
+            guard !Task.isCancelled else { return }
+
+            self?.logger.info("Generating high‑quality particles…")
+            self?.logger.info("Starting high-quality replacement task for system")
+
+            let success = await Self.requestHighQualityReplacement(for: system)
+            guard !Task.isCancelled else { return }
+            self?.handleQualityGenerationCompletion(success: success, system: system)
         }
     }
     
-    private func executeQualityGenerationWithDelay(for system: ParticleSystemControlling) async {
-        try? await Task.sleep(nanoseconds: Constants.qualityGenerationDelay)
-        
-        guard !Task.isCancelled else { return }
-        
-        await performQualityGeneration(for: system)
-    }
-    
-    private func performQualityGeneration(for system: ParticleSystemControlling) async {
-        logger.info("Generating high‑quality particles…")
-        logger.info("Starting high-quality replacement task for system")
-        
-        let success = await requestHighQualityReplacement(for: system)
-        guard !Task.isCancelled else { return }
-
-        handleQualityGenerationCompletion(success: success, system: system)
-    }
-    
-    private func requestHighQualityReplacement(for system: ParticleSystemControlling) async -> Bool {
+    private static func requestHighQualityReplacement(for system: ParticleSystemControlling) async -> Bool {
         let resultGate = BooleanContinuationGate()
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in

@@ -58,7 +58,7 @@ public final class ErrorHandler: ErrorHandlerProtocol {
 
     // MARK: - Initialization
 
-    public init(logger: LoggerProtocol = Logger.shared,
+    public init(logger: LoggerProtocol,
                 analyticsService: AnalyticsServiceProtocol? = nil) {
         self.logger = logger
         self.analyticsService = analyticsService
