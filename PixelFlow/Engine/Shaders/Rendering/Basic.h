@@ -128,10 +128,11 @@ static inline float2 getSubpixelOffset(uint vid, float2 screenSize, uint pixelSi
     }
 
     // Вычисляем случайное смещение для каждой частицы
+    float2 safeScreen = max(screenSize, float2(1.0));
     return float2(
         hash(float(vid) * SUBPIXEL_HASH_SEED_1) * SUBPIXEL_OFFSET_SCALE - SUBPIXEL_OFFSET_CENTER,
         hash(float(vid) * SUBPIXEL_HASH_SEED_2) * SUBPIXEL_OFFSET_SCALE - SUBPIXEL_OFFSET_CENTER
-    ) / screenSize * 2.0;  // Нормализуем в clip space
+    ) / safeScreen * 2.0;  // Нормализуем в clip space
 }
 
 /*
@@ -220,7 +221,8 @@ vertex VertexOut vertexParticle(
     // screenPos в пикселях нужен только для освещения
     // ВАЖНО: учитываем subpixelOffset, чтобы освещение совпадало с геометрией
     float2 finalNDC = ndc + subpixelOffset;
-    out.screenPos = (finalNDC * 0.5 + 0.5) * params[0].screenSize;
+    float2 safeScreen = max(params[0].screenSize, float2(1.0));
+    out.screenPos = (finalNDC * 0.5 + 0.5) * safeScreen;
 
     return out;
 }
@@ -270,10 +272,15 @@ fragment float4 fragmentParticle(
     float3 col;  // Финальный цвет частицы
     float3 baseColor = srgbToLinear(in.color.rgb);
 
+    // В буре блокировка сохраняет исходный цвет и прозрачность частицы.
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM && params[0].colorsLocked != 0) {
+        return float4(baseColor, alpha * in.color.a);
+    }
+
     // Pixel-perfect режим: без освещения и эффектов, только исходный цвет.
     // Это дает максимально точное соответствие исходному изображению.
     if (params[0].pixelSizeMode != 0 && params[0].state != SIMULATION_STATE_LIGHTNING_STORM) {
-        return float4(baseColor, 1.0);
+        return float4(baseColor, in.color.a);
     }
 
     // СПЕЦИАЛЬНАЯ ОБРАБОТКА ЭЛЕКТРИЧЕСКОЙ БУРИ ⚡
@@ -327,22 +334,27 @@ fragment float4 fragmentParticle(
         // МОЛНИИ - ZIGZAG ЭФФЕКТЫ ⚡ (SCREEN SPACE, КОРРЕКТНО)
         // ========================================================================
 
-        float boltTime = fmod(params[0].time * 0.3, LIGHTNING_BOLT_PERIOD);
+        float lightningTime = params[0].time * 0.3;
+        float boltTime = fmod(lightningTime, LIGHTNING_BOLT_PERIOD);
+        float boltIndex = floor(lightningTime / LIGHTNING_BOLT_PERIOD);
 
         if (boltTime < LIGHTNING_BOLT_DURATION) {
             float boltProgress = boltTime / LIGHTNING_BOLT_DURATION;
 
-            // screenPos в пикселях → нормализуем в NDC
-            float2 pixelNDC = (in.screenPos / params[0].screenSize) * 2.0 - 1.0;
+            // [[position]] во fragment содержит координаты текущего пикселя.
+            // Переводим из экранных координат (Y вниз) в NDC (Y вверх).
+            float2 safeScreen = max(params[0].screenSize, float2(1.0));
+            float2 pixelNDC = (in.position.xy / safeScreen) * 2.0 - 1.0;
+            pixelNDC.y = -pixelNDC.y;
 
-            // Глобальная молния в NDC
+            // Концы молнии постоянны в течение одной вспышки.
             float2 boltStart = float2(
-                hash(floor(params[0].time) * 7.389) * 2.0 - 1.0,
+                hash(boltIndex * 7.389) * 2.0 - 1.0,
                 1.0
             );
 
             float2 boltEnd = float2(
-                hash(floor(params[0].time) * 13.23) * 2.0 - 1.0,
+                hash(boltIndex * 13.23) * 2.0 - 1.0,
                 -1.0
             );
 
@@ -351,21 +363,19 @@ fragment float4 fragmentParticle(
 
             float2 toPixel = pixelNDC - boltStart;
             float alongBolt = dot(toPixel, boltDir);
-            float2 closest = boltStart + boltDir * clamp(alongBolt, 0.0, boltLength);
-            float acrossBolt = length(pixelNDC - closest);
-
-            float core = exp(-acrossBolt / LIGHTNING_BOLT_WIDTH);
-
-            float zigzag = sin(alongBolt * LIGHTNING_ZIGZAG_FREQ
+            float clampedAlongBolt = clamp(alongBolt, 0.0, boltLength);
+            float zigzag = sin(clampedAlongBolt * LIGHTNING_ZIGZAG_FREQ
                                + params[0].time * 20.0)
                            * LIGHTNING_ZIGZAG_AMOUNT;
-
-            float zigzagMask = exp(-abs(zigzag) * 25.0);
+            float2 boltNormal = float2(-boltDir.y, boltDir.x);
+            float2 closest = boltStart + boltDir * clampedAlongBolt + boltNormal * zigzag;
+            float acrossBolt = length(pixelNDC - closest);
+            float core = exp(-acrossBolt / LIGHTNING_BOLT_WIDTH);
 
             float timeMask = smoothstep(0.0, 0.15, boltProgress) *
                              (1.0 - smoothstep(0.7, 1.0, boltProgress));
 
-            float boltShape = core * zigzagMask * timeMask;
+            float boltShape = core * timeMask;
 
             col += float3(1.0, 1.0, 1.0) * boltShape * LIGHTNING_BOLT_BRIGHTNESS;
         }
@@ -496,7 +506,13 @@ fragment float4 fragmentParticlePerformance(
     float3 col;
     float3 baseColor = srgbToLinear(in.color.rgb);
 
-    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
+    if (params[0].pixelSizeMode != 0 && params[0].state != SIMULATION_STATE_LIGHTNING_STORM) {
+        return float4(baseColor, in.color.a);
+    }
+
+    if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM && params[0].colorsLocked != 0) {
+        col = baseColor;
+    } else if (params[0].state == SIMULATION_STATE_LIGHTNING_STORM) {
         // Упрощенные цвета бури
         float electricSeed = dot(uv, float2(12.9898, 78.233)) + params[0].time;
         float hue = hash(electricSeed) * TWO_PI;
@@ -513,7 +529,10 @@ fragment float4 fragmentParticlePerformance(
         col = clamp(baseColor * in.brightnessBoost, 0.0, 1.0) + glow;
     }
 
-    float finalAlpha = 1.0;
+    float shapeAlpha = params[0].pixelSizeMode == 0
+        ? 1.0 - smoothstep(0.9, 1.0, dist)
+        : 1.0;
+    float finalAlpha = shapeAlpha * in.color.a;
     return float4(col, finalAlpha);
 }
 #endif /* Basic_h */

@@ -101,13 +101,12 @@ static inline float2 calculateCollectionMovement(
     float2 pos   = p.position.xy;
     float2 target = p.targetPosition.xy;
     float2 toTarget = target - pos;
-    float  distToTarget = length(toTarget);
-
     float2 safeScreen = max(params[0].screenSize, float2(1.0));
     float2 pixelToNDC = float2(2.0 / safeScreen.x, 2.0 / safeScreen.y);
-    float snapThreshold = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_SNAP_PIXELS;
+    float2 toTargetPixels = toTarget / pixelToNDC;
+    float distPixels = length(toTargetPixels);
 
-    if (distToTarget <= snapThreshold) {
+    if (distPixels <= COLLECTION_SNAP_PIXELS) {
         p.position.xy = target;
         p.velocity.xy = float2(0.0);
         if (p.life >= PARTICLE_ALIVE) {
@@ -121,21 +120,16 @@ static inline float2 calculateCollectionMovement(
         ? params[0].collectionSpeed * COLLECTION_BASE_SPEED
         : COLLECTION_BASE_SPEED;
 
-    float distPixels = distToTarget / max(min(pixelToNDC.x, pixelToNDC.y), 1e-6);
     // Плавное замедление ближе к цели
     float ease = clamp(distPixels / 12.0, 0.1, 1.0);
     float moveDistancePixels = baseSpeedPixels * safeDt * ease;
-    float moveDistance = moveDistancePixels * min(pixelToNDC.x, pixelToNDC.y);
-    float minMove = min(pixelToNDC.x, pixelToNDC.y) * COLLECTION_MIN_SPEED * (safeDt / DEFAULT_DT);
-    moveDistance = max(moveDistance, minMove);
-    moveDistance = min(moveDistance, distToTarget);
+    float minMovePixels = COLLECTION_MIN_SPEED * (safeDt / DEFAULT_DT);
+    moveDistancePixels = min(max(moveDistancePixels, minMovePixels), distPixels);
 
     float2 prevPos = p.position.xy;
 
-    if (distToTarget > snapThreshold) {
-        float2 direction = safeNormalize2(toTarget);
-        p.position.xy += direction * moveDistance;
-    }
+    float2 directionPixels = safeNormalize2(toTargetPixels);
+    p.position.xy += directionPixels * moveDistancePixels * pixelToNDC;
 
     float2 newVelocity = (p.position.xy - prevPos) / safeDt;
     float velocityBlend = 1.0 - pow(1.0 - COLLECTION_VELOCITY_DAMPING, safeDt / DEFAULT_DT);
@@ -206,13 +200,17 @@ static inline void calculateStormMovement(
 
     p.velocity.xy *= pow(STORM_VELOCITY_DAMPING, frameScale);
 
-    float electricHue = hash(seed) * TWO_PI + params[0].time * 2.0;
-    p.color = float4(
-        0.3 + 0.7 * sin(electricHue),
-        0.4 + 0.6 * sin(electricHue + ELECTRIC_HUE_OFFSET_G),
-        0.8 + 0.2 * sin(electricHue + ELECTRIC_HUE_OFFSET_B),
-        0.7 + 0.3 * sin(params[0].time * 3.0 + seed)
-    );
+    if (params[0].colorsLocked != 0) {
+        p.color = p.originalColor;
+    } else {
+        float electricHue = hash(seed) * TWO_PI + params[0].time * 2.0;
+        p.color = float4(
+            0.3 + 0.7 * sin(electricHue),
+            0.4 + 0.6 * sin(electricHue + ELECTRIC_HUE_OFFSET_G),
+            0.8 + 0.2 * sin(electricHue + ELECTRIC_HUE_OFFSET_B),
+            0.7 + 0.3 * sin(params[0].time * 3.0 + seed)
+        );
+    }
 
     // Легкий хаотический jitter делает бурю визуально живее без разрыва траектории
     float2 stormChaos = randomChaoticMotion(p.position.xy, params[0].time, id);
@@ -260,12 +258,10 @@ static inline void applyBoundaryConditionsForPhysics(
     if (!isFloatSafe(p.position.x)) p.position.x = 0.0;
     if (!isFloatSafe(p.position.y)) p.position.y = 0.0;
 
-    // Во время сбора не ограничиваем частицы "внутренними" границами,
-    // иначе крайние пиксели (близко к NDC ±1.0) никогда не достигаются.
+    // В fill/center цели изображения могут находиться вне NDC [-1, 1].
+    // Даем частицам достичь этих целей; видимую область обрезает рендеринг.
     if (params[0].state == SIMULATION_STATE_COLLECTING ||
         params[0].state == SIMULATION_STATE_COLLECTED) {
-        p.position.x = clamp(p.position.x, NDC_MIN_POS, NDC_MAX_POS);
-        p.position.y = clamp(p.position.y, NDC_MIN_POS, NDC_MAX_POS);
         if (length(p.velocity.xy) > MAX_VELOCITY) {
             p.velocity.xy = safeNormalize2(p.velocity.xy) * MAX_VELOCITY;
         }

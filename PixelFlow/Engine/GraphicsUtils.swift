@@ -69,11 +69,8 @@ struct GraphicsUtils {
         
         if let context = context {
             
-            // Очищаем контекст белым цветом чтобы избежать артефактов
-            if let whiteColor = CGColor(colorSpace: colorSpace, components: [1.0, 1.0, 1.0, 1.0]) {
-                context.setFillColor(whiteColor)
-                context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-            }
+            // Сохраняем прозрачность исходного изображения.
+            context.clear(CGRect(x: 0, y: 0, width: width, height: height))
         } else {
             Logger.shared.error("Не удалось создать CGContext")
         }

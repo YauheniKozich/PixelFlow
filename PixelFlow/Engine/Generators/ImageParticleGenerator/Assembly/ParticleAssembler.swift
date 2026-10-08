@@ -459,8 +459,18 @@ final class DefaultParticleAssembler: ParticleAssemblerProtocol {
         particle.position = SIMD3<Float>(ndcPosition.x, ndcPosition.y, 0)
         particle.targetPosition = particle.position
         
-        particle.color = sample.color
-        particle.originalColor = sample.color
+        // PixelCache хранит premultiplied RGB, а Metal использует straight alpha.
+        let alpha = sample.color.w
+        let color = alpha > 0
+            ? SIMD4<Float>(
+                min(max(sample.color.x / alpha, 0), 1),
+                min(max(sample.color.y / alpha, 0), 1),
+                min(max(sample.color.z / alpha, 0), 1),
+                alpha
+            )
+            : SIMD4<Float>.zero
+        particle.color = color
+        particle.originalColor = color
         
         particle.size = calculateParticleSize(
             transformation: context.transformation,
